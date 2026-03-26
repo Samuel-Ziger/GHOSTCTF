@@ -121,6 +121,26 @@ function isProbablyHttpService(name, product) {
   return s.includes('http') || s.includes('https') || s.includes('nginx') || s.includes('apache') || s.includes('ssl/http');
 }
 
+/** Uma porta → um esquema: TLS explícito ou 443/8443 → https; caso contrário http (sem duplicar os dois na mesma porta). */
+function rowPrefersHttps(port, name, product, extrainfo) {
+  const p = Number(port);
+  const s = `${name || ''} ${product || ''} ${extrainfo || ''}`.toLowerCase();
+  if (p === 443 || p === 8443) return true;
+  if (/\bssl\b|https|tls/.test(s)) return true;
+  return false;
+}
+
+/** URL canónica: host só com o IP; 80/443 sem :porto no texto. */
+function webOriginUrl(ip, port, useHttps) {
+  const p = Number(port);
+  if (useHttps) {
+    if (p === 443) return `https://${ip}/`;
+    return `https://${ip}:${p}/`;
+  }
+  if (p === 80) return `http://${ip}/`;
+  return `http://${ip}:${p}/`;
+}
+
 export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, log }) {
   const webCandidates = [];
   const seen = new Set();
@@ -132,25 +152,31 @@ export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, l
 
     const name = r.name || '';
     const product = r.product || '';
-    if (!isProbablyWebPort(port) && !isProbablyHttpService(name, product) && !isProbablyHttpService(r.extrainfo, name)) continue;
+    const extra = r.extrainfo || '';
+    if (!isProbablyWebPort(port) && !isProbablyHttpService(name, product) && !isProbablyHttpService(extra, name)) continue;
 
-    const httpUrl = `http://${ip}:${port}/`;
-    const httpsUrl = `https://${ip}:${port}/`;
-
-    // tenta HTTP primeiro; se falhar, tenta HTTPS (muitas VMs aceitam só um)
-    for (const u of [httpUrl, httpsUrl]) {
-      if (seen.has(u)) continue;
-      seen.add(u);
-      webCandidates.push({ url: u, port, portName: name, proto: 'tcp' });
-    }
+    const https = rowPrefersHttps(port, name, product, extra);
+    const u = webOriginUrl(ip, port, https);
+    if (seen.has(u)) continue;
+    seen.add(u);
+    webCandidates.push({ url: u, port, portName: name, proto: 'tcp' });
   }
 
   if (!webCandidates.length) {
-    // fallback: só tenta em portas conhecidas se nmap não deu hints
-    const defaults = [80, 443, 8080, 8081, 8000, 8443];
-    for (const p of defaults) {
-      webCandidates.push({ url: `http://${ip}:${p}/`, port: p, proto: 'tcp' });
-      webCandidates.push({ url: `https://${ip}:${p}/`, port: p, proto: 'tcp' });
+    // fallback: uma tentativa por porta (http em tudo excepto 443/https-ish)
+    const defaults = [
+      { port: 80, https: false },
+      { port: 443, https: true },
+      { port: 8080, https: false },
+      { port: 8081, https: false },
+      { port: 8000, https: false },
+      { port: 8443, https: true },
+    ];
+    for (const d of defaults) {
+      const u = webOriginUrl(ip, d.port, d.https);
+      if (seen.has(u)) continue;
+      seen.add(u);
+      webCandidates.push({ url: u, port: d.port, proto: 'tcp' });
     }
   }
 

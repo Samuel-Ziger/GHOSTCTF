@@ -3,7 +3,7 @@ import { curlWebSingle } from './web-curl-single.js';
 /**
  * Para cada origem (protocolo + host:porta) onde já houve resposta HTTP no recon,
  * pede `/robots.txt`. Se não houver origens (curl falhou em tudo), tenta
- * `http://IP/robots.txt` e `https://IP/robots.txt`.
+ * `http://IP/robots.txt` (sem duplicar https no fallback).
  * Só acrescenta ao array quando o servidor responde **200** (ficheiro existe).
  */
 export async function appendRobotsTxtResponses(webResponses, {
@@ -26,10 +26,7 @@ export async function appendRobotsTxtResponses(webResponses, {
     }
   }
 
-  if (origins.size === 0 && ip) {
-    origins.add(`http://${ip}`);
-    origins.add(`https://${ip}`);
-  }
+  if (origins.size === 0 && ip) origins.add(`http://${ip}`);
 
   const tried = new Set();
   let fetched = 0;
