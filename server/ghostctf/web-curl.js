@@ -4,6 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { UA } from '../config.js';
 import { detectTech } from '../modules/tech.js';
+import { decodeBodyBufferToUtf8, effectiveUrlAfterRedirects } from './http-body.js';
 
 function parseHttpHeadersBlock(raw) {
   const out = new Map();
@@ -41,13 +42,15 @@ async function runCurl({ url, timeoutMs = 12000, maxBodyBytes = 250_000 }) {
   const bodyPath = join(dir, 'body.bin');
 
   // -k: ignora TLS invalid (muitos CTFs têm cert self-signed)
-  // -L + --max-redirs 1: tenta seguir no máximo 1 redirect para evitar explosão de múltiplos headers
+  // --compressed: pede/descomprime gzip (senão o ficheiro -o pode vir binário e o HTML “some”)
+  // -L: segue redirects (path final correcto para href relativos)
   const args = [
     '-k',
     '-sS',
+    '--compressed',
     '-L',
     '--max-redirs',
-    '1',
+    '8',
     '--connect-timeout',
     String(Math.max(1, Math.floor(timeoutMs / 1000))),
     '--max-time',
@@ -86,10 +89,10 @@ async function runCurl({ url, timeoutMs = 12000, maxBodyBytes = 250_000 }) {
   const lastHeaders = extractLastHeaderBlock(headersText);
   const headersMap = parseHttpHeadersBlock(lastHeaders);
   const status = parseStatusCode(lastHeaders);
+  const finalUrl = effectiveUrlAfterRedirects(url, headersText);
 
   const bodySlice = bodyBuf.length > maxBodyBytes ? bodyBuf.slice(0, maxBodyBytes) : bodyBuf;
-  // para heurísticas, tentamos utf8 com replacement
-  const bodyText = bodySlice.toString('utf8');
+  const bodyText = decodeBodyBufferToUtf8(bodySlice, lastHeaders);
   const techHints = detectTech(
     {
       get: (n) => headersMap.get(String(n || '').toLowerCase()) || '',
@@ -100,6 +103,7 @@ async function runCurl({ url, timeoutMs = 12000, maxBodyBytes = 250_000 }) {
   return {
     ok: true,
     url,
+    finalUrl,
     status: status ?? 0,
     headersText,
     headers: headersMap,
@@ -188,6 +192,7 @@ export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, l
       out.push({
         port: c.port,
         url: c.url,
+        finalUrl: r.finalUrl || c.url,
         status: r.status,
         headersText: r.headersText,
         bodyText: r.bodyText,

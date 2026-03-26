@@ -4,6 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { UA } from '../config.js';
 import { detectTech } from '../modules/tech.js';
+import { decodeBodyBufferToUtf8, effectiveUrlAfterRedirects } from './http-body.js';
 
 function parseHttpHeadersBlock(raw) {
   const out = new Map();
@@ -42,9 +43,10 @@ export async function curlWebSingle({ url, timeoutMs = 12000, maxBodyBytes = 250
   const args = [
     '-k',
     '-sS',
+    '--compressed',
     '-L',
     '--max-redirs',
-    '1',
+    '8',
     '--connect-timeout',
     timeoutSec,
     '--max-time',
@@ -81,8 +83,9 @@ export async function curlWebSingle({ url, timeoutMs = 12000, maxBodyBytes = 250
   const lastHeaders = extractLastHeaderBlock(headersText);
   const headersMap = parseHttpHeadersBlock(lastHeaders);
   const status = parseStatusCode(lastHeaders);
+  const finalUrl = effectiveUrlAfterRedirects(url, headersText);
   const bodySlice = bodyBuf.length > maxBodyBytes ? bodyBuf.slice(0, maxBodyBytes) : bodyBuf;
-  const bodyText = bodySlice.toString('utf8');
+  const bodyText = decodeBodyBufferToUtf8(bodySlice, lastHeaders);
 
   const techHints = detectTech(
     {
@@ -91,6 +94,16 @@ export async function curlWebSingle({ url, timeoutMs = 12000, maxBodyBytes = 250
     bodyText,
   );
 
-  return { ok: true, url, status: status ?? 0, headersText, headers: headersMap, bodyText, tech: techHints, curlExitCode: proc.code };
+  return {
+    ok: true,
+    url,
+    finalUrl,
+    status: status ?? 0,
+    headersText,
+    headers: headersMap,
+    bodyText,
+    tech: techHints,
+    curlExitCode: proc.code,
+  };
 }
 

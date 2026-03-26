@@ -1,4 +1,5 @@
 import dns from 'node:dns/promises';
+import { bodyLooksHtmlish, effectiveUrlAfterRedirects } from './http-body.js';
 import { curlWebSingle } from './web-curl-single.js';
 
 export function urlDedupKey(href) {
@@ -115,9 +116,11 @@ export function extractRawUrlAttributes(html) {
     }
   };
 
-  pushRe(/(?:\bhref|\baction)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi);
-  pushRe(/<iframe\b[^>]*\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi);
-  pushRe(/<area\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi);
+  // href/action sem exigir \b antes (HTML minificado / edge cases)
+  pushRe(/href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/gi);
+  pushRe(/action\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/gi);
+  pushRe(/<iframe\b[^>]*\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/gi);
+  pushRe(/<area\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/gi);
   pushRe(
     /<meta\b[^>]*\bhttp-equiv\s*=\s*["']?\s*refresh\s*["']?[^>]*\bcontent\s*=\s*["']?\s*\d+\s*;\s*(?:url|URL)\s*=\s*([^"'>\s]+)/gi,
   );
@@ -211,11 +214,23 @@ export function extractInScopeHttpUrls(html, baseUrl, targetIp) {
  * Faz curl em páginas descobertas por links no HTML (BFS por profundidade).
  * Altera webResponses in-place (push dos novos curl).
  */
+function responseOkForLinkParsing(r) {
+  if (!r || !r.url) return false;
+  const bt = String(r.bodyText || '');
+  if (bt.length < 6) return false;
+  if (!bodyLooksHtmlish(bt)) return false;
+  const st = Number(r.status);
+  // 401/403/404 às vezes devolvem HTML com menu; gzip já vem como texto após decode no curl
+  if (st >= 200 && st < 600) return true;
+  if ((st === 0 || !st) && bt.length > 24) return true;
+  return false;
+}
+
 export async function expandWebResponsesWithLinkCrawl(webResponses, {
   ip,
   log,
-  maxDepth = 2,
-  maxNewFetches = 40,
+  maxDepth = 3,
+  maxNewFetches = 80,
   timeoutMs = 12000,
   maxBodyBytes = 250_000,
 } = {}) {
@@ -229,20 +244,17 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
   }
 
   let fetched = 0;
-  let frontier = (webResponses || []).filter((r) => {
-    if (!r || !r.url) return false;
-    const st = Number(r.status);
-    if (st >= 200 && st < 400 && r.bodyText) return true;
-    if ((st === 0 || !st) && r.bodyText && String(r.bodyText).length > 20) return true;
-    return false;
-  });
+  let frontier = (webResponses || []).filter(responseOkForLinkParsing);
 
   for (let d = 0; d < maxDepth && fetched < maxNewFetches; d += 1) {
     const nextFrontier = [];
     for (const r of frontier) {
+      const pageBase =
+        String(r.finalUrl || '').trim() ||
+        effectiveUrlAfterRedirects(String(r.url), String(r.headersText || ''));
       const links = await collectInScopeHttpUrls(
         String(r.bodyText),
-        String(r.url),
+        pageBase,
         allowedHosts,
         ip,
         dnsCache,
@@ -262,10 +274,7 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
           } catch {
             /* */
           }
-          const st = Number(resp.status);
-          if ((st >= 200 && st < 400 && resp.bodyText) || (resp.bodyText && String(resp.bodyText).length > 20)) {
-            nextFrontier.push(resp);
-          }
+          if (responseOkForLinkParsing(resp)) nextFrontier.push(resp);
         } catch {
           /* ignorar timeouts / falhas de rede */
         }

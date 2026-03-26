@@ -156,10 +156,8 @@ export async function runGhostCtfPipeline({
     const linkRes = await expandWebResponsesWithLinkCrawl(webResponses, {
       ip,
       log,
-      maxDepth: 2,
-      maxNewFetches: 40,
-      timeoutMs: 12000,
-      maxBodyBytes: 250000,
+      timeoutMs: 15000,
+      maxBodyBytes: 350000,
     });
     linkPagesFetched = linkRes.fetched || 0;
     if (linkPagesFetched) log(`HTML links: ${linkPagesFetched} página(s) extra com curl`, 'success');
