@@ -5,6 +5,7 @@ import { detectFlagsWithDecoding } from './flag-detector.js';
 import { buildCtfPlaybookSuggestions } from './playbook.js';
 import { searchExploitDbFromNmap } from './exploitdb.js';
 import { expandWebResponsesWithLinkCrawl } from './html-links.js';
+import { appendRobotsTxtResponses } from './robots-probe.js';
 
 export async function runGhostCtfPipeline({
   ip,
@@ -116,17 +117,33 @@ export async function runGhostCtfPipeline({
   progress(35);
   log('Probe HTTP/HTTPS com curl nas portas web candidatas...', 'info');
   const webResponses = await curlWebFromNmap({ ip, nmapRows, timeoutMs: 12000, maxBodyBytes: 250000, log });
+
+  let robotsFetched = 0;
+  try {
+    const rb = await appendRobotsTxtResponses(webResponses, {
+      ip,
+      log,
+      timeoutMs: 10000,
+      maxBodyBytes: 128000,
+    });
+    robotsFetched = rb.fetched || 0;
+  } catch (e) {
+    log(`robots.txt: ${e?.message || String(e)}`, 'warn');
+  }
+
   const countAfterInitialCurl = webResponses.length;
 
   for (const r of webResponses) {
-    if (!r.status || !r.bodyText) continue;
+    if (!r.status) continue;
+    if (!r.bodyText && r.__via !== 'robots.txt') continue;
+    const via = r.__via === 'robots.txt' ? ' · via=robots.txt' : '';
     addFinding(
       {
         type: 'tech',
         prio: 'low',
         score: 20,
         value: `HTTP ${r.status} @ ${r.url}`,
-        meta: `tech=${(r.tech || []).slice(0, 5).join(' · ') || '—'}`,
+        meta: `tech=${(r.tech || []).slice(0, 5).join(' · ') || '—'}${via}`,
         url: r.url,
       },
       'endpoints',
@@ -266,7 +283,7 @@ export async function runGhostCtfPipeline({
 
   // 6) URLS / DISCOVERY — links HTML já cobertos em “alive”; robots/sitemap podem ser acrescentados depois
   pipe('urls', 'active');
-  log('Discovery URLs: links em HTML + ffuf (robots/sitemap automático ainda não).', 'info');
+  log('Discovery URLs: robots.txt (probe inicial) + links HTML + ffuf.', 'info');
   pipe('urls', 'done');
 
   // 7) PARAM DISCOVERY / FLAG SCAN (mapa para "params")
@@ -342,8 +359,9 @@ export async function runGhostCtfPipeline({
     platformId,
     udpScan,
     tcpAllPorts,
-    pagesFetched: (pagesFetched || 0) + (linkPagesFetched || 0),
+    pagesFetched: (pagesFetched || 0) + (linkPagesFetched || 0) + (robotsFetched || 0),
     linkPagesFetched: linkPagesFetched || 0,
+    robotsFetched: robotsFetched || 0,
     flagsFound: foundFlagSet.size,
   };
 
