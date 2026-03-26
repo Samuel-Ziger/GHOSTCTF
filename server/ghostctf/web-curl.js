@@ -4,7 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { UA } from '../config.js';
 import { detectTech } from '../modules/tech.js';
-import { decodeBodyBufferToUtf8, effectiveUrlAfterRedirects } from './http-body.js';
+import { decodeBodyBufferToUtf8, effectiveUrlAfterRedirects, stripDefaultPortsFromUrl } from './http-body.js';
 
 function parseHttpHeadersBlock(raw) {
   const out = new Map();
@@ -36,7 +36,8 @@ function parseStatusCode(headersText) {
   return m ? Number(m[1]) : null;
 }
 
-async function runCurl({ url, timeoutMs = 12000, maxBodyBytes = 250_000 }) {
+async function runCurl({ url: urlIn, timeoutMs = 12000, maxBodyBytes = 250_000 }) {
+  const url = stripDefaultPortsFromUrl(urlIn);
   const dir = await mkdtemp(join(tmpdir(), 'ghcurl-'));
   const headersPath = join(dir, 'headers.txt');
   const bodyPath = join(dir, 'body.bin');
@@ -126,7 +127,7 @@ function isProbablyHttpService(name, product) {
 }
 
 /** Uma porta → um esquema: TLS explícito ou 443/8443 → https; caso contrário http (sem duplicar os dois na mesma porta). */
-function rowPrefersHttps(port, name, product, extrainfo) {
+export function rowPrefersHttps(port, name, product, extrainfo) {
   const p = Number(port);
   const s = `${name || ''} ${product || ''} ${extrainfo || ''}`.toLowerCase();
   if (p === 443 || p === 8443) return true;
@@ -135,7 +136,7 @@ function rowPrefersHttps(port, name, product, extrainfo) {
 }
 
 /** URL canónica: host só com o IP; 80/443 sem :porto no texto. */
-function webOriginUrl(ip, port, useHttps) {
+export function webOriginUrl(ip, port, useHttps) {
   const p = Number(port);
   if (useHttps) {
     if (p === 443) return `https://${ip}/`;
@@ -187,7 +188,9 @@ export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, l
   const out = [];
   for (const c of webCandidates) {
     try {
-      if (typeof log === 'function') log(`curl web: ${c.url}`, 'info');
+      if (typeof log === 'function') {
+        log(`[http] GET ${c.url} (repro: curl -k -sS --compressed -L '${c.url}')`, 'info');
+      }
       const r = await runCurl({ url: c.url, timeoutMs, maxBodyBytes });
       out.push({
         port: c.port,

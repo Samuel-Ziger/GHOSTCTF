@@ -4,7 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { UA } from '../config.js';
 import { detectTech } from '../modules/tech.js';
-import { decodeBodyBufferToUtf8, effectiveUrlAfterRedirects } from './http-body.js';
+import { decodeBodyBufferToUtf8, effectiveUrlAfterRedirects, stripDefaultPortsFromUrl } from './http-body.js';
 
 function parseHttpHeadersBlock(raw) {
   const out = new Map();
@@ -34,7 +34,8 @@ function parseStatusCode(headersText) {
   return m ? Number(m[1]) : null;
 }
 
-export async function curlWebSingle({ url, timeoutMs = 12000, maxBodyBytes = 250000 }) {
+export async function curlWebSingle({ url: urlIn, timeoutMs = 12000, maxBodyBytes = 250000 }) {
+  const url = stripDefaultPortsFromUrl(urlIn);
   const dir = await mkdtemp(join(tmpdir(), 'ghcurl1-'));
   const headersPath = join(dir, 'headers.txt');
   const bodyPath = join(dir, 'body.bin');

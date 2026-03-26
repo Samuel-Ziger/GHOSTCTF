@@ -1,5 +1,5 @@
 import { scanIpPorts } from './nmap-scan.js';
-import { curlWebFromNmap } from './web-curl.js';
+import { curlWebFromNmap, rowPrefersHttps, webOriginUrl } from './web-curl.js';
 import { dirEnumAllTools } from './dir-enum.js';
 import { detectFlagsWithDecoding } from './flag-detector.js';
 import { buildCtfPlaybookSuggestions } from './playbook.js';
@@ -64,7 +64,11 @@ export async function runGhostCtfPipeline({
     if (seenPorts.has(key)) continue;
     seenPorts.add(key);
 
-    const line = `${proto}/${port} ${r.name || ''} ${r.product || ''} ${r.version || ''}`.trim();
+    const name = r.name || '';
+    const product = r.product || '';
+    const extra = r.extrainfo || '';
+    const line = `${proto}/${port} ${name} ${product} ${r.version || ''}`.trim();
+    const https = rowPrefersHttps(port, name, product, extra);
     addFinding(
       {
         type: 'nmap',
@@ -72,7 +76,7 @@ export async function runGhostCtfPipeline({
         score: 55,
         value: line,
         meta: `${r.extrainfo || 'nmap'} (host=${r.host || ip})`,
-        url: `http://${ip}:${port}/`,
+        url: webOriginUrl(ip, port, https),
       },
       'endpoints',
     );
@@ -161,7 +165,7 @@ export async function runGhostCtfPipeline({
     });
     linkPagesFetched = linkRes.fetched || 0;
     if (linkPagesFetched) log(`HTML links: ${linkPagesFetched} página(s) extra com curl`, 'success');
-    else log('HTML links: nenhum URL novo (mesmo host, DNS→IP, ou <base>/iframe/meta). Ver logs “curl link HTML”.', 'info');
+    else log('HTML links: nenhum URL novo. Ver logs “[http] link do HTML”.', 'info');
   } catch (e) {
     log(`HTML link crawl: ${e?.message || String(e)}`, 'warn');
   }
@@ -242,10 +246,19 @@ export async function runGhostCtfPipeline({
   }
 
   const discoveredUrls = new Set();
+  /** @type {Record<string, { n: number; err?: string }>} */
+  const dirEnumToolsAgg = {};
   for (const baseUrl of urlsSeedUniq) {
     const u = String(baseUrl || '');
     if (!u) continue;
-    const enumRes = await dirEnumAllTools({ baseUrl: u, log, timeoutMs: 95000, maxMergedUrls: 80 });
+    const enumRes = await dirEnumAllTools({ baseUrl: u, log, timeoutMs: 240000, maxMergedUrls: 120 });
+    if (enumRes?.tools && typeof enumRes.tools === 'object') {
+      for (const [k, v] of Object.entries(enumRes.tools)) {
+        if (!dirEnumToolsAgg[k]) dirEnumToolsAgg[k] = { n: 0 };
+        dirEnumToolsAgg[k].n += Number(v?.n) || 0;
+        if (v?.err) dirEnumToolsAgg[k].err = v.err;
+      }
+    }
     if (!Array.isArray(enumRes.urls)) continue;
     for (const d of enumRes.urls) discoveredUrls.add(d);
   }
@@ -367,6 +380,7 @@ export async function runGhostCtfPipeline({
     linkPagesFetched: linkPagesFetched || 0,
     robotsFetched: robotsFetched || 0,
     flagsFound: foundFlagSet.size,
+    dirEnumTools: dirEnumToolsAgg,
   };
 
   let saved = null;

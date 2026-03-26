@@ -1,11 +1,23 @@
 import zlib from 'node:zlib';
 
+/** HTTP :80 / HTTPS :443 omitidos (menos confusão; igual à barra de endereços). */
+export function stripDefaultPortsFromUrl(href) {
+  try {
+    const u = new URL(String(href || ''));
+    if (u.protocol === 'http:' && u.port === '80') u.port = '';
+    else if (u.protocol === 'https:' && u.port === '443') u.port = '';
+    return u.href;
+  } catch {
+    return String(href || '');
+  }
+}
+
 /**
  * Segue encadeamento de cabeçalhos `-D` do curl com `-L` (vários blocos HTTP).
  * Devolve o URL final para resolver href relativos correctamente.
  */
 export function effectiveUrlAfterRedirects(requestUrl, fullHeadersDump) {
-  let u = String(requestUrl || '');
+  let u = stripDefaultPortsFromUrl(String(requestUrl || ''));
   const blocks = String(fullHeadersDump || '')
     .split(/\r?\n\r?\n/)
     .map((b) => b.trim())
@@ -21,7 +33,7 @@ export function effectiveUrlAfterRedirects(requestUrl, fullHeadersDump) {
       break;
     }
   }
-  return u;
+  return stripDefaultPortsFromUrl(u);
 }
 
 /**

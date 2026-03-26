@@ -38,7 +38,7 @@ export async function appendRobotsTxtResponses(webResponses, {
     tried.add(robotsUrl);
 
     try {
-      logger(`curl robots.txt: ${robotsUrl}`, 'info');
+      logger(`[http] robots.txt GET ${robotsUrl}`, 'info');
       const resp = await curlWebSingle({ url: robotsUrl, timeoutMs, maxBodyBytes });
       if (resp.status === 200) {
         resp.__via = 'robots.txt';

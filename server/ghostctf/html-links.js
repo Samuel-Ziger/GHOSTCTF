@@ -265,7 +265,7 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
         if (seen.has(k)) continue;
         seen.add(k);
         try {
-          logger(`curl link HTML (nível ${d + 1}): ${link}`, 'info');
+          logger(`[http] link do HTML (nível ${d + 1}): ${link}`, 'info');
           const resp = await curlWebSingle({ url: link, timeoutMs, maxBodyBytes });
           fetched += 1;
           webResponses.push(resp);
