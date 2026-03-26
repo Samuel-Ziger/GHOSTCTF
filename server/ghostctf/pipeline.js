@@ -1,6 +1,6 @@
 import { scanIpPorts } from './nmap-scan.js';
 import { curlWebFromNmap } from './web-curl.js';
-import { ffufDirEnum } from './dir-enum.js';
+import { dirEnumAllTools } from './dir-enum.js';
 import { detectFlagsWithDecoding } from './flag-detector.js';
 import { buildCtfPlaybookSuggestions } from './playbook.js';
 import { searchExploitDbFromNmap } from './exploitdb.js';
@@ -230,25 +230,31 @@ export async function runGhostCtfPipeline({
   // 5) SURFACE / DIR ENUM (mapa para "surface")
   pipe('surface', 'active');
   progress(58);
-  log('Enumeração de diretórios (ffuf) em URLs web encontradas...', 'info');
+  log('Enumeração de diretórios (ffuf + gobuster + dirb, em paralelo) nas seeds web…', 'info');
 
-  const urlsSeed = webResponses
-    .filter((r) => r && r.status && r.url)
-    .map((r) => r.url)
-    .slice(0, 3);
+  const urlsSeedUniq = [];
+  const seedSeen = new Set();
+  for (const r of webResponses) {
+    if (!r || !r.status || !r.url) continue;
+    const k = String(r.url).split('#')[0];
+    if (seedSeen.has(k)) continue;
+    seedSeen.add(k);
+    urlsSeedUniq.push(k);
+    if (urlsSeedUniq.length >= 4) break;
+  }
 
   const discoveredUrls = new Set();
-  for (const baseUrl of urlsSeed) {
+  for (const baseUrl of urlsSeedUniq) {
     const u = String(baseUrl || '');
     if (!u) continue;
-    const enumRes = await ffufDirEnum({ baseUrl: u, log, timeoutMs: 90000 });
-    if (!enumRes?.ok || !Array.isArray(enumRes.urls)) continue;
+    const enumRes = await dirEnumAllTools({ baseUrl: u, log, timeoutMs: 95000, maxMergedUrls: 80 });
+    if (!Array.isArray(enumRes.urls)) continue;
     for (const d of enumRes.urls) discoveredUrls.add(d);
   }
 
   // curl nas URLs descobertas
   let pagesFetched = 0;
-  for (const u of [...discoveredUrls].slice(0, 25)) {
+  for (const u of [...discoveredUrls].slice(0, 50)) {
     try {
       // reaproveita curlWebFromNmap? aqui só precisamos de um curl simples.
       // import local pra evitar overhead:
@@ -283,7 +289,7 @@ export async function runGhostCtfPipeline({
 
   // 6) URLS / DISCOVERY — links HTML já cobertos em “alive”; robots/sitemap podem ser acrescentados depois
   pipe('urls', 'active');
-  log('Discovery URLs: robots.txt (probe inicial) + links HTML + ffuf.', 'info');
+  log('Discovery URLs: robots.txt + links HTML + ffuf/gobuster/dirb.', 'info');
   pipe('urls', 'done');
 
   // 7) PARAM DISCOVERY / FLAG SCAN (mapa para "params")

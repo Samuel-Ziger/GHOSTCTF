@@ -1042,15 +1042,6 @@
         <input class="domain-input" id="domainInput" type="text" placeholder="IP (ex.: 1.2.3.4)" autocomplete="off" spellcheck="false">
       </div>
 
-      <div class="toggle-row">
-        <span class="toggle-label">Plataforma CTF</span>
-        <select id="platformSelect" class="domain-input" style="width: 170px; padding: 8px 10px; font-size: 12px;">
-          <option value="solyd" selected>Solyd</option>
-          <option value="hackthebox">HackTheBox</option>
-          <option value="google_ctf">Google CTF</option>
-        </select>
-      </div>
-
       <div id="kaliPanel" style="display:none;margin-bottom:14px;padding:12px;border:1px solid var(--border);background:var(--bg2)">
         <div class="section-label" style="margin-bottom:8px">Kali (scan ativo)</div>
         <div id="kaliCapLine" style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:10px;line-height:1.4">A detetar ambiente…</div>
@@ -1628,7 +1619,7 @@ async function startRecon() {
 
   const selectedMods = [...document.querySelectorAll('.mod:checked')].map(x => x.value);
   const selectedPlatformRadio = document.querySelector('input[name="platformMod"]:checked');
-  const platform = (selectedPlatformRadio?.value || document.getElementById('platformSelect')?.value || 'solyd');
+  const platform = selectedPlatformRadio?.value || 'solyd';
   const udpScan = selectedMods.includes('udpScan');
   const tcpAllPorts = selectedMods.includes('tcpAllPorts');
   const modulesGhost = selectedMods.filter((v) => v === 'udpScan' || v === 'tcpAllPorts' || v === 'exploitdb');
@@ -1833,22 +1824,13 @@ function updatePlatformTags() {
   set('platformTag-google_ctf', 'google_ctf');
 }
 
-function syncPlatformSelect() {
-  const selected = document.querySelector('input[name="platformMod"]:checked')?.value;
-  const sel = document.getElementById('platformSelect');
-  if (!selected || !sel) return;
-  sel.value = selected;
-}
-
 document.querySelectorAll('input[name="platformMod"]').forEach(r => {
   r.addEventListener('change', () => {
-    syncPlatformSelect();
     updatePlatformTags();
   });
 });
 
 updatePlatformTags();
-syncPlatformSelect();
 
 fetchKaliCapabilities();
 loadRunsHistory();
