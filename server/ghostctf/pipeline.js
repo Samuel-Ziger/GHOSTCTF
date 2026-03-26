@@ -4,6 +4,7 @@ import { ffufDirEnum } from './dir-enum.js';
 import { detectFlagsWithDecoding } from './flag-detector.js';
 import { buildCtfPlaybookSuggestions } from './playbook.js';
 import { searchExploitDbFromNmap } from './exploitdb.js';
+import { expandWebResponsesWithLinkCrawl } from './html-links.js';
 
 export async function runGhostCtfPipeline({
   ip,
@@ -115,6 +116,8 @@ export async function runGhostCtfPipeline({
   progress(35);
   log('Probe HTTP/HTTPS com curl nas portas web candidatas...', 'info');
   const webResponses = await curlWebFromNmap({ ip, nmapRows, timeoutMs: 12000, maxBodyBytes: 250000, log });
+  const countAfterInitialCurl = webResponses.length;
+
   for (const r of webResponses) {
     if (!r.status || !r.bodyText) continue;
     addFinding(
@@ -124,6 +127,40 @@ export async function runGhostCtfPipeline({
         score: 20,
         value: `HTTP ${r.status} @ ${r.url}`,
         meta: `tech=${(r.tech || []).slice(0, 5).join(' · ') || '—'}`,
+        url: r.url,
+      },
+      'endpoints',
+    );
+  }
+
+  // Segue links no HTML (mesmo host que o IP), p.ex. index → noticias.php (flags em comentários / outras páginas)
+  let linkPagesFetched = 0;
+  try {
+    const linkRes = await expandWebResponsesWithLinkCrawl(webResponses, {
+      ip,
+      log,
+      maxDepth: 2,
+      maxNewFetches: 40,
+      timeoutMs: 12000,
+      maxBodyBytes: 250000,
+    });
+    linkPagesFetched = linkRes.fetched || 0;
+    if (linkPagesFetched) log(`HTML links: ${linkPagesFetched} página(s) extra com curl`, 'success');
+    else log('HTML links: nenhum link novo no mesmo host (ou limite 0)', 'info');
+  } catch (e) {
+    log(`HTML link crawl: ${e?.message || String(e)}`, 'warn');
+  }
+
+  for (let i = countAfterInitialCurl; i < webResponses.length; i += 1) {
+    const r = webResponses[i];
+    if (!r || !r.status || !r.bodyText) continue;
+    addFinding(
+      {
+        type: 'tech',
+        prio: 'low',
+        score: 20,
+        value: `HTTP ${r.status} @ ${r.url}`,
+        meta: `tech=${(r.tech || []).slice(0, 5).join(' · ') || '—'} · via=html-link`,
         url: r.url,
       },
       'endpoints',
@@ -227,9 +264,9 @@ export async function runGhostCtfPipeline({
   pipe('surface', 'done');
   progress(70);
 
-  // 6) URLS / DISCOVERY (mapa para "urls") - aqui fica skip (MVP já coletou via curls + dirs)
+  // 6) URLS / DISCOVERY — links HTML já cobertos em “alive”; robots/sitemap podem ser acrescentados depois
   pipe('urls', 'active');
-  log('Discovery de URLs via HTML/robots (MVP: pendente) — continuando com scan de flags.', 'warn');
+  log('Discovery URLs: links em HTML + ffuf (robots/sitemap automático ainda não).', 'info');
   pipe('urls', 'done');
 
   // 7) PARAM DISCOVERY / FLAG SCAN (mapa para "params")
@@ -300,7 +337,15 @@ export async function runGhostCtfPipeline({
     ...modules,
   ];
 
-  const corr = { ip, platformId, udpScan, tcpAllPorts, pagesFetched: pagesFetched || 0, flagsFound: flagHits.length };
+  const corr = {
+    ip,
+    platformId,
+    udpScan,
+    tcpAllPorts,
+    pagesFetched: (pagesFetched || 0) + (linkPagesFetched || 0),
+    linkPagesFetched: linkPagesFetched || 0,
+    flagsFound: foundFlagSet.size,
+  };
 
   let saved = null;
   let runId = null;
