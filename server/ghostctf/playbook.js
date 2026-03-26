@@ -92,7 +92,7 @@ export function buildCtfPlaybookSuggestions({ ip, findings }) {
       `# headers: curl -sS -i -k ${urls[0]}`,
       `# robots/sitemap: /robots.txt /sitemap.xml`,
       `# procurar flag: view-source + grep Solyd{ / HTB{ / GCTF{`,
-      `# dir enum: ffuf -u ${urls[0].replace(/\\/$/, '')}/FUZZ -w <wordlist> -mc 200,204,301,302,307,401,403`,
+      `# dir enum: ffuf -u ${urls[0].replace(/\/$/, '')}/FUZZ -w <wordlist> -mc 200,204,301,302,307,401,403`,
     ], 'high');
   }
 
