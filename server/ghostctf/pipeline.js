@@ -163,7 +163,7 @@ export async function runGhostCtfPipeline({
     });
     linkPagesFetched = linkRes.fetched || 0;
     if (linkPagesFetched) log(`HTML links: ${linkPagesFetched} página(s) extra com curl`, 'success');
-    else log('HTML links: nenhum link novo no mesmo host (ou limite 0)', 'info');
+    else log('HTML links: nenhum URL novo (mesmo host, DNS→IP, ou <base>/iframe/meta). Ver logs “curl link HTML”.', 'info');
   } catch (e) {
     log(`HTML link crawl: ${e?.message || String(e)}`, 'warn');
   }

@@ -1,11 +1,5 @@
+import dns from 'node:dns/promises';
 import { curlWebSingle } from './web-curl-single.js';
-
-/** Hostname do URL deve coincidir com o IP do alvo (recon por IP). */
-export function hostMatchesTarget(hostname, targetIp) {
-  const h = String(hostname || '').toLowerCase();
-  const t = String(targetIp || '').toLowerCase();
-  return h === t;
-}
 
 export function urlDedupKey(href) {
   try {
@@ -20,54 +14,202 @@ export function urlDedupKey(href) {
   }
 }
 
-/**
- * Extrai URLs http(s) no mesmo host que targetIp a partir de HTML (href, action).
- * Resolve relativas contra baseUrl.
- */
-export function extractInScopeHttpUrls(html, baseUrl, targetIp) {
-  const out = new Set();
-  const base = String(baseUrl || '');
-  if (!html || !base) return [];
+/** Normaliza hostname (IPv6 sem colchetes para comparação). */
+export function normalizeHostname(hostname) {
+  return String(hostname || '')
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '');
+}
 
-  const tryAdd = (raw) => {
-    let h = String(raw || '').trim();
-    if (!h || h.startsWith('#')) return;
-    const low = h.toLowerCase();
-    if (
-      low.startsWith('javascript:') ||
-      low.startsWith('mailto:') ||
-      low.startsWith('tel:') ||
-      low.startsWith('data:') ||
-      low.startsWith('blob:')
-    ) {
-      return;
-    }
-    let abs;
+/**
+ * Hostnames já vistos nas URLs que o próprio framework pediu (IP literal,
+ * nome no URL do curl, etc.).
+ */
+export function buildAllowedHostnames(ip, webResponses) {
+  const s = new Set();
+  const add = (h) => {
+    const n = normalizeHostname(h);
+    if (n) s.add(n);
+  };
+  add(ip);
+  for (const r of webResponses || []) {
     try {
-      abs = new URL(h, base);
+      add(new URL(String(r.url)).hostname);
     } catch {
-      return;
+      /* */
     }
-    if (abs.protocol !== 'http:' && abs.protocol !== 'https:') return;
-    if (!hostMatchesTarget(abs.hostname, targetIp)) return;
-    abs.hash = '';
-    out.add(abs.href);
+  }
+  return s;
+}
+
+function hostnameInSet(hostname, allowed) {
+  return allowed.has(normalizeHostname(hostname));
+}
+
+/**
+ * Verifica se o hostname resolve para o IP do alvo (vhost apontando ao mesmo host).
+ * Resultados memorizados em dnsCache (Map string -> boolean).
+ */
+async function hostResolvesToTarget(hostname, targetIp, dnsCache, timeoutMs = 2000) {
+  const th = normalizeHostname(targetIp);
+  const hh = normalizeHostname(hostname);
+  if (!th || !hh) return false;
+  if (hh === th) return true;
+
+  const key = `${hh}|${th}`;
+  if (dnsCache.has(key)) return dnsCache.get(key);
+
+  let ok = false;
+  try {
+    const results = await Promise.race([
+      dns.lookup(hh, { all: true }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('dns-timeout')), timeoutMs)),
+    ]);
+    for (const x of results || []) {
+      const addr = normalizeHostname(x.address);
+      if (addr === th || addr.replace(/^::ffff:/, '') === th) {
+        ok = true;
+        break;
+      }
+    }
+  } catch {
+    ok = false;
+  }
+  dnsCache.set(key, ok);
+  return ok;
+}
+
+export function extractBaseHref(html) {
+  const m = String(html).match(
+    /<base\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i,
+  );
+  if (!m) return null;
+  const val = String(m[1] ?? m[2] ?? m[3] ?? '').trim();
+  return val || null;
+}
+
+/** URL alvo para resolver links relativos (<base> tem prioridade). */
+export function resolveLinkBase(pageUrl, html) {
+  const baseHref = extractBaseHref(html);
+  if (!baseHref) return String(pageUrl);
+  try {
+    return new URL(baseHref, pageUrl).href;
+  } catch {
+    return String(pageUrl);
+  }
+}
+
+/**
+ * Extrai valores brutos de href/action, iframe src, meta refresh, area href.
+ */
+export function extractRawUrlAttributes(html) {
+  const out = [];
+  const h = String(html);
+
+  const pushRe = (re) => {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(h)) !== null) {
+      const val = String(m[1] ?? m[2] ?? m[3] ?? '').trim();
+      if (val) out.push(val);
+    }
   };
 
-  const re = /(?:href|action)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    const val = String(m[1] ?? m[2] ?? m[3] ?? '').trim();
-    if (val) tryAdd(val);
+  pushRe(/(?:\bhref|\baction)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi);
+  pushRe(/<iframe\b[^>]*\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi);
+  pushRe(/<area\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi);
+  pushRe(
+    /<meta\b[^>]*\bhttp-equiv\s*=\s*["']?\s*refresh\s*["']?[^>]*\bcontent\s*=\s*["']?\s*\d+\s*;\s*(?:url|URL)\s*=\s*([^"'>\s]+)/gi,
+  );
+  pushRe(
+    /<meta\b[^>]*\bcontent\s*=\s*["']?\s*\d+\s*;\s*(?:url|URL)\s*=\s*([^"'>\s]+)[^>]*\bhttp-equiv\s*=\s*["']?\s*refresh/gi,
+  );
+
+  return out;
+}
+
+export function decodeBasicHtmlEntities(s) {
+  return String(s)
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#0*39;/g, "'")
+    .replace(/&#0*34;/g, '"')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+}
+
+function shouldSkipScheme(raw) {
+  const low = String(raw).trim().toLowerCase();
+  return (
+    !low ||
+    low.startsWith('#') ||
+    low.startsWith('javascript:') ||
+    low.startsWith('mailto:') ||
+    low.startsWith('tel:') ||
+    low.startsWith('data:') ||
+    low.startsWith('blob:') ||
+    low.startsWith('about:')
+  );
+}
+
+/**
+ * Resolve URLs http(s) “no âmbito” do alvo: mesmo hostname conhecido OU hostname que resolve para o IP.
+ */
+export async function collectInScopeHttpUrls(html, pageUrl, allowedHosts, targetIp, dnsCache) {
+  const out = new Set();
+  const base = resolveLinkBase(pageUrl, html);
+  const rawList = extractRawUrlAttributes(html);
+
+  for (let raw of rawList) {
+    raw = decodeBasicHtmlEntities(raw).trim();
+    if (shouldSkipScheme(raw)) continue;
+    let abs;
+    try {
+      abs = new URL(raw, base);
+    } catch {
+      continue;
+    }
+    if (abs.protocol !== 'http:' && abs.protocol !== 'https:') continue;
+    const host = abs.hostname;
+    let inScope = hostnameInSet(host, allowedHosts);
+    if (!inScope && targetIp) {
+      inScope = await hostResolvesToTarget(host, targetIp, dnsCache);
+      if (inScope) allowedHosts.add(normalizeHostname(host));
+    }
+    if (!inScope) continue;
+    abs.hash = '';
+    out.add(abs.href);
   }
 
   return [...out];
 }
 
+/** @deprecated usar collectInScopeHttpUrls; mantido para testes locais síncronos */
+export function extractInScopeHttpUrls(html, baseUrl, targetIp) {
+  const allowed = buildAllowedHostnames(targetIp, [{ url: baseUrl }]);
+  const syncOut = new Set();
+  const base = resolveLinkBase(baseUrl, html);
+  for (let raw of extractRawUrlAttributes(html)) {
+    raw = decodeBasicHtmlEntities(raw).trim();
+    if (shouldSkipScheme(raw)) continue;
+    let abs;
+    try {
+      abs = new URL(raw, base);
+    } catch {
+      continue;
+    }
+    if (abs.protocol !== 'http:' && abs.protocol !== 'https:') continue;
+    if (!hostnameInSet(abs.hostname, allowed)) continue;
+    abs.hash = '';
+    syncOut.add(abs.href);
+  }
+  return [...syncOut];
+}
+
 /**
  * Faz curl em páginas descobertas por links no HTML (BFS por profundidade).
  * Altera webResponses in-place (push dos novos curl).
- * @returns {{ fetched: number }}
  */
 export async function expandWebResponsesWithLinkCrawl(webResponses, {
   ip,
@@ -78,18 +220,33 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
   maxBodyBytes = 250_000,
 } = {}) {
   const logger = typeof log === 'function' ? log : () => {};
+  const dnsCache = new Map();
+  const allowedHosts = buildAllowedHostnames(ip, webResponses);
+
   const seen = new Set();
   for (const r of webResponses || []) {
     if (r?.url) seen.add(urlDedupKey(r.url));
   }
 
   let fetched = 0;
-  let frontier = (webResponses || []).filter((r) => r && r.status && r.bodyText && r.url);
+  let frontier = (webResponses || []).filter((r) => {
+    if (!r || !r.url) return false;
+    const st = Number(r.status);
+    if (st >= 200 && st < 400 && r.bodyText) return true;
+    if ((st === 0 || !st) && r.bodyText && String(r.bodyText).length > 20) return true;
+    return false;
+  });
 
   for (let d = 0; d < maxDepth && fetched < maxNewFetches; d += 1) {
     const nextFrontier = [];
     for (const r of frontier) {
-      const links = extractInScopeHttpUrls(String(r.bodyText), String(r.url), ip);
+      const links = await collectInScopeHttpUrls(
+        String(r.bodyText),
+        String(r.url),
+        allowedHosts,
+        ip,
+        dnsCache,
+      );
       for (const link of links) {
         if (fetched >= maxNewFetches) break;
         const k = urlDedupKey(link);
@@ -100,7 +257,15 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
           const resp = await curlWebSingle({ url: link, timeoutMs, maxBodyBytes });
           fetched += 1;
           webResponses.push(resp);
-          if (resp.status && resp.bodyText) nextFrontier.push(resp);
+          try {
+            allowedHosts.add(normalizeHostname(new URL(String(resp.url)).hostname));
+          } catch {
+            /* */
+          }
+          const st = Number(resp.status);
+          if ((st >= 200 && st < 400 && resp.bodyText) || (resp.bodyText && String(resp.bodyText).length > 20)) {
+            nextFrontier.push(resp);
+          }
         } catch {
           /* ignorar timeouts / falhas de rede */
         }
