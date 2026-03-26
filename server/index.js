@@ -1,0 +1,1106 @@
+import 'dotenv/config';
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { fetchCrtShSubdomains } from './modules/subdomains.js';
+import { resolves } from './modules/dns.js';
+import { probeHttp, mapPool } from './modules/probe.js';
+import { analyzeSecurityHeaders } from './modules/security-headers.js';
+import { peekTlsCertificate } from './modules/tls-cert.js';
+import { crawlRobotsAndSitemapsForOrigin, hostnameInScope } from './modules/robots-sitemap.js';
+import { fetchCommonCrawlUrls } from './modules/commoncrawl.js';
+import { fetchRdapSummary } from './modules/rdap.js';
+import { fetchVirustotalSubdomains } from './modules/virustotal.js';
+import { compareRuns } from './modules/db-compare.js';
+import { postReconWebhook } from './modules/webhook-notify.js';
+import { fetchWaybackUrls, filterInterestingUrls, extractJsUrls } from './modules/wayback.js';
+import { extractParamsFromUrls } from './modules/params.js';
+import { analyzeJsUrl } from './modules/js-analyzer.js';
+import { scanSecrets } from './modules/secrets.js';
+import { githubCodeSearch } from './modules/github.js';
+import { buildDorks } from './modules/dorks.js';
+import { scoreEndpointPath, scoreParamName } from './modules/scoring.js';
+import { correlate } from './modules/correlation.js';
+import { suggestVectors, buildExploitChecklist } from './modules/intelligence.js';
+import { applyPrioritizationV2, topHighProbability } from './modules/prioritization.js';
+import { extractCveHintsFromTechStrings } from './modules/cve-hints.js';
+import { fetchDnsEnrichment } from './modules/dns-enrichment.js';
+import { fetchWellKnownSecurityTxt, fetchWellKnownOpenIdConfiguration } from './modules/wellknown.js';
+import { limits, reconRateLimitConfig } from './config.js';
+import {
+  saveRun,
+  listRuns,
+  getRunById,
+  listIntelForTarget,
+  intelCountForTarget,
+  listKnowledge,
+  storageLabel,
+} from './modules/db.js';
+import { googleCseSearch, urlMatchesTarget } from './modules/google-cse.js';
+import { getKaliCapabilities, runKaliAggressiveScan } from './modules/kali-scan.js';
+import { enumerateSubdomainsWithSubfinder, enumerateSubdomainsWithAmass } from './modules/kali-subdomain-tools.js';
+import { runGhostCtfPipeline } from './ghostctf/pipeline.js';
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const reconRlHits = new Map();
+
+function allowReconRequest(req) {
+  const { max, windowMs } = reconRateLimitConfig();
+  if (max <= 0) return true;
+  const ip = String(
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '_',
+  );
+  const now = Date.now();
+  const arr = (reconRlHits.get(ip) || []).filter((t) => now - t < windowMs);
+  if (arr.length >= max) return false;
+  arr.push(now);
+  reconRlHits.set(ip, arr);
+  return true;
+}
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.join(__dirname, '..');
+
+const app = express();
+
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
+app.use(express.json({ limit: '200kb' }));
+
+function isValidDomain(d) {
+  return /^[a-zA-Z0-9][a-zA-Z0-9-.]+\.[a-zA-Z]{2,}$/.test(d);
+}
+
+function normDomain(d) {
+  return d.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+}
+
+function isValidIpv4(ip) {
+  return /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(
+    String(ip || '').trim(),
+  );
+}
+
+function normIp(ip) {
+  return String(ip || '').trim();
+}
+
+async function runPipeline(ctx) {
+  const { domain, exactMatch, modules, emit, kaliMode = false } = ctx;
+  const domainStr = exactMatch ? `"${domain}"` : domain;
+  const findings = [];
+  const stats = { subs: 0, endpoints: 0, params: 0, secrets: 0, dorks: 0, high: 0 };
+
+  const addFinding = (f, statKey) => {
+    if (statKey) stats[statKey] = (stats[statKey] || 0) + 1;
+    findings.push(f);
+    if (f.prio === 'high') stats.high += 1;
+    emit({ type: 'finding', finding: f });
+    emit({ type: 'stats', stats: { ...stats } });
+  };
+
+  const log = (msg, level = 'info') => emit({ type: 'log', msg, level });
+  const pipe = (name, state) => emit({ type: 'pipe', name, state });
+  const progress = (p) => emit({ type: 'progress', pct: p });
+
+  let subdomainsAlive = [];
+  const probedHosts = new Set();
+  const seenEp = new Set();
+  let vtHostnames = [];
+
+  log(`Alvo: ${domain} | Módulos: ${modules.join(', ')}`, 'info');
+  log(exactMatch ? 'Modo: exact match (aspas nos dorks)' : 'Modo: broad match', 'info');
+
+  // ── INPUT ─────────────────────────────────────
+  pipe('input', 'active');
+  progress(5);
+  pipe('input', 'done');
+
+  // ── SUBDOMAINS ──────────────────────────────
+  if (modules.includes('virustotal')) {
+    const vt = await fetchVirustotalSubdomains(domain, process.env.VIRUSTOTAL_API_KEY);
+    if (vt.ok && vt.items?.length) {
+      vtHostnames = vt.items;
+      log(`VirusTotal: ${vtHostnames.length} hostname(s)`, 'success');
+    } else {
+      log(vt.note || 'VirusTotal: sem dados', vt.ok ? 'info' : 'warn');
+    }
+  }
+
+  let allSubs = [];
+  const runCrtSubdomains = modules.includes('subdomains');
+  const runKaliSubfinderAmass = Boolean(kaliMode) && (modules.includes('subfinder') || modules.includes('amass'));
+  if (runCrtSubdomains || runKaliSubfinderAmass) {
+    pipe('subdomains', 'active');
+    progress(12);
+    if (runCrtSubdomains) {
+      log('Consultando crt.sh (Certificate Transparency)...', 'info');
+      try {
+        allSubs = await fetchCrtShSubdomains(domain);
+        log(`${allSubs.length} nomes únicos em CT logs`, 'success');
+      } catch (e) {
+        log(`crt.sh: ${e.message}`, 'warn');
+      }
+      if (vtHostnames.length) {
+        const before = allSubs.length;
+        allSubs = [...new Set([...allSubs, ...vtHostnames])];
+        if (allSubs.length > before) log(`VirusTotal fundido em enum: +${allSubs.length - before} nome(s)`, 'info');
+      }
+    } else {
+      log('crt.sh (subdomains) desativado — usando enum Kali (se selecionado).', 'info');
+    }
+
+    if (runKaliSubfinderAmass) {
+      if (modules.includes('subfinder')) {
+        try {
+          const extra = await enumerateSubdomainsWithSubfinder(domain, log);
+          if (extra.length) {
+            allSubs = [...new Set([...allSubs, ...extra])];
+          }
+        } catch (e) {
+          log(`subfinder: ${e.message}`, 'warn');
+        }
+      }
+      if (modules.includes('amass')) {
+        try {
+          const extra = await enumerateSubdomainsWithAmass(domain, log);
+          if (extra.length) {
+            allSubs = [...new Set([...allSubs, ...extra])];
+          }
+        } catch (e) {
+          log(`amass: ${e.message}`, 'warn');
+        }
+      }
+    }
+
+    const capped = allSubs.filter((s) => s !== domain).slice(0, 150);
+    log(`Resolvendo DNS (máx. ${capped.length} hosts)...`, 'info');
+    for (const host of capped) {
+      const r = await resolves(host);
+      if (r.ok) {
+        log(`✓ ${host} → ${r.records.slice(0, 2).join(', ')}`, 'success');
+        const { score, prio } = { score: 52, prio: 'med' };
+        addFinding(
+          {
+            type: 'subdomain',
+            prio,
+            score,
+            value: host,
+            meta: `DNS: ${r.records.join(', ')}`,
+            url: `https://${host}`,
+          },
+          'subs',
+        );
+        subdomainsAlive.push(host);
+        probedHosts.add(host);
+      } else {
+        log(`✗ ${host} (sem A/AAAA)`, 'warn');
+      }
+    }
+    pipe('subdomains', 'done');
+  } else {
+    log('Subdomain discovery desativado', 'info');
+    pipe('subdomains', 'done');
+  }
+
+  // ── DNS ENRICHMENT (TXT/MX/SPF/DMARC) ─────────
+  if (modules.includes('dns_enrichment')) {
+    pipe('dns_enrichment', 'active');
+    progress(14);
+    log('Enriquecimento DNS (MX/TXT/SPF/DMARC)...', 'info');
+    try {
+      const { findings } = await fetchDnsEnrichment(domain, subdomainsAlive, { maxHosts: limits.dnsEnrichMaxHosts });
+      if (findings.length) log(`DNS intel: ${findings.length} achado(s)`, 'success');
+      for (const f of findings) addFinding(f, null);
+    } catch (e) {
+      log(`DNS Enrichment: ${e.message}`, 'warn');
+    }
+    pipe('dns_enrichment', 'done');
+  }
+
+  if (modules.includes('rdap')) {
+    pipe('rdap', 'active');
+    progress(18);
+    log('Consultando RDAP (registo de domínio)...', 'info');
+    try {
+      const rd = await fetchRdapSummary(domain);
+      addFinding(
+        {
+          type: 'rdap',
+          prio: 'low',
+          score: 24,
+          value: rd.handle || domain,
+          meta: `Estado: ${rd.statuses || '—'} · NS: ${(rd.nameservers || []).slice(0, 10).join(', ') || '—'}`,
+        },
+        null,
+      );
+      if (rd.events?.length) log(`RDAP: ${rd.events.join(' | ')}`, 'info');
+    } catch (e) {
+      log(`RDAP: ${e.message}`, 'warn');
+    }
+    pipe('rdap', 'done');
+  } else {
+    emit({ type: 'pipe', name: 'rdap', state: 'skip' });
+  }
+
+  // ── ALIVE / PROBE ───────────────────────────
+  pipe('alive', 'active');
+  progress(28);
+  const hostsToProbe = [
+    domain,
+    ...new Set([...subdomainsAlive, ...(modules.includes('subdomains') ? [] : vtHostnames)]),
+  ].slice(0, 80);
+  const urlsToProbe = [];
+  for (const h of hostsToProbe) {
+    urlsToProbe.push(`https://${h}/`, `http://${h}/`);
+  }
+  log(`HTTP probing em ${hostsToProbe.length} hosts (GET, timeout ${limits.probeTimeoutMs}ms)...`, 'info');
+
+  const probeResults = await mapPool(urlsToProbe, limits.probeConcurrency, async (u) => {
+    const r = await probeHttp(u);
+    return { u, r };
+  });
+
+  const seenTech = new Set();
+  for (const { r } of probeResults) {
+    if (!r.ok) continue;
+    const host = new URL(r.url).hostname;
+    if (r.status > 0 && r.status < 500) {
+      log(`ALIVE ${r.url} → ${r.status} ${r.title ? `"${r.title.slice(0, 60)}"` : ''}`, 'success');
+      for (const t of r.tech || []) {
+        const tk = `${host}::${t}`;
+        if (seenTech.has(tk)) continue;
+        seenTech.add(tk);
+        addFinding({
+          type: 'tech',
+          prio: 'low',
+          score: 28,
+          value: t,
+          meta: `Detectado em ${host}`,
+        });
+      }
+    }
+  }
+
+  if (modules.includes('security_headers')) {
+    for (const { r } of probeResults) {
+      if (!r.ok || !r.securityHeaders) continue;
+      if (r.status <= 0 || r.status >= 500) continue;
+      let host;
+      try {
+        host = new URL(r.url).hostname;
+      } catch {
+        continue;
+      }
+      for (const issue of analyzeSecurityHeaders(r.url, r.securityHeaders)) {
+        addFinding(
+          {
+            type: 'security',
+            prio: issue.prio,
+            score: issue.score,
+            value: `${issue.text} @ ${host}`,
+            meta: `HTTP ${r.status}`,
+            url: r.url,
+          },
+          null,
+        );
+      }
+    }
+  }
+
+  const originByHost = new Map();
+  for (const { r } of probeResults) {
+    if (!r.ok || r.status <= 0 || r.status >= 500) continue;
+    let u;
+    try {
+      u = new URL(r.url);
+    } catch {
+      continue;
+    }
+    if (!hostnameInScope(u.hostname, domain)) continue;
+    const prefer = u.protocol === 'https:' ? 2 : 1;
+    const cur = originByHost.get(u.hostname);
+    if (!cur || prefer > cur.prefer) {
+      const port = u.port ? `:${u.port}` : '';
+      originByHost.set(u.hostname, { origin: `${u.protocol}//${u.hostname}${port}/`, prefer });
+    }
+  }
+
+  const runWellKnown = modules.includes('wellknown_security_txt') || modules.includes('wellknown_openid');
+  const runSurface =
+    modules.includes('security_headers') || modules.includes('robots_sitemap') || runWellKnown;
+  if (runSurface) {
+    pipe('surface', 'active');
+    progress(33);
+    if (modules.includes('security_headers')) {
+      const hostsTls = [...originByHost.entries()].filter(([, v]) => v.prefer === 2).map(([h]) => h);
+      if (hostsTls.length) log(`Inspeção TLS (${hostsTls.length} host HTTPS)...`, 'info');
+      await mapPool(hostsTls, limits.surfaceConcurrency, async (hostname) => {
+        const cert = await peekTlsCertificate(hostname, 443, limits.tlsProbeTimeoutMs);
+        if (cert.ok) {
+          const soon = cert.daysLeft != null && cert.daysLeft < 30;
+          addFinding(
+            {
+              type: 'tls',
+              prio: soon ? 'med' : 'low',
+              score: soon ? 52 : 28,
+              value: `${hostname} — cert válido até ${cert.validTo || '?'}`,
+              meta: `Assunto: ${cert.subject || '—'} · Emissor: ${cert.issuer || '—'}${cert.daysLeft != null ? ` · ~${cert.daysLeft}d` : ''}`,
+              url: `https://${hostname}/`,
+            },
+            null,
+          );
+        }
+      });
+    }
+    if (modules.includes('robots_sitemap')) {
+      const bases = [...originByHost.values()].map((v) => v.origin);
+      log(`robots.txt / sitemap (${bases.length} origem(ns))...`, 'info');
+      await mapPool(bases, limits.surfaceConcurrency, async (baseOrigin) => {
+        const crawl = await crawlRobotsAndSitemapsForOrigin(baseOrigin, domain);
+        for (const p of (crawl.disallowHints || []).slice(0, 20)) {
+          addFinding(
+            {
+              type: 'intel',
+              prio: 'low',
+              score: 36,
+              value: `robots Disallow: ${p}`,
+              meta: crawl.robotsUrl || baseOrigin,
+              url: crawl.robotsUrl || baseOrigin,
+            },
+            null,
+          );
+        }
+        for (const pageUrl of crawl.pageUrls || []) {
+          let pathname = '/';
+          try {
+            pathname = new URL(pageUrl).pathname;
+          } catch {
+            continue;
+          }
+          const { score, prio } = scoreEndpointPath(pathname);
+          if (seenEp.has(pageUrl)) continue;
+          seenEp.add(pageUrl);
+          addFinding(
+            {
+              type: 'endpoint',
+              prio,
+              score: Math.max(score, 44),
+              value: pageUrl,
+              meta: `robots/sitemap • ${new URL(baseOrigin).hostname}`,
+              url: pageUrl,
+            },
+            'endpoints',
+          );
+        }
+      });
+    }
+
+    // ── /.well-known (security.txt + OIDC discovery) ──
+    if (runWellKnown) {
+      const origins = [...originByHost.values()].map((v) => v.origin).slice(0, limits.wellKnownMaxHosts);
+      if (origins.length) log(`/.well-known (${origins.length} origem(ns))...`, 'info');
+
+      await mapPool(origins, limits.wellKnownConcurrency, async (baseOrigin) => {
+        if (modules.includes('wellknown_security_txt')) {
+          try {
+            const sec = await fetchWellKnownSecurityTxt(baseOrigin);
+            if (sec.ok && sec.findings?.length) {
+              for (const f of sec.findings) addFinding(f, null);
+            }
+          } catch (e) {
+            log(`security.txt: ${e.message}`, 'warn');
+          }
+        }
+
+        if (modules.includes('wellknown_openid')) {
+          try {
+            const oid = await fetchWellKnownOpenIdConfiguration(baseOrigin);
+            if (oid.ok && oid.endpoints?.length) {
+              for (const ep of oid.endpoints) {
+                let pathname = '/';
+                try {
+                  pathname = new URL(ep.url).pathname;
+                } catch {
+                  // keep default
+                }
+                const { score, prio } = scoreEndpointPath(pathname);
+                addFinding(
+                  {
+                    type: 'endpoint',
+                    prio: prio === 'low' ? 'med' : prio,
+                    score: Math.max(score, 55),
+                    value: ep.url,
+                    meta: `OIDC discovery (.well-known) • ${ep.label}`,
+                    url: ep.url,
+                  },
+                  'endpoints',
+                );
+              }
+            }
+          } catch (e) {
+            log(`OIDC discovery: ${e.message}`, 'warn');
+          }
+        }
+      });
+    }
+    pipe('surface', 'done');
+  } else {
+    emit({ type: 'pipe', name: 'surface', state: 'skip' });
+  }
+
+  pipe('alive', 'done');
+  progress(40);
+
+  // ── WAYBACK / URLS ──────────────────────────
+  let waybackUrls = [];
+  pipe('urls', 'active');
+  if (modules.includes('wayback')) {
+    log('Coletando URLs do Wayback Machine (CDX)...', 'info');
+    try {
+      waybackUrls = await fetchWaybackUrls(domain);
+      log(`${waybackUrls.length} URLs únicas (200) no escopo *.${domain}`, 'success');
+    } catch (e) {
+      log(`Wayback: ${e.message}`, 'warn');
+    }
+  } else {
+    log('Wayback desativado', 'info');
+  }
+
+  let ccUrls = [];
+  if (modules.includes('common_crawl')) {
+    log('Common Crawl (índice CDX)...', 'info');
+    try {
+      ccUrls = await fetchCommonCrawlUrls(domain);
+      log(`${ccUrls.length} URLs únicas (200) no Common Crawl`, 'success');
+    } catch (e) {
+      log(`Common Crawl: ${e.message}`, 'warn');
+    }
+  }
+
+  const urlCorpus = [...new Set([...waybackUrls, ...ccUrls])];
+  const waybackSet = new Set(waybackUrls);
+  const ccSet = new Set(ccUrls);
+  const interesting = filterInterestingUrls(urlCorpus);
+  log(`${interesting.length} URLs marcadas como interessantes (filtro heurístico)`, 'info');
+
+  // URLs com query string (bons alvos para templates de XSS/SQLi no modo Kali)
+  const paramUrlsForKali = [...new Set(urlCorpus.filter((u) => /\?.+=/i.test(u)))].slice(0, 40);
+
+  for (const rawUrl of interesting.slice(0, 400)) {
+    let pathname = '/';
+    try {
+      pathname = new URL(rawUrl).pathname;
+    } catch {
+      continue;
+    }
+    const { score, prio } = scoreEndpointPath(pathname);
+    if (seenEp.has(rawUrl)) continue;
+    seenEp.add(rawUrl);
+    const src = waybackSet.has(rawUrl) ? 'Wayback' : ccSet.has(rawUrl) ? 'Common Crawl' : 'arquivo web';
+    addFinding(
+      {
+        type: 'endpoint',
+        prio,
+        score,
+        value: rawUrl,
+        meta: `Score ${score}/100 • ${src}`,
+        url: rawUrl,
+      },
+      'endpoints',
+    );
+  }
+  pipe('urls', 'done');
+  progress(52);
+
+  // ── PARAMS ──────────────────────────────────
+  pipe('params', 'active');
+  const paramRows = extractParamsFromUrls(urlCorpus.length ? urlCorpus : interesting);
+  for (const { name, count, sampleUrl } of paramRows.slice(0, 60)) {
+    const { score, prio } = scoreParamName(name);
+    const vuln =
+      ['redirect', 'url', 'file', 'path', 'callback'].includes(name.toLowerCase()) ? ' → Open Redirect/SSRF?' : '';
+    addFinding(
+      {
+        type: 'param',
+        prio,
+        score,
+        value: `?${name}=`,
+        meta: `~${count} ocorrências em URLs${vuln}`,
+        url: sampleUrl || undefined,
+      },
+      'params',
+    );
+
+    // Heurística (passivo): marcar parâmetros comuns para XSS / SQLi como candidatos (não confirmados)
+    const n = String(name).toLowerCase();
+    const xssCandidates = new Set(['q', 'query', 'search', 's', 'keyword', 'term', 'message', 'comment', 'title', 'name']);
+    const sqliCandidates = new Set(['id', 'ids', 'user', 'user_id', 'uid', 'account', 'order', 'order_id', 'page', 'sort', 'filter', 'where']);
+    if (xssCandidates.has(n)) {
+      addFinding(
+        {
+          type: 'intel',
+          prio: prio === 'high' ? 'med' : 'low',
+          score: 54,
+          value: `XSS candidate param: ?${name}=`,
+          meta: 'Heurístico (passivo) — priorizar testes de reflexão/encoding',
+          url: sampleUrl || undefined,
+        },
+        null,
+      );
+    }
+    if (sqliCandidates.has(n)) {
+      addFinding(
+        {
+          type: 'intel',
+          prio: prio === 'high' ? 'med' : 'low',
+          score: 56,
+          value: `SQLi candidate param: ?${name}=`,
+          meta: 'Heurístico (passivo) — priorizar filtros/IDs/ordenação',
+          url: sampleUrl || undefined,
+        },
+        null,
+      );
+    }
+  }
+  log(`${paramRows.length} nomes de parâmetros distintos (amostra Wayback)`, 'success');
+  pipe('params', 'done');
+  progress(60);
+
+  // ── JS ANALYSIS ─────────────────────────────
+  pipe('js', 'active');
+  const jsList = extractJsUrls(urlCorpus.length ? urlCorpus : [], 120).slice(0, limits.maxJsFetch);
+  log(`Analisando ${jsList.length} arquivos JS (passivo)...`, 'info');
+  for (const jsUrl of jsList) {
+    const a = await analyzeJsUrl(jsUrl);
+    if (!a.ok) {
+      log(`JS skip: ${jsUrl} (${a.error || a.status})`, 'warn');
+      continue;
+    }
+    for (const ep of a.endpoints.slice(0, 25)) {
+      const { score, prio } = scoreEndpointPath(ep);
+      addFinding(
+        {
+          type: 'js',
+          prio: prio === 'low' ? 'med' : prio,
+          score: Math.max(score, 55),
+          value: ep,
+          meta: `Extraído de ${jsUrl}`,
+          url: jsUrl,
+        },
+        'endpoints',
+      );
+    }
+    const sec = scanSecrets(a.body || '');
+    for (const s of sec) {
+      addFinding(
+        {
+          type: 'secret',
+          prio: 'high',
+          score: 92,
+          value: `[${s.kind}] ${s.masked}`,
+          meta: `Possível segredo em JS (verificar falso positivo)`,
+          url: jsUrl,
+        },
+        'secrets',
+      );
+    }
+  }
+  pipe('js', 'done');
+  progress(72);
+
+  // ── DORKS (URLs apenas) ─────────────────────
+  pipe('dorks', 'active');
+  const dorks = buildDorks(domainStr, modules);
+  for (const d of dorks) {
+    emit({
+      type: 'dork',
+      googleUrl: d.googleUrl,
+      query: d.query,
+      mod: d.mod,
+      prio: d.prio,
+    });
+    addFinding(
+      {
+        type: 'dork',
+        prio: d.prio,
+        score: d.prio === 'high' ? 68 : 55,
+        value: d.query,
+        meta: `Categoria: ${d.mod}`,
+        url: d.googleUrl,
+      },
+      'dorks',
+    );
+  }
+  log(`${dorks.length} dorks gerados (abertura no browser com fila configurável)`, 'success');
+
+  if (modules.includes('google_cse')) {
+    const gKey = process.env.GOOGLE_CSE_KEY;
+    const gCx = process.env.GOOGLE_CSE_CX;
+    if (!gKey || !gCx) {
+      log(
+        'Google CSE desativado: defina GOOGLE_CSE_KEY e GOOGLE_CSE_CX (Programmable Search Engine) para descobrir URLs reais via API.',
+        'warn',
+      );
+    } else if (dorks.length === 0) {
+      log('Google CSE: nenhum dork gerado — ative categorias de dork na sidebar.', 'warn');
+    } else {
+      log(
+        `Google Custom Search: até ${limits.googleCseMaxQueries} queries neste run (quota diária típica 100 grátis).`,
+        'info',
+      );
+      const seenG = new Set();
+      const slice = dorks.slice(0, limits.googleCseMaxQueries);
+      for (let i = 0; i < slice.length; i++) {
+        const d = slice[i];
+        if (i > 0) await sleep(limits.googleCseDelayMs);
+        try {
+          const items = await googleCseSearch(d.query, gKey, gCx);
+          for (const it of items) {
+            if (!urlMatchesTarget(it.link, domain)) continue;
+            if (seenG.has(it.link)) continue;
+            seenG.add(it.link);
+            let pathname = '/';
+            try {
+              pathname = new URL(it.link).pathname;
+            } catch {
+              continue;
+            }
+            const { score, prio } = scoreEndpointPath(pathname);
+            addFinding(
+              {
+                type: 'endpoint',
+                prio,
+                score: Math.max(score, 62),
+                value: it.link,
+                meta: `Google CSE • ${d.mod} • ${it.title ? it.title.slice(0, 60) : d.query.slice(0, 60)}`,
+                url: it.link,
+              },
+              'endpoints',
+            );
+            log(`CSE → ${it.link}`, 'find');
+          }
+        } catch (e) {
+          log(`CSE [${d.mod}]: ${e.message}`, 'warn');
+        }
+      }
+      log(`${seenG.size} URL(s) no alvo descoberta(s) via Google CSE`, seenG.size ? 'success' : 'info');
+    }
+  }
+
+  pipe('dorks', 'done');
+  progress(82);
+
+  // ── GITHUB API (opcional) ───────────────────
+  pipe('secrets', 'active');
+  if (modules.includes('github')) {
+    log('GitHub Code Search (API pública, rate limit)...', 'info');
+    const gh = await githubCodeSearch(domain, process.env.GITHUB_TOKEN);
+    if (gh.ok && gh.items?.length) {
+      for (const it of gh.items) {
+        addFinding(
+          {
+            type: 'secret',
+            prio: 'high',
+            score: 78,
+            value: `${it.repo || ''}/${it.path || ''}`,
+            meta: 'Resultado GitHub Code Search — revisar manualmente',
+            url: it.html_url,
+          },
+          'secrets',
+        );
+      }
+      log(`${gh.items.length} resultados GitHub (total estimado ${gh.total})`, 'warn');
+    } else {
+      log(gh.note || 'Sem resultados GitHub ou limite atingido', 'info');
+    }
+  }
+  if (modules.includes('pastebin')) {
+    log('Pastebin: sem API pública confiável — use os dorks gerados', 'info');
+  }
+  pipe('secrets', 'done');
+
+  // ── KALI: nmap / searchsploit / ffuf / nuclei ──
+  if (kaliMode) {
+    pipe('kali', 'active');
+    progress(86);
+    const cap = await getKaliCapabilities();
+    if (cap.kali) {
+      // Só roda wpscan se o passivo já indicou WordPress.
+      // Evidência vem de findings do tipo "tech" (geradas no probeHttp).
+      const wpHosts = new Set();
+      for (const f of findings) {
+        if (f?.type !== 'tech') continue;
+        const v = String(f.value || '');
+        if (!/wordpress/i.test(v)) continue;
+        const meta = String(f.meta || '');
+        const m = meta.match(/Detectado em\s+(.+)\s*$/i);
+        if (m?.[1]) wpHosts.add(m[1]);
+      }
+
+      const wordpressTargets = [...wpHosts]
+        .slice(0, 10)
+        .map((h) => {
+          const origin = originByHost.get(h)?.origin;
+          if (origin) return origin;
+          return [`https://${h}/`, `http://${h}/`];
+        })
+        .flat()
+        .filter(Boolean);
+
+      await runKaliAggressiveScan({
+        domain,
+        subdomainsAlive,
+        cap,
+        log,
+        addFinding,
+        wordpressTargets,
+        paramUrls: paramUrlsForKali,
+      });
+    } else {
+      log(`Modo Kali pedido mas ambiente não suporta: ${cap.message}`, 'warn');
+    }
+    pipe('kali', 'done');
+  } else {
+    emit({ type: 'pipe', name: 'kali', state: 'skip' });
+  }
+
+  progress(90);
+
+  // ── PRIORIZAÇÃO V2 + CVE hints + CORRELATION + INTEL ──
+  pipe('score', 'active');
+  progress(93);
+  log('═══ Priorização v2 (composite + HIGH PROBABILITY) ═══', 'section');
+  applyPrioritizationV2(findings);
+  stats.high = findings.filter((f) => f.prio === 'high').length;
+  emit({ type: 'stats', stats: { ...stats } });
+  emit({ type: 'findings_rescore', findings });
+
+  const techStrs = findings.filter((f) => f.type === 'tech').map((f) => f.value);
+  const cveHints = extractCveHintsFromTechStrings(techStrs);
+  if (cveHints.length) {
+    log('═══ Versões detectadas → lookup CVE (manual) ═══', 'section');
+    for (const h of cveHints) {
+      const label = `${h.product}${h.version ? ` ${h.version}` : ''}`;
+      log(`🔎 ${label} — NVD: ${h.nvdUrl}`, 'info');
+      log(`   OSV: ${h.osvUrl}`, 'info');
+    }
+  }
+
+  const hpt = topHighProbability(findings, 8);
+  if (hpt.length) {
+    log(`═══ HIGH PROBABILITY TARGET (${hpt.length}) ═══`, 'section');
+    for (const t of hpt) {
+      const w = (t.priorityWhy || []).slice(0, 3).join('; ');
+      log(`🎯 [${t.compositeScore}] ${t.type}: ${String(t.value).slice(0, 100)}${w ? ` — ${w}` : ''}`, 'warn');
+    }
+    emit({
+      type: 'priority_pass',
+      top: hpt.map((f) => ({
+        value: f.value,
+        type: f.type,
+        compositeScore: f.compositeScore,
+        attackTier: f.attackTier,
+        why: f.priorityWhy || [],
+      })),
+    });
+  }
+
+  progress(96);
+  const corr = correlate({
+    subdomainsAlive,
+    endpoints: findings.filter((f) => f.type === 'endpoint').map((f) => f.value),
+    params: paramRows,
+  });
+  log('═══ Correlação ═══', 'section');
+  log(corr.summary, 'info');
+  if (corr.riskyParams.length) {
+    log(`Parâmetros de risco presentes: ${corr.riskyParams.join(', ')}`, 'warn');
+  }
+
+  log('═══ Workflow de testes (checklist) ═══', 'section');
+  const checklist = buildExploitChecklist(findings);
+  for (const c of checklist) {
+    emit({ type: 'intel', line: `☐ CHECKLIST: ${c}` });
+  }
+
+  const hints = suggestVectors({ findings, selectedMods: modules });
+  for (const h of hints) {
+    emit({ type: 'intel', line: h });
+  }
+  pipe('score', 'done');
+  progress(100);
+
+  const modulesForDb = kaliMode ? [...modules, '__kali_scan__'] : modules;
+  const saved = await saveRun({
+    target: domain,
+    exactMatch,
+    modules: modulesForDb,
+    stats: { ...stats },
+    findings,
+    correlation: corr,
+  });
+  let runId = null;
+  let intelMerge = null;
+  if (saved != null) {
+    runId = saved.runId;
+    intelMerge = saved.intelMerge;
+    log(`Recon gravado — run #${runId} → ${storageLabel()}`, 'success');
+    if (intelMerge?.newArtifacts > 0) {
+      log(
+        `Corpus do alvo: +${intelMerge.newArtifacts} artefacto(s) novo(s) na base; ${intelMerge.alreadyKnown} já existiam; total único para ${domain}: ${intelMerge.totalKnownForTarget}`,
+        'success',
+      );
+    } else if (findings.length > 0 && intelMerge) {
+      log(
+        `Corpus do alvo: sem linhas novas (todos os ${intelMerge.alreadyKnown} achados deste run já estavam na base). Total único: ${intelMerge.totalKnownForTarget}`,
+        'info',
+      );
+    }
+  } else {
+    log(`Não foi possível gravar na base (${storageLabel()}) — ver consola do servidor`, 'warn');
+  }
+
+  emit({
+    type: 'done',
+    target: domain,
+    findings,
+    stats,
+    correlation: corr,
+    runId,
+    intelMerge,
+    kaliMode: Boolean(kaliMode),
+    storage: storageLabel(),
+  });
+
+  const whUrl = (process.env.GHOSTCTF_WEBHOOK_URL || process.env.GHOSTRECON_WEBHOOK_URL)?.trim();
+  if (whUrl && runId != null) {
+    void postReconWebhook(whUrl, {
+      target: domain,
+      runId,
+      stats,
+      intelMerge,
+      kaliMode: Boolean(kaliMode),
+      modules: modulesForDb,
+    });
+  }
+}
+
+app.post('/api/recon/stream', async (req, res) => {
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  const send = (obj) => {
+    res.write(`${JSON.stringify(obj)}\n`);
+  };
+
+  if (!allowReconRequest(req)) {
+    send({ type: 'error', message: 'Rate limit — aguarde antes de novo recon' });
+    res.end();
+    return;
+  }
+
+  const domainRaw = req.body?.domain;
+  const modules = Array.isArray(req.body?.modules) ? req.body.modules : [];
+  const exactMatch = Boolean(req.body?.exactMatch);
+  const kaliMode = Boolean(req.body?.kaliMode);
+
+  if (!domainRaw || !isValidDomain(normDomain(domainRaw))) {
+    send({ type: 'error', message: 'Domínio inválido' });
+    res.end();
+    return;
+  }
+
+  const domain = normDomain(domainRaw);
+
+  try {
+    await runPipeline({
+      domain,
+      exactMatch,
+      modules,
+      emit: send,
+      kaliMode,
+    });
+  } catch (e) {
+    send({ type: 'error', message: e?.message || String(e) });
+  }
+  res.end();
+});
+
+app.post('/api/ghostctf/stream', async (req, res) => {
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  const send = (obj) => {
+    res.write(`${JSON.stringify(obj)}\n`);
+  };
+
+  if (!allowReconRequest(req)) {
+    send({ type: 'error', message: 'Rate limit — aguarde antes de novo run GhostCTF' });
+    res.end();
+    return;
+  }
+
+  const ipRaw = req.body?.ip;
+  const platform = req.body?.platform || 'solyd';
+  const modules = Array.isArray(req.body?.modules) ? req.body.modules : [];
+  const udpScan = Boolean(req.body?.udpScan);
+  const tcpAllPorts = Boolean(req.body?.tcpAllPorts);
+
+  if (!ipRaw || !isValidIpv4(normIp(ipRaw))) {
+    send({ type: 'error', message: 'IP inválido (use IPv4)' });
+    res.end();
+    return;
+  }
+
+  const ip = normIp(ipRaw);
+
+  try {
+    await runGhostCtfPipeline({
+      ip,
+      platformId: platform,
+      modules,
+      udpScan,
+      tcpAllPorts,
+      emit: send,
+      saveRun,
+    });
+  } catch (e) {
+    send({ type: 'error', message: e?.message || String(e) });
+  }
+
+  res.end();
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, service: 'ghostctf' });
+});
+
+app.get('/api/capabilities', async (_req, res) => {
+  try {
+    const cap = await getKaliCapabilities();
+    res.json(cap);
+  } catch (e) {
+    res.status(500).json({ kali: false, message: e.message, tools: {} });
+  }
+});
+
+app.get('/api/runs', async (req, res) => {
+  const lim = Number(req.query.limit) || 50;
+  try {
+    const runs = await listRuns(lim);
+    res.json({ runs });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || String(e) });
+  }
+});
+
+app.get('/api/runs/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: 'id inválido' });
+    return;
+  }
+  try {
+    const run = await getRunById(id);
+    if (!run) {
+      res.status(404).json({ error: 'run não encontrado' });
+      return;
+    }
+    res.json(run);
+  } catch (e) {
+    res.status(500).json({ error: e?.message || String(e) });
+  }
+});
+
+/** Diff entre dois runs do mesmo alvo (fingerprints como `bounty_intel`). */
+app.get('/api/runs/:newerId/diff/:baselineId', async (req, res) => {
+  const newerId = Number(req.params.newerId);
+  const baselineId = Number(req.params.baselineId);
+  if (!Number.isFinite(newerId) || !Number.isFinite(baselineId)) {
+    res.status(400).json({ error: 'ids inválidos' });
+    return;
+  }
+  try {
+    const result = await compareRuns(baselineId, newerId);
+    if (result.error) {
+      res.status(result.error === 'run não encontrado' ? 404 : 400).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e?.message || String(e) });
+  }
+});
+
+/** Corpus deduplicado por alvo (`bounty_intel` — SQLite ou Supabase). */
+app.get('/api/intel/:target', async (req, res) => {
+  const raw = String(req.params.target || '').trim();
+  const isIp = isValidIpv4(raw);
+  const t = isIp ? normIp(raw) : raw.toLowerCase();
+  if (!t) {
+    res.status(400).json({ error: 'target inválido' });
+    return;
+  }
+  if (!isIp && !/^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(t)) {
+    res.status(400).json({ error: 'target inválido (use domínio ou IPv4)' });
+    return;
+  }
+  try {
+    const [totalUnique, items] = await Promise.all([
+      intelCountForTarget(t),
+      listIntelForTarget(t, 500),
+    ]);
+    res.json({
+      target: t,
+      kind: isIp ? 'ip' : 'domain',
+      totalUnique,
+      items,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || String(e) });
+  }
+});
+
+/** Biblioteca global de falhas (independente de alvo/IP). */
+app.get('/api/knowledge', async (req, res) => {
+  const lim = Number(req.query.limit) || 80;
+  try {
+    const items = await listKnowledge(lim);
+    res.json({ ok: true, items });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.use(express.static(ROOT, { index: false }));
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(ROOT, 'index.html'));
+});
+
+const PORT = Number(process.env.PORT) || 3847;
+const server = app.listen(PORT, () => {
+  console.log(`GHOSTCTF → http://127.0.0.1:${PORT}`);
+});
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `[GHOSTCTF] Porta ${PORT} em uso. Encerre a instância anterior (ex.: netstat -ano | findstr :${PORT}) ou defina PORT=3850 antes de npm start.`,
+    );
+  } else {
+    console.error('[GHOSTCTF]', err.message);
+  }
+  process.exit(1);
+});

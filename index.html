@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GHOSTCTF — CTF Recon Framework</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050508;
+    --bg2: #080b12;
+    --bg3: #0d1220;
+    --panel: #0a0e1a;
+    --border: #2a1233;
+    --border-bright: #ff2bd6;
+    --accent: #ff2bd6;
+    --accent2: #00ff88;
+    --accent3: #ff3366;
+    --accent4: #00d4ff;
+    --text: #c8d8f0;
+    --text-dim: #4a6080;
+    --text-bright: #e8f4ff;
+    --red: #ff3366;
+    --orange: #00d4ff;
+    --green: #00ff88;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Orbitron', monospace;
+    --body: 'Rajdhani', sans-serif;
+    --glow: 0 0 20px rgba(255,43,214,0.35);
+    --glow2: 0 0 20px rgba(0,255,136,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.15) 2px,
+      rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Grid noise background */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(255,43,214,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,43,214,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    position: relative;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    background: linear-gradient(180deg, #060910 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--accent);
+    display: grid;
+    place-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px solid var(--accent);
+    opacity: 0.4;
+    animation: iconPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes iconPulse {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(0.8); opacity: 0.8; }
+  }
+
+  .logo-icon svg { width: 18px; height: 18px; fill: var(--accent); }
+
+  .logo-text {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--text-bright);
+    letter-spacing: 4px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .status-dot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  /* ===== LAYOUT ===== */
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    grid-template-rows: auto 1fr;
+    height: calc(100vh - 64px);
+  }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-bright) transparent;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+  /* ===== TARGET INPUT ===== */
+  .target-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .input-wrap {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  .input-prefix {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    pointer-events: none;
+  }
+
+  .domain-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-bright);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 12px 12px 12px 40px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .domain-input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .domain-input::placeholder { color: var(--text-dim); font-size: 12px; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .toggle-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .toggle {
+    position: relative;
+    width: 36px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  .toggle input { display: none; }
+
+  .toggle-track {
+    width: 100%;
+    height: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    background: var(--text-dim);
+    transition: all 0.2s;
+  }
+
+  .toggle input:checked ~ .toggle-track { border-color: var(--accent); }
+  .toggle input:checked ~ .toggle-track .toggle-thumb {
+    left: 20px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* ===== RUN BUTTON ===== */
+  .run-btn {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+
+  .run-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,43,214,0.15), transparent);
+    transition: left 0.4s;
+  }
+
+  .run-btn:hover::before { left: 100%; }
+  .run-btn:hover {
+    background: rgba(255,43,214,0.1);
+    box-shadow: var(--glow);
+  }
+
+  .run-btn:active { transform: scale(0.98); }
+
+  .run-btn.running {
+    border-color: var(--accent4);
+    color: var(--accent4);
+    animation: btnPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes btnPulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(255,43,214,0.3); }
+    50% { box-shadow: 0 0 25px rgba(255,43,214,0.6); }
+  }
+
+  /* ===== MODULES SECTION ===== */
+  .modules-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .module-group { margin-bottom: 16px; }
+
+  .module-group-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+
+  .checkbox-item:hover { color: var(--text-bright); }
+
+  .checkbox-item input { display: none; }
+
+  .checkbox-box {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--border-bright);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .checkbox-item input:checked ~ .checkbox-box {
+    border-color: var(--accent2);
+    background: rgba(0,255,136,0.1);
+  }
+
+  .checkbox-item input:checked ~ .checkbox-box::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--accent2);
+  }
+
+  .checkbox-text {
+    font-size: 12px;
+    color: var(--text);
+    font-family: var(--body);
+    font-weight: 300;
+  }
+
+  .tag {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 1px 5px;
+    letter-spacing: 1px;
+  }
+
+  .tag-high { background: rgba(255,51,102,0.15); color: var(--red); border: 1px solid rgba(255,51,102,0.3); }
+  .tag-med { background: rgba(255,43,214,0.15); color: var(--accent); border: 1px solid rgba(255,43,214,0.3); }
+  .tag-low { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+
+  /* ===== GOOGLE HACKING MANUAL ===== */
+  .gh-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.45;
+    margin-bottom: 10px;
+  }
+
+  .gh-textarea {
+    width: 100%;
+    min-height: 72px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-bright);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 10px;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+
+  .gh-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .gh-open-btn {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 12px;
+    background: rgba(255, 43, 214, 0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .gh-open-btn:hover {
+    background: rgba(255, 43, 214, 0.15);
+    box-shadow: var(--glow);
+  }
+
+  .gh-preview {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    word-break: break-all;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    max-height: 64px;
+    overflow-y: auto;
+  }
+
+  .gh-preview span { color: var(--accent2); }
+
+  details.gh-operators-details {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    margin-top: 4px;
+  }
+
+  details.gh-operators-details summary {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    padding: 10px 12px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  details.gh-operators-details summary::-webkit-details-marker { display: none; }
+
+  .gh-operators-scroll {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 0 12px 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .gh-op {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(26, 40, 64, 0.6);
+  }
+
+  .gh-op:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+  .gh-op-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+    margin-bottom: 4px;
+  }
+
+  .gh-op-desc {
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 4px;
+  }
+
+  .gh-op-ex {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--bg3);
+    padding: 6px 8px;
+    border-left: 2px solid var(--accent);
+  }
+
+  /* ===== MAIN AREA ===== */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ===== PIPELINE BAR ===== */
+  .pipeline-bar {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+
+  .pipeline-bar::-webkit-scrollbar { display: none; }
+
+  .pipe-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .pipe-node {
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pipe-node.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: var(--glow);
+    background: rgba(255,43,214,0.05);
+  }
+
+  .pipe-node.active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,43,214,0.2), transparent);
+    animation: sweep 1.5s linear infinite;
+  }
+
+  @keyframes sweep {
+    0% { left: -60%; }
+    100% { left: 160%; }
+  }
+
+  .pipe-node.done {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(0,255,136,0.05);
+  }
+
+  .pipe-node.done::after {
+    content: ' ✓';
+  }
+
+  .pipe-node.skip {
+    opacity: 0.4;
+    border-style: dashed;
+    font-size: 9px;
+  }
+
+  .pipe-arrow {
+    color: var(--border-bright);
+    font-size: 10px;
+  }
+
+  /* ===== CONTENT AREA ===== */
+  .content-area {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    overflow: hidden;
+  }
+
+  /* ===== TERMINAL LOG ===== */
+  .terminal {
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .terminal::-webkit-scrollbar { width: 4px; }
+  .terminal::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .terminal-header {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .term-line {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    margin-bottom: 2px;
+    display: flex;
+    gap: 10px;
+    opacity: 0;
+    animation: fadeIn 0.3s forwards;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  .term-time { color: var(--text-dim); flex-shrink: 0; font-size: 10px; }
+  .term-prefix { flex-shrink: 0; }
+  .term-msg { word-break: break-all; }
+
+  .term-info .term-prefix { color: var(--accent); }
+  .term-success .term-prefix { color: var(--accent2); }
+  .term-warn .term-prefix { color: var(--accent4); }
+  .term-error .term-prefix { color: var(--accent3); }
+  .term-find .term-prefix { color: #ff88dd; }
+  .term-section { color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+
+  .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 12px;
+    background: var(--accent);
+    animation: cursorBlink 1s step-end infinite;
+    vertical-align: text-bottom;
+  }
+
+  @keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* ===== FINDINGS PANEL ===== */
+  .findings-panel {
+    background: var(--bg2);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .findings-panel::-webkit-scrollbar { width: 4px; }
+  .findings-panel::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg2);
+    z-index: 5;
+  }
+
+  .panel-title {
+    font-family: var(--display);
+    font-size: 11px;
+    color: var(--text-bright);
+    letter-spacing: 3px;
+  }
+
+  .counter {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .filter-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filter-tabs::-webkit-scrollbar { display: none; }
+
+  .filter-tab {
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .filter-tab:hover { color: var(--text); }
+  .filter-tab.active { color: var(--accent); border-color: var(--accent); }
+
+  .findings-list { padding: 12px; }
+
+  .finding-card {
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    padding: 12px;
+    background: var(--bg3);
+    transition: border-color 0.2s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .finding-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .finding-card.prio-high::before { background: var(--red); }
+  .finding-card.prio-med::before { background: var(--orange); }
+  .finding-card.prio-low::before { background: var(--green); }
+
+  .finding-card.finding-hpt {
+    border-color: rgba(255, 120, 160, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(255, 80, 120, 0.12);
+  }
+  .finding-card.finding-hpt::before {
+    background: linear-gradient(180deg, #ff5588, #ffaa66);
+    width: 4px;
+  }
+
+  .finding-hpt-badge {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+    color: #ffb3c9;
+    border: 1px solid rgba(255, 120, 150, 0.5);
+    background: rgba(255, 60, 100, 0.12);
+  }
+
+  .finding-comp-score {
+    margin-left: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    cursor: help;
+    border-bottom: 1px dotted var(--border-bright);
+  }
+
+  .finding-card:hover { border-color: var(--border-bright); }
+
+  .finding-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .finding-type {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 1px 6px;
+  }
+
+  .type-endpoint { background: rgba(255,136,0,0.1); color: var(--orange); border: 1px solid rgba(255,136,0,0.3); }
+  .type-param { background: rgba(255,34,68,0.1); color: var(--red); border: 1px solid rgba(255,34,68,0.3); }
+  .type-secret { background: rgba(255,51,102,0.15); color: #ff66aa; border: 1px solid rgba(255,51,102,0.4); }
+  .type-flag { background: rgba(255,43,214,0.12); color: var(--accent); border: 1px solid rgba(255,43,214,0.35); }
+  .type-js { background: rgba(255,218,0,0.1); color: #ffd700; border: 1px solid rgba(255,218,0,0.3); }
+  .type-dork { background: rgba(0,255,136,0.1); color: var(--accent2); border: 1px solid rgba(0,255,136,0.3); }
+  .type-tech { background: rgba(180,100,255,0.1); color: #c87aff; border: 1px solid rgba(180,100,255,0.3); }
+  .type-nmap { background: rgba(100,200,255,0.1); color: #66ccff; border: 1px solid rgba(100,200,255,0.35); }
+  .type-exploit { background: rgba(255,80,120,0.15); color: #ff6b9d; border: 1px solid rgba(255,80,120,0.4); }
+  .type-nuclei { background: rgba(255,140,0,0.12); color: #ffaa55; border: 1px solid rgba(255,140,0,0.35); }
+  .type-wpscan { background: rgba(130,180,255,0.10); color: #7aaeff; border: 1px solid rgba(130,180,255,0.35); }
+  .type-xss { background: rgba(255,0,80,0.12); color: #ff4d88; border: 1px solid rgba(255,0,80,0.35); }
+  .type-sqli { background: rgba(255,60,0,0.10); color: #ff7755; border: 1px solid rgba(255,60,0,0.35); }
+  .type-security { background: rgba(0,200,180,0.1); color: #55ddcc; border: 1px solid rgba(0,200,180,0.35); }
+  .type-tls { background: rgba(120,160,255,0.1); color: #88aaff; border: 1px solid rgba(120,160,255,0.35); }
+  .type-rdap { background: rgba(160,160,200,0.12); color: #b8b8d8; border: 1px solid rgba(160,160,200,0.35); }
+  .type-intel { background: rgba(100,140,120,0.12); color: #88bbaa; border: 1px solid rgba(100,140,120,0.35); }
+
+  .finding-score {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  .score-high { color: var(--red); }
+  .score-med { color: var(--orange); }
+  .score-low { color: var(--green); }
+
+  .finding-value {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-bright);
+    word-break: break-all;
+    margin-bottom: 4px;
+  }
+
+  .finding-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .finding-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .find-btn {
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .find-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ===== STATS BAR ===== */
+  .stats-bar {
+    padding: 10px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .sv-blue { color: var(--accent); }
+  .sv-green { color: var(--accent2); }
+  .sv-red { color: var(--red); }
+  .sv-orange { color: var(--orange); }
+
+  /* ===== EXPORT SECTION ===== */
+  .export-section {
+    padding: 10px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .export-btn {
+    padding: 6px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .export-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dim);
+    gap: 16px;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .empty-ascii {
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.4;
+    color: rgba(255, 43, 214, 0.85);
+    text-shadow: 0 0 18px rgba(255, 43, 214, 0.18);
+    white-space: pre;
+  }
+
+  .empty-msg {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+  }
+
+  /* ===== PROGRESS ===== */
+  .progress-wrap {
+    padding: 0 20px 14px;
+  }
+
+  .progress-bar {
+    height: 2px;
+    background: var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.5s ease;
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: var(--accent2);
+    border-radius: 50%;
+    box-shadow: var(--glow2);
+  }
+
+  .progress-pct {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    text-align: right;
+    margin-top: 4px;
+  }
+
+  /* Scrollbar base */
+  .sidebar, .terminal, .findings-panel {
+    scrollbar-gutter: stable;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="logo-text">GHOST<span>CTF</span></div>
+  </div>
+  <div class="header-status">
+    <div class="status-dot"><div class="dot"></div><span id="statusText">SISTEMA PRONTO</span></div>
+    <span>|</span>
+    <span id="clockEl">--:--:--</span>
+    <span>|</span>
+    <span>v2.5.0-OSS</span>
+  </div>
+</header>
+
+<!-- APP GRID -->
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <!-- Target Input -->
+    <div class="target-section">
+      <div id="fileModeWarn" style="display:none;margin-bottom:12px;padding:10px;border:1px solid var(--accent4);background:rgba(255,43,214,0.08);font-family:var(--mono);font-size:10px;color:var(--accent4);line-height:1.45">
+        Abriste o HTML pelo <strong>disco</strong> (file://). O histórico e o recon usam o servidor em <span id="fileModeApiUrl">http://127.0.0.1:3847</span> — corre <code style="color:var(--text-bright)">npm start</code>. Melhor: abre <a id="fileModeOpenLink" href="#" style="color:var(--accent)">http://127.0.0.1:3847</a> no browser.
+      </div>
+      <div class="section-label">Target</div>
+      <div class="input-wrap">
+        <span class="input-prefix">$</span>
+        <input class="domain-input" id="domainInput" type="text" placeholder="IP (ex.: 1.2.3.4)" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">Plataforma CTF</span>
+        <select id="platformSelect" class="domain-input" style="width: 170px; padding: 8px 10px; font-size: 12px;">
+          <option value="solyd" selected>Solyd</option>
+          <option value="hackthebox">HackTheBox</option>
+          <option value="google_ctf">Google CTF</option>
+        </select>
+      </div>
+
+      <div id="kaliPanel" style="display:none;margin-bottom:14px;padding:12px;border:1px solid var(--border);background:var(--bg2)">
+        <div class="section-label" style="margin-bottom:8px">Kali (scan ativo)</div>
+        <div id="kaliCapLine" style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:10px;line-height:1.4">A detetar ambiente…</div>
+        <div class="toggle-row">
+          <span class="toggle-label">Modo Kali (nmap, ffuf 200, nuclei, searchsploit)</span>
+          <label class="toggle">
+            <input type="checkbox" id="kaliModeToggle" disabled>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          </label>
+        </div>
+        <p style="font-size:10px;color:var(--accent3);margin-top:8px;line-height:1.4">Só em <strong>Kali Linux</strong> com ferramentas no PATH. Fora do Kali mantém o recon passivo. Em WSL/outro Linux podes testar com <code style="color:var(--text-bright)">GHOSTCTF_FORCE_KALI=1</code>. Nmap: <code style="color:var(--text-bright)">GHOSTCTF_NMAP_ARGS</code> (padrão <code>-sV -Pn -T4</code>; podes usar <code>-A</code> — mais lento).</p>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap" style="display:none">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-pct" id="progressPct">0%</div>
+      </div>
+
+      <button class="run-btn" id="runBtn" onclick="startRecon()">▶ RUN GHOSTCTF</button>
+
+      <div class="section-label" style="margin-top:18px">Histórico (SQLite)</div>
+      <div id="runsHistory" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);max-height:120px;overflow-y:auto;line-height:1.5">
+        <span id="runsHistoryEmpty">Carregando…</span>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:10px;align-items:center">
+        <a href="#" onclick="showKnowledgeLibrary();return false;" style="color:var(--accent);text-decoration:none;font-family:var(--mono);font-size:9px;letter-spacing:1px">BIBLIOTECA</a>
+      </div>
+      <div id="intelBanner" style="display:none;margin-top:12px;padding:11px 12px;border:1px solid var(--accent2);background:rgba(0,255,136,0.07);font-family:var(--mono);font-size:10px;color:var(--text-bright);line-height:1.55;border-radius:0"></div>
+    </div>
+
+    <!-- Module Selection -->
+    <div class="modules-section">
+      <div class="section-label">Modules</div>
+
+      <div class="module-group">
+        <div class="module-group-title">// Plataformas CTF</div>
+        <label class="checkbox-item">
+          <input type="radio" name="platformMod" value="solyd" checked>
+          <div class="checkbox-box"></div>
+          <span class="checkbox-text">Solyd</span>
+          <span class="tag tag-low" id="platformTag-solyd">ATIVA</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="radio" name="platformMod" value="hackthebox">
+          <div class="checkbox-box"></div>
+          <span class="checkbox-text">HackTheBox</span>
+          <span class="tag tag-med" id="platformTag-hackthebox">OFF</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="radio" name="platformMod" value="google_ctf">
+          <div class="checkbox-box"></div>
+          <span class="checkbox-text">Google CTF</span>
+          <span class="tag tag-med" id="platformTag-google_ctf">OFF</span>
+        </label>
+      </div>
+
+      <div class="module-group">
+        <div class="module-group-title">// Recon Options</div>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="udpScan"><div class="checkbox-box"></div><span class="checkbox-text">UDP scan</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="tcpAllPorts"><div class="checkbox-box"></div><span class="checkbox-text">TCP all ports (-p-)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="exploitdb"><div class="checkbox-box"></div><span class="checkbox-text">Exploit-DB lookup (searchsploit)</span><span class="tag tag-med">OFF</span></label>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+
+    <!-- Pipeline Bar -->
+    <div class="pipeline-bar" id="pipelineBar">
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-input">INPUT</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+          <div class="pipe-node" id="pipe-subdomains">NMAP / PORTS & SERVIÇOS</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-rdap">RDAP</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-alive">ALIVE CHECK</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-surface">SURFACE</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-urls">URL GATHERING</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-params">PARAM DISCOVERY</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-js">JS ANALYSIS</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-dorks">DORKING</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-secrets">SECRETS</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-kali">KALI SCAN</div>
+        <div class="pipe-arrow">──▶</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-node" id="pipe-score">PRIORITIZE</div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content-area">
+
+      <!-- Terminal -->
+      <div class="terminal" id="terminal">
+        <div class="terminal-header">
+          <span style="color:var(--red)">●</span>
+          <span style="color:var(--accent4)">●</span>
+          <span style="color:var(--accent2)">●</span>
+          <span style="margin-left:8px">GHOSTCTF // CTF PIPELINE LOG</span>
+        </div>
+
+        <div id="termContent">
+          <div class="empty-state">
+            <pre class="empty-ascii">
+ ██████╗ ██╗  ██╗ ██████╗ ███████╗████████╗
+██╔════╝ ██║  ██║██╔═══██╗██╔════╝╚══██╔══╝
+██║  ███╗███████║██║   ██║███████╗   ██║   
+██║   ██║██╔══██║██║   ██║╚════██║   ██║   
+╚██████╔╝██║  ██║╚██████╔╝███████║   ██║   
+ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   
+                                           
+ ██████╗████████╗███████╗                  
+██╔════╝╚══██╔══╝██╔════╝                  
+██║        ██║   █████╗                    
+██║        ██║   ██╔══╝                    
+╚██████╗   ██║   ██║                       
+ ╚═════╝   ╚═╝   ╚═╝                       
+</pre>
+            <div class="empty-msg">AGUARDANDO IP // INSERT IP TO BEGIN</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Findings Panel -->
+      <div class="findings-panel">
+        <div class="panel-header">
+          <div class="panel-title">FINDINGS</div>
+          <div class="counter" id="findCount">0 achados</div>
+        </div>
+        <div class="filter-tabs" id="filterTabs">
+          <div class="filter-tab active" onclick="filterFindings('all', this)">ALL</div>
+          <div class="filter-tab" onclick="filterFindings('high', this)">🔴 HIGH</div>
+          <div class="filter-tab" onclick="filterFindings('med', this)">🟡 MED</div>
+          <div class="filter-tab" onclick="filterFindings('low', this)">🟢 LOW</div>
+          <div class="filter-tab" onclick="filterFindings('endpoint', this)">ENDPOINTS</div>
+          <div class="filter-tab" onclick="filterFindings('param', this)">PARAMS</div>
+          <div class="filter-tab" onclick="filterFindings('flag', this)">FLAGS</div>
+          <div class="filter-tab" onclick="filterFindings('secret', this)">SECRETS</div>
+          <div class="filter-tab" onclick="filterFindings('nmap', this)">NMAP</div>
+          <div class="filter-tab" onclick="filterFindings('exploit', this)">EXPLOIT.DB</div>
+          <div class="filter-tab" onclick="filterFindings('nuclei', this)">NUCLEI</div>
+          <div class="filter-tab" onclick="filterFindings('wpscan', this)">WPSCAN</div>
+          <div class="filter-tab" onclick="filterFindings('xss', this)">XSS</div>
+          <div class="filter-tab" onclick="filterFindings('sqli', this)">SQLI</div>
+          <div class="filter-tab" onclick="filterFindings('security', this)">SEC</div>
+          <div class="filter-tab" onclick="filterFindings('tls', this)">TLS</div>
+          <div class="filter-tab" onclick="filterFindings('rdap', this)">RDAP</div>
+        </div>
+        <div class="findings-list" id="findingsList">
+          <div style="text-align:center;padding:40px;color:var(--text-dim);font-family:var(--mono);font-size:11px">
+            Nenhum achado ainda.<br>Execute o recon para iniciar.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-label">Flags</span><span class="stat-val sv-orange" id="st-flags">0</span></div>
+      <div class="stat"><span class="stat-label">Endpoints</span><span class="stat-val sv-orange" id="st-end">0</span></div>
+      <div class="stat"><span class="stat-label">Parâmetros</span><span class="stat-val sv-green" id="st-params">0</span></div>
+      <div class="stat"><span class="stat-label">Secrets</span><span class="stat-val sv-red" id="st-sec">0</span></div>
+      <div class="stat"><span class="stat-label">Alto Risco</span><span class="stat-val sv-red" id="st-high">0</span></div>
+      <div class="stat" style="margin-left:auto">
+        <div class="export-section" style="padding:0">
+          <button class="export-btn" onclick="exportJSON()">⬇ JSON</button>
+          <button class="export-btn" onclick="exportMarkdown()">⬇ MD</button>
+          <button class="export-btn" onclick="exportTXT()">⬇ TXT</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────
+let findings = [];
+let currentFilter = 'all';
+let isRunning = false;
+let stats = { endpoints: 0, params: 0, flags: 0, secrets: 0, high: 0 };
+let targetDomain = '';
+
+/**
+ * Com a página em http://127.0.0.1:PORT (npm start), usa URLs relativas.
+ * Se abrires o HTML pelo disco (file://), os pedidos vão para esta base
+ * (CORS permitido no servidor). Outra porta: localStorage.setItem('ghostctf_api_base','http://127.0.0.1:TEU_PORTO')
+ */
+function getApiBase() {
+  try {
+    const proto = window.location.protocol;
+    if (proto === 'file:' || proto === 'blob:') {
+      const savedNew = localStorage.getItem('ghostctf_api_base');
+      const savedOld = localStorage.getItem('ghostrecon_api_base');
+      const saved = savedNew || savedOld;
+      return (saved || 'http://127.0.0.1:3847').replace(/\/+$/, '');
+    }
+  } catch {}
+  return '';
+}
+
+function apiUrl(path) {
+  const base = getApiBase();
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return base ? `${base}${p}` : p;
+}
+
+// ─── CLOCK ────────────────────────────────────────────────
+setInterval(() => {
+  const now = new Date();
+  document.getElementById('clockEl').textContent = now.toTimeString().slice(0,8);
+}, 1000);
+
+// ─── LOG SYSTEM ──────────────────────────────────────────
+let logStarted = false;
+
+function addLog(msg, type = 'info') {
+  const el = document.getElementById('termContent');
+  if (!logStarted) { el.innerHTML = ''; logStarted = true; }
+
+  const now = new Date().toTimeString().slice(0, 8);
+  const prefixes = { info: '[*]', success: '[+]', warn: '[!]', error: '[✗]', find: '[→]', section: '[─]' };
+  const div = document.createElement('div');
+  div.className = `term-line term-${type}`;
+  div.innerHTML = `<span class="term-time">${now}</span><span class="term-prefix">${prefixes[type] || '[*]'}</span><span class="term-msg">${msg}</span>`;
+  el.appendChild(div);
+  el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+
+// ─── PIPELINE CONTROL ────────────────────────────────────
+function setPipe(name, state) {
+  const el = document.getElementById(`pipe-${name}`);
+  if (!el) return;
+  el.className = `pipe-node ${state}`;
+}
+
+function setProgress(pct) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+}
+
+function updateStat(key, val) {
+  stats[key] = val;
+  const map = { endpoints: 'st-end', params: 'st-params', flags: 'st-flags', secrets: 'st-sec', high: 'st-high' };
+  if (map[key]) document.getElementById(map[key]).textContent = val;
+}
+
+// ─── FINDINGS ────────────────────────────────────────────
+function addFinding(f) {
+  // índice para manter ordenação consistente em re-renderizações
+  f.__idx = findings.length;
+  findings.push(f);
+  document.getElementById('findCount').textContent = findings.length + ' achados';
+  // Em "ALL" reordenamos a lista inteira sempre que chega algo novo,
+  // para garantir que `endpoint` e `param` fiquem lado a lado (independente da ordem de descoberta).
+  if (currentFilter === 'all') {
+    refreshFindingsList();
+    return;
+  }
+  if (currentFilter === f.prio || currentFilter === f.type) renderFinding(f);
+}
+
+function renderFinding(f) {
+  const list = document.getElementById('findingsList');
+  const card = document.createElement('div');
+  const hpt = f.attackTier === 'HIGH_PROBABILITY';
+  card.className = `finding-card prio-${f.prio}${hpt ? ' finding-hpt' : ''}`;
+  card.dataset.prio = f.prio;
+  card.dataset.type = f.type;
+
+  const scoreClass = f.prio === 'high' ? 'score-high' : f.prio === 'med' ? 'score-med' : 'score-low';
+
+  const top = document.createElement('div');
+  top.className = 'finding-top';
+  const ty = document.createElement('span');
+  ty.className = `finding-type type-${f.type}`;
+  ty.textContent = String(f.type).toUpperCase();
+  top.appendChild(ty);
+  if (hpt) {
+    const badge = document.createElement('span');
+    badge.className = 'finding-hpt-badge';
+    badge.textContent = 'Alta prob.';
+    badge.title = (f.priorityWhy && f.priorityWhy.length) ? f.priorityWhy.join(' · ') : 'Priorização v2 — alvo de teste prioritário';
+    top.appendChild(badge);
+  }
+  const scoresWrap = document.createElement('div');
+  scoresWrap.style.marginLeft = 'auto';
+  scoresWrap.style.display = 'flex';
+  scoresWrap.style.alignItems = 'center';
+  scoresWrap.style.gap = '8px';
+  if (f.score) {
+    const sc = document.createElement('span');
+    sc.className = `finding-score ${scoreClass}`;
+    sc.textContent = String(f.score);
+    scoresWrap.appendChild(sc);
+  }
+  const compN = Number(f.compositeScore);
+  if (Number.isFinite(compN)) {
+    const compEl = document.createElement('span');
+    compEl.className = 'finding-comp-score';
+    compEl.textContent = `COMP ${Math.round(compN)}`;
+    compEl.title = (f.priorityWhy && f.priorityWhy.length) ? f.priorityWhy.join('\n') : '';
+    scoresWrap.appendChild(compEl);
+  }
+  if (scoresWrap.childNodes.length) top.appendChild(scoresWrap);
+  card.appendChild(top);
+
+  const val = document.createElement('div');
+  val.className = 'finding-value';
+  val.textContent = f.value;
+  card.appendChild(val);
+
+  if (f.meta) {
+    const meta = document.createElement('div');
+    meta.className = 'finding-meta';
+    meta.textContent = f.meta;
+    card.appendChild(meta);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'finding-actions';
+  if (f.url) {
+    const ob = document.createElement('button');
+    ob.className = 'find-btn';
+    ob.textContent = '↗ OPEN';
+    ob.onclick = () => window.open(f.url, '_blank', 'noopener,noreferrer');
+    actions.appendChild(ob);
+  }
+  const cb = document.createElement('button');
+  cb.className = 'find-btn';
+  cb.textContent = '⎘ COPY';
+  cb.onclick = () => copyText(f.value);
+  actions.appendChild(cb);
+  card.appendChild(actions);
+
+  const emptyEl = list.querySelector('div[style]');
+  if (emptyEl && emptyEl.textContent.includes('Nenhum')) emptyEl.remove();
+
+  list.appendChild(card);
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function showIntelMergeBanner(target, intel) {
+  const el = document.getElementById('intelBanner');
+  if (!el || !intel) return;
+  const t = escapeHtml(target || '');
+  if (intel.newArtifacts > 0) {
+    el.style.display = 'block';
+    el.style.borderColor = 'var(--accent2)';
+    el.style.color = 'var(--text-bright)';
+    el.innerHTML = `<span style="color:var(--accent2)">● CORPUS</span> <strong>+${intel.newArtifacts}</strong> artefacto(s) <em>novo(s)</em> na <code style="color:var(--accent)">base de dados</code> para <strong>${t}</strong>. Total único neste alvo: <strong>${intel.totalKnownForTarget}</strong> (${intel.alreadyKnown} deste run já existiam).`;
+  } else if (intel.alreadyKnown > 0 || intel.totalKnownForTarget > 0) {
+    el.style.display = 'block';
+    el.style.borderColor = 'var(--border)';
+    el.style.color = 'var(--text-dim)';
+    el.innerHTML = `<span style="color:var(--text-dim)">● CORPUS</span> Sem linhas novas para <strong>${t}</strong> — achados deste run já estavam na base. Total único: <strong>${intel.totalKnownForTarget}</strong>.`;
+  } else {
+    el.style.display = 'none';
+    el.innerHTML = '';
+  }
+}
+
+function copyText(t) {
+  navigator.clipboard.writeText(t).catch(()=>{});
+}
+
+function filterFindings(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  refreshFindingsList();
+}
+
+function refreshFindingsList() {
+  const list = document.getElementById('findingsList');
+  list.innerHTML = '';
+  document.getElementById('findCount').textContent = findings.length + ' achados';
+  const f = currentFilter;
+  const filtered = findings.filter(x => f === 'all' || x.prio === f || x.type === f);
+  if (f === 'all') {
+    // Agrupar endpoints e params para não ficarem "separados" por outros tipos.
+    const rank = {
+      endpoint: 2,
+      param: 3,
+        flag: 4,
+      secret: 8,
+      js: 9,
+      dork: 10,
+      tech: 11,
+      nmap: 12,
+      exploit: 13,
+      nuclei: 14,
+      security: 15,
+      tls: 16,
+      rdap: 17,
+      intel: 18,
+      wpscan: 19,
+    };
+    filtered.sort((a, b) => {
+      const ra = rank[a.type] ?? 999;
+      const rb = rank[b.type] ?? 999;
+      if (ra !== rb) return ra - rb;
+      return (a.__idx ?? 0) - (b.__idx ?? 0);
+    });
+  }
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-dim);font-family:var(--mono);font-size:11px">Sem resultados para o filtro "${f}"</div>`;
+    return;
+  }
+  filtered.forEach(x => renderFinding(x));
+}
+
+function resetPipelineVisual() {
+  ['input','subdomains','rdap','alive','surface','urls','params','js','dorks','secrets','kali','score'].forEach(n => setPipe(n, ''));
+}
+
+async function showCorpusForTarget(target) {
+  const t = String(target || '').trim();
+  if (!t) return;
+  try {
+    addLog(`CORPUS: carregando histórico deduplicado para ${t}...`, 'info');
+    const res = await fetch(apiUrl(`/api/intel/${encodeURIComponent(t)}`));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    addLog(`CORPUS: ${data.totalUnique ?? items.length ?? 0} item(ns) conhecido(s) para ${data.target || t}`, 'success');
+    for (const it of items.slice(0, 25)) {
+      const line = `[${String(it.type || 'intel').toUpperCase()}] ${String(it.value || '').slice(0, 180)}`;
+      addLog(line, 'find');
+    }
+    if (items.length > 25) addLog(`CORPUS: +${items.length - 25} item(ns) (mostrando só 25)`, 'info');
+  } catch (e) {
+    addLog(`CORPUS: falha ao carregar (${e.message || e})`, 'warn');
+  }
+}
+
+async function loadRunsHistory() {
+  const el = document.getElementById('runsHistory');
+  if (!el) return;
+  try {
+    const res = await fetch(apiUrl('/api/runs?limit=10'));
+    if (!res.ok) throw new Error('offline');
+    const data = await res.json();
+    el.innerHTML = '';
+    const runs = data.runs || [];
+    if (runs.length === 0) {
+      el.innerHTML = '<span style="color:var(--text-dim)">Nenhum recon na base ainda.</span>';
+      return;
+    }
+    for (const r of runs) {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)';
+      const link = document.createElement('a');
+      link.href = '#';
+      link.textContent = `#${r.id}  ${r.target}`;
+      link.style.cssText = 'color:var(--accent);cursor:pointer;text-decoration:none;display:block';
+      link.title = 'Descarregar JSON deste recon';
+      link.onclick = (e) => { e.preventDefault(); downloadRunFromApi(r.id); };
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:10px;margin-top:4px;align-items:center';
+      const corpusBtn = document.createElement('a');
+      corpusBtn.href = '#';
+      corpusBtn.textContent = 'CORPUS';
+      corpusBtn.style.cssText = 'color:var(--accent4);text-decoration:none;font-size:9px;letter-spacing:1px';
+      corpusBtn.title = 'Ver corpus deduplicado (reaproveita histórico)';
+      corpusBtn.onclick = (e) => { e.preventDefault(); showCorpusForTarget(r.target); };
+      actions.appendChild(corpusBtn);
+      const sub = document.createElement('div');
+      sub.textContent = `${String(r.created_at || '').slice(0, 19).replace('T', ' ')} · ep ${r.stats?.endpoints ?? 0} · flags ${r.stats?.flags ?? 0} · sec ${r.stats?.secrets ?? 0}`;
+      sub.style.cssText = 'color:var(--text-dim);font-size:9px;margin-top:2px';
+      row.appendChild(link);
+      row.appendChild(actions);
+      row.appendChild(sub);
+      el.appendChild(row);
+    }
+  } catch (err) {
+    const hint = window.location.protocol === 'file:'
+      ? 'Estás em <strong>file://</strong> — inicia <code>npm start</code> e confirma a URL em <code>localStorage ghostctf_api_base</code> (padrão 3847).'
+      : 'Inicia o servidor na pasta do projeto: <code>npm start</code> e recarrega. URL actual da página: ' + (window.location.origin || '(file)');
+    el.innerHTML = `<div style="color:var(--accent3);line-height:1.5">${hint}<br><span style="font-size:9px;opacity:.85">${String(err.message || err)}</span></div>`;
+  }
+}
+
+async function downloadRunFromApi(id) {
+  try {
+    const res = await fetch(apiUrl(`/api/runs/${id}`));
+    if (!res.ok) return;
+    const run = await res.json();
+    download(`ghostctf_run_${id}.json`, JSON.stringify(run, null, 2), 'application/json');
+  } catch {}
+}
+
+async function showKnowledgeLibrary() {
+  try {
+    addLog('BIBLIOTECA: carregando falhas mais comuns (independente de IP)...', 'info');
+    const res = await fetch(apiUrl('/api/knowledge?limit=80'));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    addLog(`BIBLIOTECA: ${items.length} padrão(ões)`, items.length ? 'success' : 'warn');
+    for (const it of items.slice(0, 25)) {
+      const t = String(it.type || 'intel').toUpperCase();
+      const sample = String(it.sample || '').slice(0, 180);
+      const c = Number(it.count || 0);
+      addLog(`[${t}] x${c} — ${sample}`, 'find');
+    }
+    if (items.length > 25) addLog(`BIBLIOTECA: +${items.length - 25} (mostrando só 25)`, 'info');
+  } catch (e) {
+    addLog(`BIBLIOTECA: falha ao carregar (${e.message || e})`, 'warn');
+  }
+}
+
+// ─── MAIN RECON PIPELINE (backend NDJSON) ─────────────────
+async function startRecon() {
+  if (isRunning) return;
+  targetDomain = document.getElementById('domainInput').value.trim();
+  if (!targetDomain) { addLog('ERRO: Insira um IP alvo', 'error'); return; }
+  if (!/^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(targetDomain)) {
+    addLog('ERRO: IP inválido. Use formato: 1.2.3.4', 'error'); return;
+  }
+
+  isRunning = true;
+  logStarted = false;
+  findings = [];
+  document.getElementById('findingsList').innerHTML = '';
+  Object.keys(stats).forEach(k => { stats[k] = 0; updateStat(k, 0); });
+  document.getElementById('findCount').textContent = '0 achados';
+  const ib = document.getElementById('intelBanner');
+  if (ib) { ib.style.display = 'none'; ib.innerHTML = ''; }
+  resetPipelineVisual();
+
+  const btn = document.getElementById('runBtn');
+  btn.textContent = '⏳ EXECUTANDO...';
+  btn.classList.add('running');
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('statusText').textContent = 'RECON ATIVO';
+
+  const selectedMods = [...document.querySelectorAll('.mod:checked')].map(x => x.value);
+  const selectedPlatformRadio = document.querySelector('input[name="platformMod"]:checked');
+  const platform = (selectedPlatformRadio?.value || document.getElementById('platformSelect')?.value || 'solyd');
+  const udpScan = selectedMods.includes('udpScan');
+  const tcpAllPorts = selectedMods.includes('tcpAllPorts');
+  const modulesGhost = selectedMods.filter((v) => v === 'udpScan' || v === 'tcpAllPorts' || v === 'exploitdb');
+
+  addLog(`Iniciando GHOSTCTF para: ${targetDomain}`, 'section');
+  addLog(`Módulos (GhostCTF): ${modulesGhost.join(', ') || '(nenhum)' }`, 'info');
+  addLog(`Plataforma: ${platform}`, 'info');
+  addLog(`UDP scan: ${udpScan ? 'ON' : 'OFF'} | TCP all ports: ${tcpAllPorts ? 'ON' : 'OFF'}`, 'info');
+  addLog('Conectando ao pipeline local (servidor Node)...', 'info');
+
+  const finishOk = () => {
+    btn.textContent = '▶ RUN GHOSTCTF';
+    btn.classList.remove('running');
+    document.getElementById('statusText').textContent = 'RECON COMPLETO';
+    isRunning = false;
+  };
+
+  const finishErr = (msg) => {
+    addLog(msg, 'error');
+    btn.textContent = '▶ RUN GHOSTCTF';
+    btn.classList.remove('running');
+    document.getElementById('statusText').textContent = 'ERRO';
+    isRunning = false;
+  };
+
+  try {
+    const res = await fetch(apiUrl('/api/ghostctf/stream'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ip: targetDomain,
+        platform,
+        modules: modulesGhost,
+        udpScan,
+        tcpAllPorts,
+      }),
+    });
+
+    if (!res.ok) {
+      finishErr(`HTTP ${res.status} — confira se o servidor está rodando (npm start)`);
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line) continue;
+        let ev;
+        try { ev = JSON.parse(line); } catch { continue; }
+
+        if (ev.type === 'log') addLog(ev.msg, ev.level || 'info');
+        if (ev.type === 'progress') setProgress(ev.pct);
+        if (ev.type === 'pipe') setPipe(ev.name, ev.state);
+        if (ev.type === 'stats' && ev.stats) {
+          Object.keys(ev.stats).forEach(k => updateStat(k, ev.stats[k]));
+        }
+        if (ev.type === 'finding' && ev.finding) addFinding(ev.finding);
+        if (ev.type === 'findings_rescore' && Array.isArray(ev.findings)) {
+          findings = ev.findings;
+          refreshFindingsList();
+        }
+        if (ev.type === 'intel' && ev.line) {
+          const raw = ev.line;
+          const line = (raw.startsWith('☐') || raw.startsWith('🔎')) ? raw : `⚡ ${raw}`;
+          addLog(line, 'find');
+        }
+        if (ev.type === 'error') {
+          finishErr(ev.message || 'Erro no servidor');
+          return;
+        }
+        if (ev.type === 'done') {
+          addLog('', 'section');
+          addLog('══════════════════════════════════════════════════', 'section');
+          addLog(`RECON CONCLUÍDO — ${findings.length} achados totais`, 'success');
+          addLog(`Alto: ${stats.high} | Flags: ${stats.flags} | Endpoints: ${stats.endpoints} | Params: ${stats.params} | Secrets: ${stats.secrets}`, 'success');
+          if (ev.runId != null) addLog(`Gravado: run #${ev.runId} → ${ev.storage || 'base de dados'}`, 'success');
+          showIntelMergeBanner(ev.target, ev.intelMerge);
+          addLog('Exporte JSON / MD / TXT na barra inferior.', 'info');
+          loadRunsHistory();
+        }
+      }
+    }
+    finishOk();
+  } catch (e) {
+    finishErr(`Falha de rede: ${e.message}. Execute \`npm start\` na pasta do projeto e abra http://127.0.0.1:3847`);
+  }
+}
+
+// ─── EXPORT FUNCTIONS ────────────────────────────────────
+function exportJSON() {
+  const out = {
+    target: targetDomain,
+    timestamp: new Date().toISOString(),
+    stats,
+    findings: findings.map(f => ({ type: f.type, priority: f.prio, score: f.score || 0, value: f.value, meta: f.meta || '', url: f.url || '' }))
+  };
+  download(`ghostctf_${targetDomain}_${Date.now()}.json`, JSON.stringify(out, null, 2), 'application/json');
+}
+
+function exportMarkdown() {
+  const groups = {};
+  findings.forEach(f => { if (!groups[f.type]) groups[f.type] = []; groups[f.type].push(f); });
+  let md = `# GHOSTCTF Report\n**Target:** ${targetDomain}\n**Date:** ${new Date().toISOString()}\n\n`;
+  md += `## Summary\n| Metric | Count |\n|---|---|\n`;
+  md += `| Flags | ${stats.flags} |\n| Endpoints | ${stats.endpoints} |\n| Parâmetros | ${stats.params} |\n| Secrets | ${stats.secrets} |\n| Alto Risco | ${stats.high} |\n\n`;
+  for (const [type, items] of Object.entries(groups)) {
+    md += `## ${type.toUpperCase()}\n`;
+    items.forEach(f => { md += `- **[${f.prio.toUpperCase()}]** \`${f.value}\`${f.meta ? ` — ${f.meta}` : ''}\n`; });
+    md += '\n';
+  }
+  download(`ghostctf_${targetDomain}_${Date.now()}.md`, md, 'text/markdown');
+}
+
+function exportTXT() {
+  let txt = `GHOSTCTF — CTF RECON REPORT\nTarget: ${targetDomain}\nDate: ${new Date().toISOString()}\n${'='.repeat(60)}\n\n`;
+  findings.forEach(f => { txt += `[${f.prio.toUpperCase()}] [${f.type}] ${f.value}\n  → ${f.meta || ''}\n`; });
+  download(`ghostctf_${targetDomain}_${Date.now()}.txt`, txt, 'text/plain');
+}
+
+function download(filename, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename;
+  a.click();
+}
+
+// Enter key
+document.getElementById('domainInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startRecon();
+});
+
+async function fetchKaliCapabilities() {
+  const line = document.getElementById('kaliCapLine');
+  const toggle = document.getElementById('kaliModeToggle');
+  window.__kaliScanAvailable = false;
+  try {
+    const res = await fetch(apiUrl('/api/capabilities'));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const c = await res.json();
+    const t = c.tools || {};
+    const parts = [`nmap:${t.nmap ? '✓' : '✗'}`, `ffuf:${t.ffuf ? '✓' : '✗'}`, `nuclei:${t.nuclei ? '✓' : '✗'}`, `searchsploit:${t.searchsploit ? '✓' : '✗'}`];
+    if (line) {
+      line.style.color = c.kali ? 'var(--accent2)' : 'var(--text-dim)';
+      line.textContent = c.kali ? `Disponível — ${parts.join(' ')}` : `${c.message || 'Indisponível'} — ${parts.join(' ')}`;
+    }
+    if (c.kali) {
+      window.__kaliScanAvailable = true;
+      if (toggle) toggle.disabled = false;
+    } else {
+      if (toggle) {
+        toggle.disabled = true;
+        toggle.checked = false;
+      }
+    }
+  } catch (e) {
+    if (line) {
+      line.style.color = 'var(--accent3)';
+      line.textContent = 'Capacidades: servidor offline ou CORS.';
+    }
+    if (toggle) {
+      toggle.disabled = true;
+      toggle.checked = false;
+    }
+  }
+}
+
+(function initApiUi() {
+  if (window.location.protocol === 'file:') {
+    const w = document.getElementById('fileModeWarn');
+    const u = document.getElementById('fileModeApiUrl');
+    const a = document.getElementById('fileModeOpenLink');
+    if (w) w.style.display = 'block';
+    const base = getApiBase();
+    if (u) u.textContent = base;
+    if (a) {
+      a.href = base + '/';
+      a.onclick = (e) => { e.preventDefault(); window.open(base + '/', '_blank'); };
+    }
+  }
+})();
+
+function updatePlatformTags() {
+  const selected = document.querySelector('input[name="platformMod"]:checked')?.value;
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const active = selected === val;
+    el.textContent = active ? 'ATIVA' : 'OFF';
+    el.className = active ? 'tag tag-low' : 'tag tag-med';
+  };
+  set('platformTag-solyd', 'solyd');
+  set('platformTag-hackthebox', 'hackthebox');
+  set('platformTag-google_ctf', 'google_ctf');
+}
+
+function syncPlatformSelect() {
+  const selected = document.querySelector('input[name="platformMod"]:checked')?.value;
+  const sel = document.getElementById('platformSelect');
+  if (!selected || !sel) return;
+  sel.value = selected;
+}
+
+document.querySelectorAll('input[name="platformMod"]').forEach(r => {
+  r.addEventListener('change', () => {
+    syncPlatformSelect();
+    updatePlatformTags();
+  });
+});
+
+updatePlatformTags();
+syncPlatformSelect();
+
+fetchKaliCapabilities();
+loadRunsHistory();
+</script>
+</body>
+</html>
