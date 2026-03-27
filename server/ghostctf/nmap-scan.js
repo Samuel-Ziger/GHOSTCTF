@@ -26,7 +26,8 @@ async function ensureNmap() {
 
 function buildNmapArgs({ ip, tcpAllPorts, udpScan }) {
   // Importante: nmap com UDP é caro; usamos top-ports quando tcpAllPorts está OFF.
-  const common = ['-sV', '-Pn', '-T4', '--reason', '--open', '--max-retries', '1'];
+  // Sem -T3/-T4 explícito: usa template por defeito do nmap (menos agressivo, menos risco de falsos negativos).
+  const common = ['-sV', '-Pn', '--reason', '--open', '--max-retries', '1'];
 
   // Port selection
   let portArgs = [];

@@ -118,20 +118,32 @@ export function parseNmapXml(xml) {
       (hc.match(/<address addr="([^"]+)" addrtype="ipv6"/) || [])[1] ||
       'unknown';
 
-    const portRe =
-      /<port protocol="(\w+)" portid="(\d+)">\s*<state state="open"[^>]*\/>\s*<service([^/]*)\/>/g;
+    // Alguns nmap XML trazem <service .../> e outros <service ...>...</service>.
+    // Além disso pode haver tags intermédias dentro de <port>, então fazemos parsing por bloco.
+    const portBlockRe = /<port\b([^>]*)>([\s\S]*?)<\/port>/g;
     let m;
-    while ((m = portRe.exec(hc)) !== null) {
-      const attrs = m[3];
-      const name = getAttr(attrs, 'name');
-      const product = getAttr(attrs, 'product');
-      const version = getAttr(attrs, 'version');
-      const extrainfo = getAttr(attrs, 'extrainfo');
+    while ((m = portBlockRe.exec(hc)) !== null) {
+      const portAttrs = m[1] || '';
+      const portBody = m[2] || '';
+      const stateOpen = /<state\b[^>]*\bstate="open"[^>]*\/?>/i.test(portBody);
+      if (!stateOpen) continue;
+
+      const proto = getAttr(portAttrs, 'protocol');
+      const port = getAttr(portAttrs, 'portid');
+      if (!proto || !port) continue;
+
+      const svc = portBody.match(/<service\b([^>]*?)(?:\/>|>[\s\S]*?<\/service>)/i);
+      const svcAttrs = svc ? svc[1] : '';
+      const name = getAttr(svcAttrs, 'name');
+      const product = getAttr(svcAttrs, 'product');
+      const version = getAttr(svcAttrs, 'version');
+      const extrainfo = getAttr(svcAttrs, 'extrainfo');
       const searchBlob = [product, version, name, extrainfo].filter(Boolean).join(' ').trim();
+
       rows.push({
         host: hostLabel,
-        port: m[2],
-        proto: m[1],
+        port,
+        proto,
         name,
         product,
         version,
@@ -146,7 +158,7 @@ export function parseNmapXml(xml) {
 async function runNmapOnHosts(hosts, log) {
   const dir = await mkdtemp(join(tmpdir(), 'ghnr-'));
   const xmlPath = join(dir, 'nmap.xml');
-  const extra = (process.env.GHOSTCTF_NMAP_ARGS ?? process.env.GHOSTRECON_NMAP_ARGS ?? '-sV -Pn -T4 --host-timeout 180s')
+  const extra = (process.env.GHOSTCTF_NMAP_ARGS ?? process.env.GHOSTRECON_NMAP_ARGS ?? '-sV -Pn --host-timeout 180s')
     .split(/\s+/)
     .filter(Boolean);
   const args = [...extra, '-oX', xmlPath, ...hosts];

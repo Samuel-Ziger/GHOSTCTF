@@ -6,6 +6,7 @@ import { buildCtfPlaybookSuggestions } from './playbook.js';
 import { searchExploitDbFromNmap } from './exploitdb.js';
 import { expandWebResponsesWithLinkCrawl } from './html-links.js';
 import { appendRobotsTxtResponses } from './robots-probe.js';
+import { ftpPortsFromNmap, probeFtpAnonymous } from './ftp-anonymous-probe.js';
 
 export async function runGhostCtfPipeline({
   ip,
@@ -94,6 +95,50 @@ export async function runGhostCtfPipeline({
     }
   } else {
     log('Exploit-DB lookup: OFF (ative em Modules)', 'info');
+  }
+
+  /** @type {{ tried: number; successPorts: number[]; errors: string[] }} */
+  const ftpAnonymousSummary = { tried: 0, successPorts: [], errors: [] };
+  const ftpPorts = ftpPortsFromNmap(nmapRows);
+  if (ftpPorts.length) {
+    log(`FTP detetado (porta(s) ${ftpPorts.join(', ')}) — a testar USER anonymous / PASS anonymous@...`, 'info');
+    for (const ftpPort of ftpPorts) {
+      ftpAnonymousSummary.tried += 1;
+      try {
+        const fr = await probeFtpAnonymous({ host: ip, port: ftpPort, timeoutMs: 12000 });
+        if (fr.anonymousOk) {
+          ftpAnonymousSummary.successPorts.push(ftpPort);
+          const listPreview = Array.isArray(fr.listPreview) ? fr.listPreview.slice(0, 6) : [];
+          const listMeta = listPreview.length ? ` · LIST=${listPreview.join(' | ').slice(0, 240)}` : '';
+          addFinding(
+            {
+              type: 'endpoint',
+              prio: 'high',
+              score: 72,
+              value: `FTP anonymous permitido @ ${ip}:${ftpPort}`,
+              meta: `USER anonymous · PASS anonymous@ · ${fr.summary || '230'}${listMeta}`,
+              url: `ftp://${ip}:${ftpPort}/`,
+            },
+            'endpoints',
+          );
+          log(`FTP anonymous: SUCESSO em ${ip}:${ftpPort} — ${fr.summary || '230'}`, 'success');
+          if (listPreview.length) {
+            log(`FTP LIST ${ip}:${ftpPort}: ${listPreview.join(' | ')}`, 'info');
+          } else {
+            log(`FTP LIST ${ip}:${ftpPort}: sem listagem (permissão/servidor)`, 'info');
+          }
+          intel(`FTP ANONYMOUS OK @ ${ip}:${ftpPort} — listar: ftp ${ip} ${ftpPort} (user anonymous, pass anonymous@)`);
+        } else {
+          const hint = fr.summary || fr.error || `código ${fr.code ?? '—'}`;
+          log(`FTP anonymous: sem acesso em ${ip}:${ftpPort} — ${hint}`, 'info');
+          if (fr.error) ftpAnonymousSummary.errors.push(`${ftpPort}:${fr.error}`);
+        }
+      } catch (e) {
+        const msg = e?.message || String(e);
+        ftpAnonymousSummary.errors.push(`${ftpPort}:${msg}`);
+        log(`FTP probe ${ip}:${ftpPort}: ${msg}`, 'warn');
+      }
+    }
   }
 
   // Playbook inicial (pós-nmap)
@@ -343,6 +388,11 @@ export async function runGhostCtfPipeline({
     robotsFetched: robotsFetched || 0,
     flagsFound: foundFlagSet.size,
     dirEnumTools: dirEnumToolsAgg,
+    ftpAnonymous: {
+      tried: ftpAnonymousSummary.tried,
+      okPorts: ftpAnonymousSummary.successPorts,
+      errors: ftpAnonymousSummary.errors,
+    },
   };
 
   let saved = null;

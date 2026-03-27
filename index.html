@@ -1052,7 +1052,7 @@
             <div class="toggle-track"><div class="toggle-thumb"></div></div>
           </label>
         </div>
-        <p style="font-size:10px;color:var(--accent3);margin-top:8px;line-height:1.4">Só em <strong>Kali Linux</strong> com ferramentas no PATH. Fora do Kali mantém o recon passivo. Em WSL/outro Linux podes testar com <code style="color:var(--text-bright)">GHOSTCTF_FORCE_KALI=1</code>. Nmap: <code style="color:var(--text-bright)">GHOSTCTF_NMAP_ARGS</code> (padrão <code>-sV -Pn -T4</code>; podes usar <code>-A</code> — mais lento).</p>
+        <p style="font-size:10px;color:var(--accent3);margin-top:8px;line-height:1.4">Só em <strong>Kali Linux</strong> com ferramentas no PATH. Fora do Kali mantém o recon passivo. Em WSL/outro Linux podes testar com <code style="color:var(--text-bright)">GHOSTCTF_FORCE_KALI=1</code>. Nmap: <code style="color:var(--text-bright)">GHOSTCTF_NMAP_ARGS</code> (<code>GHOSTCTF_NMAP_ARGS</code> aplica-se ao recon por <strong>domínio</strong>, padrão <code>-sV -Pn</code>; o GhostCTF por <strong>IP</strong> usa <code>nmap-scan.js</code> — timing normal do nmap, sem <code>-T4</code>).</p>
       </div>
 
       <div class="progress-wrap" id="progressWrap" style="display:none">
