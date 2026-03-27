@@ -1,226 +1,170 @@
-# GHOSTRECON
+# GHOSTCTF / GhostRecon
 
-Framework **passivo** de OSINT / recon para bug bounty: subdomínios (crt.sh + opcional **VirusTotal**), **enriquecimento DNS** (MX/TXT, SPF/DMARC e TXT de verificação), HTTP probing com **análise de cabeçalhos de segurança** e **inspeção TLS** (certificado), descoberta **`.well-known`** (`security.txt`, **OIDC** `openid-configuration`), Wayback (CDX) + **Common Crawl**, **robots.txt / sitemap.xml** nos hosts vivos, **RDAP** (registo de domínio), extração de parâmetros, análise heurística de JS, detecção de possíveis secrets, geração de Google Dorks (URLs de busca + abertura em abas), **opcionalmente descoberta de URLs via Google Programmable Search (Custom Search JSON API)**. Em **Kali** (modo ativo opcional): **subfinder** / **amass** (enum de subdomínios), **whois**, **wpscan** (só se o passivo indicar WordPress), **nuclei** (passagem geral + segunda passagem com `-tags xss` e `-tags sqli` sobre URLs com query vindas do corpus Wayback/Common Crawl), além de nmap/ffuf/searchsploit. Gravação em **Supabase (Postgres)** ou **SQLite** (`data/bugbounty.db`: histórico de runs + corpus **deduplicado** por alvo), **comparação entre runs** (API), **webhook** e **rate limit** opcionais na API, correlação e sugestões de vetores. Interface web dark/red team em `index.html`.
+**Console web para recon em CTF por IPv4** com pipeline servidor em Node.js, e **API de recon passivo por domínio** voltada a bug bounty / OSINT (no mesmo backend).
+
+O `package.json` chama o projeto de **ghostrecon**; a UI marca **GHOSTCTF**. São duas faces do mesmo serviço: automação agressiva opcional no alvo do lab e, via HTTP, enumeração passiva quando trabalhas com domínios.
+
+---
+
+## O que isto faz
+
+| Modo | Entrada | Destaque |
+|------|---------|----------|
+| **GHOSTCTF** (UI) | IPv4 | `nmap`, enumeração web, diretórios, deteção de flags (Solyd, HTB, Google CTF), playbooks, provas opcionais (LFI, SQLMap, WPScan, FTP anónimo, SSH, MySQL, Exploit-DB, …). Stream **NDJSON** para o terminal da página. |
+| **GhostRecon** (API) | Domínio válido | Subdomínios (crt.sh, VirusTotal opcional), DNS, RDAP, cabeçalhos de segurança, `robots.txt` / sitemaps, Wayback, Common Crawl, análise de JS, segredos heurísticos, dorks, Google CSE / GitHub opcionais, modo **Kali** opcional (ffuf, nuclei, …). |
+
+Os runs podem ser **gravados** (SQLite local por omissão, ou **Supabase/Postgres** via `DATABASE_URL` ou chaves da API).
+
+---
 
 ## Requisitos
 
-- Node.js **18+** (usa `fetch` nativo)
+- **Node.js** ≥ 18  
+- Ferramentas **opcionais**:
+  - **Kali** (ou ambiente com as mesmas ferramentas no `PATH`) para scans agressivos no modo domínio ou capacidades extra detetadas em `/api/capabilities`.
+  - **John the Ripper** / wordlists para os endpoints de cracking usados pela UI.
+  - **`nmap`** obrigatório para a parte GhostCTF baseada em IP (o pipeline chama o binário).
 
-## Execução
+---
+
+## Arranque rápido
 
 ```bash
 npm install
+cp .env.example .env
+# Edita .env: PORT (default 3847), DATABASE_URL ou Supabase, chaves opcionais
 npm start
-npm test   # testes mínimos (ex.: cabeçalhos de segurança)
 ```
 
-Abra **http://127.0.0.1:3847** (porta alterável com `PORT` no `.env` ou na linha de comando, por exemplo `PORT=3000 npm start` em Linux/macOS; no PowerShell: `$env:PORT=3847; npm start`).
+Abre **`http://127.0.0.1:3847`** (ou a porta definida em `PORT`). O servidor serve o `index.html` e a API na mesma origem.
 
-> A UI chama `POST /api/recon/stream`. Abrir só o arquivo `index.html` no disco **não** executa o pipeline — é necessário o servidor.
+Desenvolvimento com reload:
 
-## Variáveis de ambiente
-
-| Variável | Uso |
-|----------|-----|
-| `PORT` | Porta HTTP (padrão `3847`) |
-| `GITHUB_TOKEN` | Token fine-grained ou classic para aumentar limite da [GitHub Code Search API](https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-code) |
-| `GOOGLE_CSE_KEY` | Chave da [Custom Search JSON API](https://developers.google.com/custom-search/v1/overview) |
-| `GOOGLE_CSE_CX` | ID do motor (**cx**) em [Programmable Search Engine](https://programmablesearchengine.google.com/) — podes ativar “Search the entire web” |
-| `GHOSTRECON_DB` | Caminho opcional do SQLite (padrão `data/bugbounty.db`) — ignorado se `DATABASE_URL` ou API Supabase estiver definida |
-| `DATABASE_URL` | **Postgres direto** (string do dashboard: *Connect → Node.js → Direct* ou **Session pooler** se estiveres em rede só IPv4). Tem prioridade sobre `SUPABASE_URL` + chave. |
-| `SUPABASE_URL` | URL do projeto para cliente REST (ex. `https://xxxx.supabase.co`) — usado só se **não** existir `DATABASE_URL` |
-| `SUPABASE_ANON_KEY` | Chave **anon** (JWT) do dashboard — uso típico no servidor com `.env` (não commits) |
-| `SUPABASE_PUBLISHABLE_KEY` | Alternativa à anon, se usares a chave publishable do projeto |
-| `SUPABASE_SERVICE_ROLE_KEY` | Opcional: no **servidor** apenas; ignora RLS — preferível em produção com políticas restritas |
-| `VIRUSTOTAL_API_KEY` | Subdomínios via API (módulo **virustotal** na UI) |
-| `GHOSTRECON_WEBHOOK_URL` | `POST` JSON após recon gravado (`runId`, `target`, `stats`, …) |
-| `GHOSTRECON_RL_MAX` | Máx. recons por IP por janela (predef. `12`; `0` = desligado) |
-| `GHOSTRECON_RL_WINDOW_MS` | Janela do rate limit em ms (predef. `60000`) |
-| `GHOSTRECON_CC_CDX_API` | URL do índice CDX Common Crawl (opcional; senão usa `collinfo.json`) |
-| `GHOSTRECON_WPSCAN_DETECTION_MODE` | Modo do [WPScan](https://github.com/wpscannerteam/wpscan) em JSON (predef. `mixed`) — só no **Modo Kali** e quando o passivo indicar WordPress |
-| `GHOSTRECON_WPSCAN_TIMEOUT_MS` | Timeout do `wpscan` em ms (predef. `240000`) |
-| `GHOSTRECON_WHOIS_SUBDOMAINS_MAX` | Quantidade extra de subdomínios (além do domínio raiz) a consultar com `whois` no Kali (senão usa `whoisSubdomainsMax` em `server/config.js`) |
-| `GHOSTRECON_SUBFINDER_TIMEOUT_MS` | Timeout do `subfinder` em ms (predef. `180000`) — módulo **subfinder** + **Modo Kali** |
-| `GHOSTRECON_AMASS_TIMEOUT_MS` | Timeout do `amass enum -passive` em ms (predef. `240000`) — módulo **amass** + **Modo Kali** |
-
-### Supabase
-
-#### Opção A — CLI (migrações versionadas, recomendado)
-
-1. **Login** (uma vez): `npx supabase login` — abre o browser para gerar o token.
-2. **Ligar o projeto** (na pasta do repo):
-   ```bash
-   npm run db:link -- --password "A_TUA_DATABASE_PASSWORD"
-   ```
-   A password está em **Project Settings → Database → Database password** no dashboard.  
-   Comando equivalente: `npx supabase link --project-ref lchttisqazjuapczstkm --password "..."`  
-   (`npm run db:link` já inclui o `project-ref` deste projeto.)
-3. **Aplicar migrações** no remoto:
-   ```bash
-   npm run db:push
-   ```
-   A migração inicial **GosthRecon** está em `supabase/migrations/20250325181000_gosthrecon_initial.sql`.
-4. **Nova migração** (quando alterares o schema):
-   ```bash
-   npm run db:migration:new -- nome_descritivo
-   ```
-   (Se o comando `migration new` bloquear no Windows, cria manualmente um ficheiro `supabase/migrations/YYYYMMDDHHMMSS_nome.sql`.)
-
-5. Copia `.env.example` para **`.env`**. Para o servidor Node, o mais simples é **`DATABASE_URL`** (pacote `postgres`, ver `server/modules/db-pg.js`). Se a password tiver caracteres especiais (`@`, `#`, etc.), usa `encodeURIComponent` na password dentro da URI. Em rede **só IPv4**, o Supabase indica **Session pooler** em vez de “Direct connection”. Alternativa sem `DATABASE_URL`: `SUPABASE_URL` + `SUPABASE_ANON_KEY`. Depois `npm start`.
-
-#### Opção B — SQL Editor (sem CLI)
-
-No dashboard: **SQL** → **New query**. Copia **todo** o ficheiro **`supabase/COPIAR_PARA_SQL_EDITOR.sql`** (a primeira linha deve ser `create table`). **Não** colas o caminho do ficheiro como texto na query.
-
-**Segurança:** não commits chaves; o schema inclui políticas RLS permissivas para `anon` (ok se a chave só existir no servidor). Para produção, prefere `SUPABASE_SERVICE_ROLE_KEY` no Node e políticas mais restritas.
-
-### Google Hacking (URLs reais)
-
-Sem API, a ferramenta só **monta as queries** e pode **abrir o Google** nas abas (como antes). **Não** faz scraping da página de resultados (instável e contra os ToS).
-
-Com **Google CSE** ativado na sidebar e variáveis `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX`, o servidor executa cada dork (até `googleCseMaxQueries` por run, ver `server/config.js`) na API oficial e adiciona **endpoints** reais cujo host coincide com o alvo. A quota gratuita é tipicamente **100 queries/dia**.
-
-### SQLite (`bugbounty.db`)
-
-Ficheiro predefinido: **`data/bugbounty.db`**. Tabelas:
-
-- **`runs` + `findings`** — cada execução completa (histórico auditável, como antes).
-- **`bounty_intel`** — corpus **único por alvo** (dedupe por hash de tipo + valor + URL). Novos recons **acrescentam** só o que ainda não existia; entradas repetidas **atualizam** `last_seen` e `last_run_id`. A UI mostra um aviso abaixo do histórico com quantos artefactos novos foram guardados.
-
-API: `GET /api/intel/:target` — lista o corpus deduplicado para o domínio.
-
-> Se tinhas `data/ghostrecon.db`, o novo ficheiro é outro; usa `GHOSTRECON_DB=.../ghostrecon.db` para continuar na base antiga, ou copia/mescla manualmente.
-
-### Módulos OSINT adicionais (UI)
-
-Na secção **OSINT Sources** podes ativar:
-
-- **DNS TXT/MX (SPF/DMARC)** (`dns_enrichment`) — MX, SPF, DMARC (`_dmarc.`), TXT de verificação comuns.
-- **`.well-known/security.txt`** (`wellknown_security_txt`) — GET com concorrência limitada nos origins vivos.
-- **`.well-known/openid-configuration`** (`wellknown_openid`) — descoberta OIDC; endpoints aparecem como `finding` tipo `endpoint`.
-
-Estes blocos usam limites em `server/config.js` (timeouts, concorrência, tamanhos).
-
-### Modo Kali (scan ativo — opcional)
-
-Em **Kali Linux**, com `nmap` no PATH, a UI permite **Modo Kali**. O recon **passivo e a enumeração habitual (crt.sh, etc.) continuam a correr primeiro**; depois, se as ferramentas existirem no `PATH`, o servidor pode executar:
-
-**Enumeração de subdomínios (complementar ao crt.sh/VT)** — marcar na UI **Subfinder (Kali)** e/ou **Amass (Kali)**; só efeito com **Modo Kali** ligado. Os hostnames obtidos são mesclados com a lista atual, resolvidos por DNS e seguem o pipeline (probing, etc.). Implementação: `server/modules/kali-subdomain-tools.js` (por defeito `subfinder -d … -silent -all`; `amass enum -passive -d …`).
-
-**Após a fase passiva / probing:**
-
-- **nmap** — `-sV` por defeito (personalizável com `GHOSTRECON_NMAP_ARGS`, ex. `-A -Pn -T4` — mais lento)
-- **whois** — no domínio raiz e numa amostra limitada de subdomínios vivos; `findings` tipo `whois` (campos principais: registrar, datas, NS, país quando existir no texto)
-- **searchsploit** — consultas heurísticas a partir de produto/versão do nmap
-- **ffuf** — wordlist comum, **apenas respostas HTTP 200**
-- **nuclei** — templates contra URLs base (https/http do alvo e hosts com 80/443 no nmap)
-- **nuclei (XSS / SQLi)** — após o nuclei geral, se existirem candidatos: o pipeline recolhe até ~40 URLs com parâmetros (`?key=value`) do **corpus Wayback + Common Crawl** (o mesmo `urlCorpus` dessa execução) e corre `nuclei` com `-tags xss` e `-tags sqli` sobre uma amostra (até ~30 URLs por passagem). Os achados aparecem como `finding` tipo **`xss`** ou **`sqli`** e a UI tem filtros **XSS** / **SQLI**. Para haver candidatos, activa normalmente **Wayback** e/ou **Common Crawl**; o resultado depende dos **templates Nuclei** instalados e actualizados no Kali.
-- **wpscan** — só se `wpscan` estiver no PATH **e** o passivo tiver indicado WordPress (`tech`); output JSON é parseado para core, tema e plugins (`findings` tipo `wpscan`)
-
-Requisitos típicos no Kali: `nmap`, `ffuf`, `nuclei`, `searchsploit`, `whois`, `wpscan` (opcional), `subfinder` / `amass` (opcional), wordlists em `/usr/share/seclists` ou `dirb`.
-
-| Variável | Uso |
-|----------|-----|
-| `GHOSTRECON_FORCE_KALI` | `1` = tratar como Kali (testes em WSL/outra distro com ferramentas) |
-| `GHOSTRECON_NMAP_ARGS` | Argumentos extra do nmap (substitui o padrão `-sV -Pn -T4 --host-timeout 180s`) |
-
-Ver também a tabela de variáveis acima (`GHOSTRECON_WPSCAN_*`, `GHOSTRECON_WHOIS_SUBDOMAINS_MAX`, `GHOSTRECON_SUBFINDER_TIMEOUT_MS`, `GHOSTRECON_AMASS_TIMEOUT_MS`).
-
-**Aviso:** isto é **recon/scan ativo**. Usa apenas em **alvos autorizados**.
-
-## Estrutura do projeto
-
-```
-goshtrecon/
-├── index.html          # Frontend (visual + consumo NDJSON)
-├── package.json
-├── .env.example
-├── supabase/
-│   ├── config.toml     # Config local da CLI
-│   ├── migrations/                 # Migrações versionadas (`npm run db:push`)
-│   └── COPIAR_PARA_SQL_EDITOR.sql  # DDL para colar no dashboard (sem duplicar caminho na query)
-├── README.md
-└── server/
-    ├── index.js        # Express, rota de streaming, orquestração do pipeline
-    ├── config.js       # Limites, User-Agent, regex de “interesting”
-    └── modules/
-        ├── dorks.js    # Templates de dorks (extensível)
-        ├── subdomains.js
-        ├── dns.js
-        ├── probe.js
-        ├── tech.js
-        ├── wayback.js
-        ├── params.js
-        ├── js-analyzer.js
-        ├── secrets.js
-        ├── github.js
-        ├── google-cse.js
-        ├── kali-scan.js
-        ├── kali-subdomain-tools.js  # subfinder / amass (Kali + módulos UI)
-        ├── wpscan.js                 # WPScan JSON → findings (Kali)
-        ├── dns-enrichment.js        # MX/TXT/SPF/DMARC
-        ├── wellknown.js             # security.txt + openid-configuration
-        ├── prioritization.js
-        ├── cve-hints.js
-        ├── db.js           # Fachada: Supabase se env definido, senão SQLite
-        ├── db-sqlite.js
-        ├── db-supabase.js   # Cliente REST (@supabase/supabase-js)
-        ├── db-pg.js         # Postgres direto (DATABASE_URL + postgres)
-        ├── db-common.js
-        ├── scoring.js
-        ├── correlation.js
-        ├── intelligence.js
-        ├── security-headers.js
-        ├── tls-cert.js
-        ├── robots-sitemap.js
-        ├── commoncrawl.js
-        ├── rdap.js
-        ├── virustotal.js
-        ├── db-compare.js
-        └── webhook-notify.js
+```bash
+npm run dev
 ```
 
-## Como expandir
-
-### Novos dorks
-
-Edite `server/modules/dorks.js`:
-
-1. Adicione uma chave em `DORK_TEMPLATES` com array de funções `(domínioComAspasSeNecessário) => string de query`.
-2. Se for categoria de alto risco, inclua o id do módulo no `Set` `HIGH_DORK`.
-3. No `index.html`, adicione um checkbox com `class="mod"` e `value="seu_id"` igual à chave.
-
-### Novas fontes passivas
-
-Crie `server/modules/minha-fonte.js` exportando funções puras/async, importe em `server/index.js` e chame no `runPipeline` após emitir logs/`pipe` coerentes com a barra da UI.
-
-### Limites e performance
-
-Ajuste `server/config.js` (`waybackCollapseLimit`, `maxJsFetch`, `probeConcurrency`, `probeTimeoutMs`, `googleCseMaxQueries`, `googleCseDelayMs`, limites DNS enrichment, `/.well-known`, WHOIS no Kali, etc.).
-
-## API
-
-- `GET /api/health` — status.
-- `GET /api/capabilities` — deteta Kali + ferramentas (`nmap`, `ffuf`, `nuclei`, `searchsploit`, `wpscan`, `whois`, etc.).
-- `GET /api/runs?limit=50` — lista recons gravados (metadados + stats).
-- `GET /api/runs/:id` — recon completo com `findings`.
-- `GET /api/runs/:newerId/diff/:baselineId` — compara dois runs do **mesmo** alvo: `added` / `removed` (fingerprints iguais ao corpus `bounty_intel`).
-- `GET /api/intel/:domain` — artefactos únicos acumulados para o alvo (`bounty_intel`).
-- `POST /api/recon/stream` — corpo JSON `{ "domain": "example.com", "exactMatch": false, "kaliMode": false, "modules": ["subdomains", "dns_enrichment", "wellknown_security_txt", "wellknown_openid", "wayback", "subfinder", "amass", ...] }`. Resposta **NDJSON**: `log`, `progress`, `pipe`, `stats`, `finding`, `dork`, `intel`, `done` (inclui `runId` se gravado), `error`. Rate limit opcional: `GHOSTRECON_RL_MAX` / `GHOSTRECON_RL_WINDOW_MS`. Os módulos `subfinder` e `amass` só complementam subdomínios quando `kaliMode` é `true` e a ferramenta existe no sistema.
+---
 
 ## Docker
 
-Na raiz do repo (expõe a porta `3847`; define `DATABASE_URL` ou SQLite montado em `data/`):
-
 ```bash
-docker build -t ghostrecon .
-docker run --rm -p 3847:3847 --env-file .env ghostrecon
+docker build -t ghostctf .
+docker run --rm -p 3847:3847 --env-file .env ghostctf
 ```
 
-## Exportação
+A imagem copia `server/` e `index.html`. Configura variáveis de ambiente como no `.env.example`.
 
-O browser gera **JSON**, **Markdown** e **TXT** a partir dos achados acumulados na sessão.
+---
 
-## Aviso legal
+## Configuração (.env)
 
-Use apenas em alvos que você tem **autorização** para testar. O projeto prioriza técnicas passivas; HTTP GET para probing e CDX ainda são solicitações ativas leves — respeite termos de uso dos serviços (Google, Archive.org, crt.sh, GitHub) e políticas do programa de bug bounty.
+Copia **`.env.example`** para **`.env`**. Entre outras:
+
+| Variável | Função |
+|----------|--------|
+| `PORT` | Porta HTTP (default `3847`) |
+| `DATABASE_URL` | Postgres direto (recomendado com Supabase Session Pooler em IPv4) |
+| `SUPABASE_*` | Alternativa à URL directa |
+| `VIRUSTOTAL_API_KEY` | Módulo `virustotal` no pipeline de domínio |
+| `GOOGLE_CSE_KEY` / `GOOGLE_CSE_CX` | Google Programmable Search no pipeline passivo |
+| `GITHUB_TOKEN` | Code Search no pipeline passivo |
+| `GHOSTRECON_WEBHOOK_URL` | Webhook JSON após run gravado (ex.: Discord) |
+| `GHOSTRECON_RL_MAX` / `GHOSTRECON_RL_WINDOW_MS` | Rate limit dos POST de stream |
+| `GHOSTRECON_CC_CDX_API` | Índice Common Crawl personalizado |
+| `GHOSTCTF_RL_MAX` / `GHOSTCTF_RL_WINDOW_MS` | Alias aceites pelo código |
+| `GHOSTCTF_FORCE_KALI` | Forçar deteção de ambiente tipo Kali fora do Kali |
+| `GHOSTCTF_NMAP_ARGS` | Args extra para `nmap` no recon por domínio (quando aplicável) |
+
+Nunca commits o ficheiro `.env`.
+
+---
+
+## API (resumo)
+
+Todas as rotas abaixo estão no `server/index.js`. Respostas de stream usam **NDJSON** (uma linha JSON por evento).
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/health` | Saúde do serviço |
+| `GET` | `/api/capabilities` | Ferramentas Kali disponíveis no host |
+| `POST` | `/api/recon/stream` | Pipeline **passivo por domínio** — body: `{ domain, modules[], exactMatch?, kaliMode? }` |
+| `POST` | `/api/ghostctf/stream` | Pipeline **CTF por IP** — body: `{ ip, platform, modules[], udpScan?, tcpAllPorts? }` |
+| `POST` | `/api/ghostctf/decode` | Base64/Base32 + extração de flags por plataforma |
+| `POST` | `/api/ghostctf/hash` | Operações de hash (ver corpo em `index.js`) |
+| `POST` | `/api/ghostctf/hash-crack` | Crack MD5 com ferramentas do sistema |
+| `POST` | `/api/ghostctf/john-crack` | John integrado |
+| `GET` | `/api/runs` | Lista de runs guardados |
+| `GET` | `/api/runs/:id` | Detalhe de um run |
+| `GET` | `/api/runs/:newerId/diff/:baselineId` | Diff entre runs |
+| `GET` | `/api/intel/:target` | Corpus deduplicado por alvo |
+| `GET` | `/api/knowledge` | Biblioteca de padrões (SQLite; vazio em Supabase-only) |
+
+### Módulos úteis do `POST /api/recon/stream`
+
+Inclui, entre outros (passa os IDs exactamente como o backend espera):  
+`subdomains`, `virustotal`, `dns_enrichment`, `rdap`, `security_headers`, `robots_sitemap`, `wellknown_security_txt`, `wellknown_openid`, `wayback`, `common_crawl`, `google_cse`, `github`, `pastebin`, e com `kaliMode: true` também `subfinder`, `amass` quando disponíveis.
+
+Os **dorks** são construídos conforme o array `modules` (ver `buildDorks` / categorias no código).
+
+---
+
+## Interface (index.html)
+
+- **Alvo:** apenas **IPv4** no fluxo principal (validação no cliente); chama `/api/ghostctf/stream`.
+- **Plataforma de flag:** Solyd, HackTheBox, Google CTF.
+- **Módulos GhostCTF:** UDP scan, todas as portas TCP, Exploit-DB, LFI, SQLMap, VHost/sitemap, disclosure, reutilização de credenciais, foco WordPress, WPScan.
+- **Crack mode:** MD5 e John com formatos comuns.
+- **Decode rápido:** Base64/Base32 na sidebar.
+- Exportação dos achados: **JSON**, **Markdown**, **TXT**.
+
+Se abrires o HTML em `file://`, define a base da API em `localStorage`:
+
+`ghostctf_api_base` → `http://127.0.0.1:3847` (ou a tua porta).
+
+---
+
+## Base de dados (Supabase)
+
+- Migrações em `supabase/migrations/` (tabelas `runs`, `findings`, `bounty_intel`).
+- Scripts npm: `db:link`, `db:push`, `db:migration:new` (CLI Supabase como devDependency).
+
+RLS está definido nas migrações; ajusta políticas se expuseres a BD publicamente.
+
+---
+
+## Testes
+
+```bash
+npm test
+```
+
+Executa `node --test` sobre os testes em `server/tests/`.
+
+---
+
+## Estrutura do repositório (núcleo)
+
+```
+server/
+  index.js          # Express, rotas, orquestração
+  config.js         # Limites, UA, rate limit
+  modules/          # DNS, probe, DB, integrações externas, …
+  ghostctf/         # Pipeline CTF (nmap, dir-enum, flags, …)
+index.html          # SPA estática
+supabase/           # Migrações e config CLI
+ Dockerfile
+ .env.example
+```
+
+---
+
+## Ética e uso legítimo
+
+Usa isto só em **alvos que te autorizem** (labs de CTF, programas de bug bounty, ambientes próprios). Scans agressivos, SQLMap, enumeração de passwords e ferramentas tipo nuclei podem ser **ilegais ou violar ToS** se apontados para sistemas sem permissão. A responsabilidade é sempre tua.
+
+---
+
+## Créditos
+
+Feito para acelerar recon em CTF e consolidar truques de **OSINT / recon passivo** num único serviço Node, com opção de Postgres partilhado via Supabase.
