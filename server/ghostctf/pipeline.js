@@ -9,7 +9,12 @@ import { appendRobotsTxtResponses } from './robots-probe.js';
 import { ftpPortsFromNmap, probeFtpAnonymous } from './ftp-anonymous-probe.js';
 import { probeSshService, sshPortsFromNmap } from './ssh-probe.js';
 import { mysqlPortsFromNmap, probeMysqlService } from './mysql-probe.js';
-import { runLfiPasswdProbe } from './lfi-probe.js';
+import { runLfiContextProbe, runLfiPasswdProbe } from './lfi-probe.js';
+import { runSqlmapProbe } from './sqlmap-probe.js';
+import { runVhostAndSitemapProbe } from './vhost-sitemap-probe.js';
+import { runCredentialReuseProbe, runDisclosureHunt, runWordpressCredentialReuse } from './disclosure-cred-probe.js';
+import { runWordpressFocusProbe } from './wordpress-focus-probe.js';
+import { extractWpscanFindings, runWpscanJson } from '../modules/wpscan.js';
 
 export async function runGhostCtfPipeline({
   ip,
@@ -258,6 +263,7 @@ export async function runGhostCtfPipeline({
   const webResponses = await curlWebFromNmap({ ip, nmapRows, timeoutMs: 12000, maxBodyBytes: 250000, log });
 
   let robotsFetched = 0;
+  let robotsDisallowFetched = 0;
   try {
     const rb = await appendRobotsTxtResponses(webResponses, {
       ip,
@@ -266,16 +272,140 @@ export async function runGhostCtfPipeline({
       maxBodyBytes: 128000,
     });
     robotsFetched = rb.fetched || 0;
+    robotsDisallowFetched = rb.disallowFetched || 0;
   } catch (e) {
     log(`robots.txt: ${e?.message || String(e)}`, 'warn');
   }
 
+  let vhostSitemapSummary = { enabled: false, hostsTested: 0, vhostFetched: 0, sitemapFetched: 0, wellKnownFetched: 0 };
+  if (Array.isArray(modules) && modules.includes('vhostSitemapProbe')) {
+    vhostSitemapSummary.enabled = true;
+    try {
+      log('VHost/Sitemap probe: a testar Host header + sitemap.xml + .well-known...', 'info');
+      const vs = await runVhostAndSitemapProbe(webResponses, {
+        ip,
+        log,
+        timeoutMs: 12000,
+        maxBodyBytes: 220000,
+      });
+      vhostSitemapSummary = {
+        enabled: true,
+        hostsTested: Number(vs?.hostsTested || 0),
+        vhostFetched: Number(vs?.vhostFetched || 0),
+        sitemapFetched: Number(vs?.sitemapFetched || 0),
+        wellKnownFetched: Number(vs?.wellKnownFetched || 0),
+      };
+      log(
+        `VHost/Sitemap: hosts=${vhostSitemapSummary.hostsTested} · vhost=${vhostSitemapSummary.vhostFetched} · sitemap=${vhostSitemapSummary.sitemapFetched} · well-known=${vhostSitemapSummary.wellKnownFetched}`,
+        'info',
+      );
+    } catch (e) {
+      log(`VHost/Sitemap probe: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('VHost/Sitemap probe: OFF (ative em Modules)', 'info');
+  }
+
   const countAfterInitialCurl = webResponses.length;
+
+  /** @type {{ enabled: boolean; fetched: number; comments: number; creds: number }} */
+  const disclosureSummary = { enabled: false, fetched: 0, comments: 0, creds: 0 };
+  /** @type {{ enabled: boolean; attempts: number; hits: number }} */
+  const credReuseSummary = { enabled: false, attempts: 0, hits: 0 };
+  /** @type {Array<{username:string,password:string,source?:string,url?:string}>} */
+  let disclosureCreds = [];
+
+  if (Array.isArray(modules) && modules.includes('disclosureProbe')) {
+    disclosureSummary.enabled = true;
+    try {
+      log('Disclosure Hunt: comentários/ficheiros sensíveis/credenciais expostas...', 'info');
+      const d = await runDisclosureHunt(webResponses, { ip, log, timeoutMs: 10000 });
+      disclosureSummary.fetched = Number(d?.fetched || 0);
+      const comments = Array.isArray(d?.comments) ? d.comments : [];
+      const creds = Array.isArray(d?.credentials) ? d.credentials : [];
+      disclosureCreds = creds.slice(0, 30);
+      disclosureSummary.comments = comments.length;
+      disclosureSummary.creds = creds.length;
+      for (const c of comments.slice(0, 12)) {
+        addFinding(
+          {
+            type: 'secret',
+            prio: 'med',
+            score: 68,
+            value: `Comentário HTML suspeito @ ${c.url}`,
+            meta: c.text,
+            url: c.url,
+          },
+          'secrets',
+        );
+      }
+      for (const cr of creds.slice(0, 12)) {
+        addFinding(
+          {
+            type: 'secret',
+            prio: 'high',
+            score: 88,
+            value: `Credencial potencial: ${cr.username}:${cr.password}`,
+            meta: `source=${cr.source} · url=${cr.url || '-'}`,
+            url: cr.url || null,
+          },
+          'secrets',
+        );
+      }
+      log(`Disclosure Hunt: fetched=${disclosureSummary.fetched} · comments=${comments.length} · creds=${creds.length}`, 'info');
+
+      if (Array.isArray(modules) && modules.includes('credReuseProbe') && creds.length) {
+        credReuseSummary.enabled = true;
+        const rr = await runCredentialReuseProbe({
+          ip,
+          nmapRows,
+          webResponses,
+          credentials: creds,
+          log,
+        });
+        credReuseSummary.attempts = Number(rr?.attempts || 0);
+        const hits = Array.isArray(rr?.hits) ? rr.hits : [];
+        credReuseSummary.hits = hits.length;
+        for (const h of hits) {
+          addFinding(
+            {
+              type: 'endpoint',
+              prio: 'high',
+              score: 93,
+              value: `Credential reuse OK (${h.kind})`,
+              meta: h.url
+                ? `${h.username}:${h.password} @ ${h.url} · ${h.evidence}`
+                : `${h.username}:${h.password} @ ${ip}:${h.port} · ${h.evidence}`,
+              url: h.url || `ftp://${ip}:${h.port}/`,
+            },
+            'endpoints',
+          );
+        }
+        if (!hits.length) log(`Credential reuse: sem sucesso (attempts=${credReuseSummary.attempts})`, 'info');
+      } else if (Array.isArray(modules) && modules.includes('credReuseProbe')) {
+        credReuseSummary.enabled = true;
+        log('Credential reuse: sem credenciais extraídas no disclosure.', 'info');
+      }
+    } catch (e) {
+      log(`Disclosure/CredReuse: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('Disclosure Hunt: OFF (ative em Modules)', 'info');
+    if (Array.isArray(modules) && modules.includes('credReuseProbe')) {
+      credReuseSummary.enabled = true;
+      log('Credential reuse: requer Disclosure Hunt ON para alimentar credenciais.', 'warn');
+    }
+  }
 
   for (const r of webResponses) {
     if (!r.status) continue;
-    if (!r.bodyText && r.__via !== 'robots.txt') continue;
-    const via = r.__via === 'robots.txt' ? ' · via=robots.txt' : '';
+    if (!r.bodyText && r.__via !== 'robots.txt' && r.__via !== 'robots-disallow') continue;
+    const via =
+      r.__via === 'robots.txt'
+        ? ' · via=robots.txt'
+        : r.__via === 'robots-disallow'
+          ? ` · via=robots Disallow · path=${String(r.__disallowPath || '?')} · robots=${String(r.__robotsSource || '?')}`
+          : '';
     addFinding(
       {
         type: 'tech',
@@ -426,6 +556,8 @@ export async function runGhostCtfPipeline({
 
   /** @type {{ attempts: number; hits: number }} */
   const lfiSummary = { attempts: 0, hits: 0 };
+  /** @type {{ attempts: number; hits: number; enabled: boolean }} */
+  const sqlmapSummary = { attempts: 0, hits: 0, enabled: false };
   if (Array.isArray(modules) && modules.includes('lfiProbe')) {
     try {
       const lfiSeedUrls = [];
@@ -459,6 +591,33 @@ export async function runGhostCtfPipeline({
         log(`LFI provável: ${h.testUrl} (${h.evidence})`, 'success');
         if (h.snippet) intel(`LFI snippet: ${h.snippet}`);
       }
+      // Cadeia LFI contextual automática (mais 1 passo)
+      if (hits.length) {
+        const ctx = await runLfiContextProbe({
+          lfiHits: hits,
+          log,
+          timeoutMs: 12000,
+          maxBodyBytes: 220000,
+          maxAttempts: 18,
+        });
+        const chits = Array.isArray(ctx?.hits) ? ctx.hits : [];
+        for (const c of chits) {
+          const isRcePotential = String(c.classification || '').toLowerCase() === 'potential_rce';
+          addFinding(
+            {
+              type: 'param',
+              prio: isRcePotential ? 'high' : 'med',
+              score: isRcePotential ? 97 : 84,
+              value: `LFI contextual hit via ${c.param} (${c.payload})`,
+              meta: `status=${c.status} · classe=${c.classificationLabel || c.classification || 'read'} · evidência=${c.evidence}`,
+              url: c.testUrl || c.baseUrl,
+            },
+            'params',
+          );
+          if (c.snippet) intel(`LFI context: ${c.snippet}`);
+        }
+        if (chits.length) log(`LFI context probe: ${chits.length} hit(s) extra`, 'success');
+      }
       if (!hits.length) {
         log(`LFI probe: sem evidência de /etc/passwd (tentativas=${lfiSummary.attempts})`, 'info');
       }
@@ -467,6 +626,157 @@ export async function runGhostCtfPipeline({
     }
   } else {
     log('LFI probe: OFF (ative em Modules)', 'info');
+  }
+
+  if (Array.isArray(modules) && modules.includes('sqlmapProbe')) {
+    sqlmapSummary.enabled = true;
+    try {
+      const sqlmapSeedUrls = [];
+      for (const r of webResponses || []) {
+        if (!r?.url) continue;
+        sqlmapSeedUrls.push(String(r.url));
+        if (r.finalUrl) sqlmapSeedUrls.push(String(r.finalUrl));
+      }
+      const sm = await runSqlmapProbe({
+        urls: sqlmapSeedUrls,
+        log,
+        maxTargets: 6,
+        timeoutPerTargetMs: 150000,
+      });
+      if (!sm.ok && sm.reason === 'sqlmap_missing') {
+        log('sqlmap probe: sqlmap não encontrado no PATH.', 'warn');
+      } else {
+        sqlmapSummary.attempts = Number(sm?.attempts || 0);
+        const hits = Array.isArray(sm?.hits) ? sm.hits : [];
+        sqlmapSummary.hits = hits.length;
+        for (const h of hits) {
+          const seqMeta = [
+            h.evidence,
+            h.currentDb ? `currentDb=${h.currentDb}` : null,
+            h.tables?.length ? `tables=${h.tables.slice(0, 6).join(',')}` : null,
+            h.dumpTable ? `dumpTable=${h.dumpTable}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          addFinding(
+            {
+              type: 'sqli',
+              prio: h.dbs?.length ? 'high' : 'med',
+              score: h.dbs?.length ? 95 : 86,
+              value: `Possível SQLi via ${h.param} em ${h.url}`,
+              meta: `sqlmap --batch --level=3 --risk=3 --dbs · ${seqMeta || h.evidence}`,
+              url: h.url,
+            },
+            'params',
+          );
+          log(`SQLMap provável: ${h.param} @ ${h.url} (${h.evidence})`, 'success');
+          if (h.currentDb) intel(`SQLMap chain: current-db=${h.currentDb}`);
+          if (h.tables?.length) intel(`SQLMap chain: tables(${h.currentDb || '-'}) => ${h.tables.slice(0, 8).join(', ')}`);
+          if (h.dumpTable && h.dumpPreview) intel(`SQLMap chain dump ${h.dumpTable}: ${h.dumpPreview}`);
+        }
+        if (!hits.length) {
+          log(`sqlmap probe: sem evidência (alvos testados=${sqlmapSummary.attempts})`, 'info');
+        }
+      }
+    } catch (e) {
+      log(`sqlmap probe: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('sqlmap probe: OFF (ative em Modules)', 'info');
+  }
+
+  /** @type {{ enabled: boolean; originsTested: number; fetched: number; findings: number }} */
+  const wpFocusSummary = { enabled: false, originsTested: 0, fetched: 0, findings: 0 };
+  if (Array.isArray(modules) && modules.includes('wpFocusProbe')) {
+    wpFocusSummary.enabled = true;
+    try {
+      const wp = await runWordpressFocusProbe(webResponses, { log, timeoutMs: 12000 });
+      wpFocusSummary.originsTested = Number(wp?.originsTested || 0);
+      wpFocusSummary.fetched = Number(wp?.fetched || 0);
+      const ff = Array.isArray(wp?.findings) ? wp.findings : [];
+      wpFocusSummary.findings = ff.length;
+      for (const f of ff.slice(0, 40)) {
+        addFinding(
+          {
+            type: 'tech',
+            prio: /plugin detectado|version/i.test(String(f.value || '')) ? 'med' : 'low',
+            score: /plugin detectado|version/i.test(String(f.value || '')) ? 62 : 42,
+            value: f.value,
+            meta: `${f.meta || 'wp-focus'}${f.status ? ` · status=${f.status}` : ''}`,
+            url: f.url || null,
+          },
+          'endpoints',
+        );
+      }
+      log(`WordPress focus: origins=${wpFocusSummary.originsTested} · fetched=${wpFocusSummary.fetched} · findings=${wpFocusSummary.findings}`, 'info');
+      const wpVersion = String(wp?.wpVersion || '').trim() || 'unknown';
+      const wpPluginsN = Array.isArray(wp?.plugins) ? wp.plugins.length : 0;
+      const wpUsersN = Array.isArray(wp?.users) ? wp.users.length : 0;
+      const wpXmlrpc = wp?.xmlrpcEnabled ? 'on' : 'off';
+      log(`WP summary: version=${wpVersion} · plugins=${wpPluginsN} · users=${wpUsersN} · xmlrpc=${wpXmlrpc}`, 'info');
+      intel(`WP summary => version:${wpVersion} plugins:${wpPluginsN} users:${wpUsersN} xmlrpc:${wpXmlrpc}`);
+
+      // Credential reuse contextual para wp-login (usa creds extraídas + users enum)
+      if (Array.isArray(modules) && modules.includes('credReuseProbe') && disclosureCreds.length) {
+        const wpr = await runWordpressCredentialReuse({
+          credentials: disclosureCreds,
+          wpTargets: Array.isArray(wp?.wpTargets) ? wp.wpTargets : [],
+          wpUsers: Array.isArray(wp?.users) ? wp.users : [],
+          log,
+        });
+        const hits = Array.isArray(wpr?.hits) ? wpr.hits : [];
+        credReuseSummary.attempts += Number(wpr?.attempts || 0);
+        credReuseSummary.hits += hits.length;
+        for (const h of hits) {
+          addFinding(
+            {
+              type: 'endpoint',
+              prio: 'high',
+              score: 96,
+              value: `Credential reuse OK (${h.kind})`,
+              meta: `${h.username}:${h.password} @ ${h.url} · ${h.evidence}`,
+              url: h.url,
+            },
+            'endpoints',
+          );
+        }
+      }
+
+      // WPScan opcional (mais pesado): só quando explicitamente ligado
+      if (Array.isArray(modules) && modules.includes('wpScanProbe')) {
+        const targets = Array.isArray(wp?.wpTargets) ? wp.wpTargets.slice(0, 2) : [];
+        if (targets.length) {
+          log(`wpscan: ${targets.length} target(s) WordPress`, 'info');
+          for (const t of targets) {
+            const res = await runWpscanJson({
+              targetUrl: t,
+              detectionMode: 'mixed',
+              timeoutMs: 240000,
+              log,
+            });
+            if (res?.json) {
+              const wf = extractWpscanFindings({ targetUrl: t, wpscanJson: res.json });
+              if (wf.length) {
+                log(`wpscan ${t} -> ${wf.length} finding(s)`, 'success');
+                for (const f of wf.slice(0, 40)) addFinding(f, 'endpoints');
+              } else {
+                log(`wpscan ${t}: sem findings relevantes`, 'info');
+              }
+            } else {
+              log(`wpscan ${t}: falha/sem JSON (${res?.error || 'unknown'})`, 'warn');
+            }
+          }
+        } else {
+          log('wpscan: WordPress não confirmado no foco -> skip', 'info');
+        }
+      } else {
+        log('wpscan: OFF (ative em Modules)', 'info');
+      }
+    } catch (e) {
+      log(`WordPress focus: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('WordPress focus: OFF (ative em Modules)', 'info');
   }
 
   log('Scan de flags Solyd{...} e validação do formato (com base64/base32 decoding)...', 'info');
@@ -482,6 +792,17 @@ export async function runGhostCtfPipeline({
 
   // stats “params” conta flags novas (deduplicadas)
   pipe('params', 'done');
+
+  // Playbook final (pós-params): já inclui achados contextuais (LFI/SQLMap/etc).
+  try {
+    const sug = buildCtfPlaybookSuggestions({ ip, findings });
+    for (const s of sug.slice(0, 10)) {
+      intel(`PLAYBOOK+ (${String(s.prio).toUpperCase()}): ${s.title}`);
+      for (const step of s.steps.slice(0, 6)) intel(`  - ${step}`);
+    }
+  } catch (e) {
+    log(`playbook final: ${e?.message || String(e)}`, 'warn');
+  }
 
   progress(92);
 
@@ -519,9 +840,14 @@ export async function runGhostCtfPipeline({
     platformId,
     udpScan,
     tcpAllPorts,
-    pagesFetched: (pagesFetched || 0) + (linkPagesFetched || 0) + (robotsFetched || 0),
+    pagesFetched:
+      (pagesFetched || 0) +
+      (linkPagesFetched || 0) +
+      (robotsFetched || 0) +
+      (robotsDisallowFetched || 0),
     linkPagesFetched: linkPagesFetched || 0,
     robotsFetched: robotsFetched || 0,
+    robotsDisallowFetched: robotsDisallowFetched || 0,
     flagsFound: foundFlagSet.size,
     dirEnumTools: dirEnumToolsAgg,
     ftpAnonymous: {
@@ -543,6 +869,15 @@ export async function runGhostCtfPipeline({
       attempts: lfiSummary.attempts,
       hits: lfiSummary.hits,
     },
+    sqlmapProbe: {
+      enabled: sqlmapSummary.enabled,
+      attempts: sqlmapSummary.attempts,
+      hits: sqlmapSummary.hits,
+    },
+    vhostSitemapProbe: vhostSitemapSummary,
+    disclosureProbe: disclosureSummary,
+    credReuseProbe: credReuseSummary,
+    wpFocusProbe: wpFocusSummary,
   };
 
   let saved = null;
@@ -597,38 +932,41 @@ function ingestFlagFindingsFromWebResponses({
   log,
   maxTextLen = 900_000,
 }) {
-  const evidenceChunks = [];
   for (const r of webResponses || []) {
     if (!r) continue;
+    const pageUrl = r.finalUrl || r.url || null;
     const ht = safeToString(r.headersText || '');
     const bt = safeToString(r.bodyText || '');
-    if (ht) evidenceChunks.push(ht);
-    if (bt) evidenceChunks.push(bt);
-  }
-  const rawText = evidenceChunks.join('\n').slice(0, maxTextLen);
-  let flagHits = [];
-  try {
-    const hits = detectFlagsWithDecoding({ rawText, platformId });
-    flagHits = Array.isArray(hits) ? hits : [];
-  } catch (e) {
-    if (typeof log === 'function') log(`scan de flags: ${e?.message || String(e)}`, 'warn');
-    flagHits = [];
-  }
-  for (const hit of flagHits) {
-    if (!hit || !hit.flag) continue;
-    if (foundFlagSet.has(hit.flag)) continue;
-    foundFlagSet.add(hit.flag);
-    addFinding(
-      {
-        type: 'flag',
-        prio: 'high',
-        score: 99,
-        value: hit.flag,
-        meta: `platform=${platformId}; evidence=${hit.evidence || 'unknown'}; decodedFrom=${hit.decodedFrom || ''}`,
-        url: null,
-      },
-      'flags',
-    );
+    const rawText = `${ht}\n${bt}`.trim().slice(0, maxTextLen);
+    if (!rawText) continue;
+    let flagHits = [];
+    try {
+      const hits = detectFlagsWithDecoding({ rawText, platformId });
+      flagHits = Array.isArray(hits) ? hits : [];
+    } catch (e) {
+      if (typeof log === 'function') log(`scan de flags: ${e?.message || String(e)}`, 'warn');
+      flagHits = [];
+    }
+    const via =
+      r.__via === 'robots-disallow'
+        ? `; via=robots-disallow; path=${String(r.__disallowPath || '')}`
+        : '';
+    for (const hit of flagHits) {
+      if (!hit || !hit.flag) continue;
+      if (foundFlagSet.has(hit.flag)) continue;
+      foundFlagSet.add(hit.flag);
+      addFinding(
+        {
+          type: 'flag',
+          prio: 'high',
+          score: 99,
+          value: hit.flag,
+          meta: `platform=${platformId}; evidence=${hit.evidence || 'unknown'}; decodedFrom=${hit.decodedFrom || ''}${pageUrl ? `; url=${pageUrl}` : ''}${via}`,
+          url: pageUrl,
+        },
+        'flags',
+      );
+    }
   }
 }
 

@@ -275,3 +275,77 @@ export async function probeFtpAnonymous({ host, port = 21, timeoutMs = 12000 } =
     });
   });
 }
+
+export async function probeFtpCredentials({
+  host,
+  port = 21,
+  username,
+  password,
+  timeoutMs = 12000,
+} = {}) {
+  const user = String(username || '').trim();
+  const pass = String(password || '');
+  if (!user) return { ok: false, summary: 'username vazio' };
+  const stages = [];
+  const bufRef = { buf: '' };
+
+  return new Promise((resolve) => {
+    const sock = net.createConnection({ host, port });
+    let doneFlag = false;
+    const done = (out) => {
+      if (doneFlag) return;
+      doneFlag = true;
+      try {
+        if (!sock.destroyed) {
+          try {
+            sendCmd(sock, 'QUIT');
+          } catch {
+            /* */
+          }
+          sock.destroy();
+        }
+      } catch {
+        /* */
+      }
+      resolve(out);
+    };
+
+    const timer = setTimeout(() => {
+      try {
+        sock.destroy();
+      } catch {
+        /* */
+      }
+      done({ ok: false, summary: 'timeout', stages });
+    }, Math.min(timeoutMs, 15000));
+
+    sock.once('connect', async () => {
+      clearTimeout(timer);
+      try {
+        sock.on('data', (chunk) => {
+          bufRef.buf += chunk.toString('latin1');
+        });
+        const banner = await nextFtpMessage(bufRef, sock, timeoutMs);
+        stages.push(`banner ${banner.code}`);
+        if (banner.code !== 220) return done({ ok: false, summary: `banner ${banner.code}`, stages });
+        sendCmd(sock, `USER ${user}`);
+        const userRep = await nextFtpMessage(bufRef, sock, timeoutMs);
+        stages.push(`USER ${userRep.code}`);
+        if (userRep.code === 230) return done({ ok: true, summary: '230 sem PASS', stages });
+        if (userRep.code !== 331 && userRep.code !== 332) return done({ ok: false, summary: `USER ${userRep.code}`, stages });
+        sendCmd(sock, `PASS ${pass}`);
+        const passRep = await nextFtpMessage(bufRef, sock, timeoutMs);
+        stages.push(`PASS ${passRep.code}`);
+        if (passRep.code === 230) return done({ ok: true, summary: '230 Login successful', stages });
+        return done({ ok: false, summary: `PASS ${passRep.code}`, stages });
+      } catch (e) {
+        done({ ok: false, summary: e?.message || String(e), stages });
+      }
+    });
+
+    sock.once('error', (e) => {
+      clearTimeout(timer);
+      done({ ok: false, summary: e?.message || String(e), stages });
+    });
+  });
+}

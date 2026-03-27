@@ -1061,6 +1061,15 @@
       </div>
 
       <button class="run-btn" id="runBtn" onclick="startRecon()">▶ RUN GHOSTCTF</button>
+      <div style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+        <div class="section-label" style="margin-bottom:8px">Decode rápido (Base64/Base32)</div>
+        <textarea id="decodeInput" placeholder="Cole aqui a string codificada..." style="width:100%;min-height:72px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="export-btn" onclick="runQuickDecode()">🔓 Decode</button>
+          <button class="export-btn" onclick="runQuickHash()"># Hash</button>
+          <button class="export-btn" onclick="document.getElementById('decodeInput').value=''">Limpar</button>
+        </div>
+      </div>
 
       <div class="section-label" style="margin-top:18px">Histórico (SQLite)</div>
       <div id="runsHistory" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);max-height:120px;overflow-y:auto;line-height:1.5">
@@ -1104,6 +1113,51 @@
         <label class="checkbox-item"><input type="checkbox" class="mod" value="tcpAllPorts"><div class="checkbox-box"></div><span class="checkbox-text">TCP all ports (-p-)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="exploitdb"><div class="checkbox-box"></div><span class="checkbox-text">Exploit-DB lookup (searchsploit)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="lfiProbe"><div class="checkbox-box"></div><span class="checkbox-text">LFI probe (/etc/passwd em params suspeitos)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="sqlmapProbe"><div class="checkbox-box"></div><span class="checkbox-text">SQLMap probe (--batch --level=3 --risk=3 --dbs)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="vhostSitemapProbe"><div class="checkbox-box"></div><span class="checkbox-text">VHost + Sitemap + .well-known probe</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="disclosureProbe"><div class="checkbox-box"></div><span class="checkbox-text">Disclosure Hunt (comments/files/creds)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="credReuseProbe"><div class="checkbox-box"></div><span class="checkbox-text">Credential Reuse (FTP/HTTP basic)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="wpFocusProbe"><div class="checkbox-box"></div><span class="checkbox-text">WordPress Focus (wp-login/xmlrpc/wp-json/plugins)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="wpScanProbe"><div class="checkbox-box"></div><span class="checkbox-text">WPScan probe (heavy, optional)</span><span class="tag tag-med">OFF</span></label>
+      </div>
+
+      <div class="module-group">
+        <div class="module-group-title">// Crack Mode</div>
+        <div id="crackCapLine" style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:8px;line-height:1.4">A detetar John/wordlists…</div>
+        <input id="crackHashInput" type="text" placeholder="Hash MD5 (32 hex)" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="crackWordlistInput" type="text" placeholder="Wordlist opcional (ex.: /usr/share/wordlists/rockyou.txt)" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="export-btn" onclick="runMd5CrackMode()">🧠 Run MD5 crack</button>
+          <button class="export-btn" onclick="document.getElementById('crackHashInput').value='';document.getElementById('crackWordlistInput').value=''">Limpar</button>
+        </div>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:8px">// John Crack (hash + format)</div>
+          <input id="johnHashInput" type="text" placeholder="Hash (qualquer formato suportado pelo john)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+          <select id="johnFormatSelect" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+            <option value="raw-md5">raw-md5</option>
+            <option value="raw-sha1">raw-sha1</option>
+            <option value="raw-sha256" selected>raw-sha256</option>
+            <option value="raw-sha512">raw-sha512</option>
+            <option value="mysql-sha1">mysql-sha1</option>
+            <option value="phpass">phpass</option>
+            <option value="bcrypt">bcrypt</option>
+            <option value="descrypt">descrypt</option>
+          </select>
+          <input id="johnWordlistInput" type="text" placeholder="Wordlist opcional (ex.: /usr/share/wordlists/rockyou.txt)" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+          <div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:var(--mono);font-size:9px;color:var(--text-dim)">
+            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="johnRulesChk" checked> rules</label>
+            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="johnIncrementalChk"> incremental</label>
+            <select id="johnIncrementalMode" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:9px;padding:4px">
+              <option value="Digits" selected>Digits</option>
+              <option value="Alnum">Alnum</option>
+              <option value="ASCII">ASCII</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="export-btn" onclick="runJohnCrackMode()">⚔ John crack</button>
+            <button class="export-btn" onclick="document.getElementById('johnHashInput').value='';document.getElementById('johnFormatSelect').value='raw-sha256';document.getElementById('johnWordlistInput').value='';document.getElementById('johnRulesChk').checked=true;document.getElementById('johnIncrementalChk').checked=false;document.getElementById('johnIncrementalMode').value='Digits';">Limpar</button>
+          </div>
+        </div>
       </div>
     </div>
   </aside>
@@ -1118,47 +1172,47 @@
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-          <div class="pipe-node" id="pipe-subdomains">NMAP / PORTS & SERVIÇOS</div>
+          <div class="pipe-node" id="pipe-subdomains">NMAP + SERVICE PROBES</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-rdap">RDAP</div>
+        <div class="pipe-node" id="pipe-rdap">UDP / RDAP STAGE</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-alive">ALIVE CHECK</div>
+        <div class="pipe-node" id="pipe-alive">WEB PROBE + LINKS</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-surface">SURFACE</div>
+        <div class="pipe-node" id="pipe-surface">DIR ENUM / SURFACE</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-urls">URL GATHERING</div>
+        <div class="pipe-node" id="pipe-urls">URL DISCOVERY (ROBOTS/SITEMAP)</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-params">PARAM DISCOVERY</div>
+        <div class="pipe-node" id="pipe-params">PARAMS + LFI/SQLMAP</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-js">JS ANALYSIS</div>
+        <div class="pipe-node" id="pipe-js">JS / DECODING</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-dorks">DORKING</div>
+        <div class="pipe-node" id="pipe-dorks">DORKS / VALIDATION</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-secrets">SECRETS</div>
+        <div class="pipe-node" id="pipe-secrets">SECRETS / ATTACK VECTORS</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-kali">KALI SCAN</div>
+        <div class="pipe-node" id="pipe-kali">KALI / EXPLOIT TOOLS</div>
         <div class="pipe-arrow">──▶</div>
       </div>
       <div class="pipe-step">
-        <div class="pipe-node" id="pipe-score">PRIORITIZE</div>
+        <div class="pipe-node" id="pipe-score">PRIORITIZE + SAVE</div>
       </div>
     </div>
 
@@ -1334,6 +1388,37 @@ function addFinding(f) {
     return;
   }
   if (currentFilter === f.prio || currentFilter === f.type) renderFinding(f);
+}
+
+function parseMetaPairs(meta) {
+  const out = {};
+  const s = String(meta || '');
+  if (!s) return out;
+  const parts = s.split(';').map((x) => String(x || '').trim()).filter(Boolean);
+  for (const p of parts) {
+    const idx = p.indexOf('=');
+    if (idx <= 0) continue;
+    const k = p.slice(0, idx).trim().toLowerCase();
+    const v = p.slice(idx + 1).trim();
+    if (k) out[k] = v;
+  }
+  return out;
+}
+
+function buildFlagOriginSummary(flagFindings) {
+  const src = new Map();
+  for (const f of flagFindings || []) {
+    const meta = parseMetaPairs(f?.meta || '');
+    let origin = meta['evidence'] || meta['decoded-via'] || '';
+    if (!origin && meta['quick-decode'] === '1') origin = 'quick-decode';
+    if (!origin) origin = 'unknown';
+    const key = String(origin).toLowerCase();
+    src.set(key, (src.get(key) || 0) + 1);
+  }
+  return [...src.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${k}=${n}`)
+    .join(' · ');
 }
 
 function renderFinding(f) {
@@ -1623,7 +1708,17 @@ async function startRecon() {
   const platform = selectedPlatformRadio?.value || 'solyd';
   const udpScan = selectedMods.includes('udpScan');
   const tcpAllPorts = selectedMods.includes('tcpAllPorts');
-  const modulesGhost = selectedMods.filter((v) => v === 'udpScan' || v === 'tcpAllPorts' || v === 'exploitdb' || v === 'lfiProbe');
+  const modulesGhost = selectedMods.filter((v) =>
+    v === 'udpScan' ||
+    v === 'tcpAllPorts' ||
+    v === 'exploitdb' ||
+    v === 'lfiProbe' ||
+    v === 'sqlmapProbe' ||
+    v === 'vhostSitemapProbe' ||
+    v === 'disclosureProbe' ||
+    v === 'credReuseProbe' ||
+    v === 'wpFocusProbe' ||
+    v === 'wpScanProbe');
 
   addLog(`Iniciando GHOSTCTF para: ${targetDomain}`, 'section');
   addLog(`Módulos (GhostCTF): ${modulesGhost.join(', ') || '(nenhum)' }`, 'info');
@@ -1705,6 +1800,13 @@ async function startRecon() {
           addLog('══════════════════════════════════════════════════', 'section');
           addLog(`RECON CONCLUÍDO — ${findings.length} achados totais`, 'success');
           addLog(`Alto: ${stats.high} | Flags: ${stats.flags} | Endpoints: ${stats.endpoints} | Params: ${stats.params} | Secrets: ${stats.secrets}`, 'success');
+          const flagFindings = findings.filter((f) => f && f.type === 'flag');
+          if (flagFindings.length) {
+            const originLine = buildFlagOriginSummary(flagFindings);
+            addLog(`FLAGS origem: ${originLine || 'unknown'}`, 'info');
+          } else {
+            addLog('FLAGS origem: nenhuma flag encontrada.', 'info');
+          }
           if (ev.runId != null) addLog(`Gravado: run #${ev.runId} → ${ev.storage || 'base de dados'}`, 'success');
           showIntelMergeBanner(ev.target, ev.intelMerge);
           addLog('Exporte JSON / MD / TXT na barra inferior.', 'info');
@@ -1717,6 +1819,193 @@ async function startRecon() {
     finishErr(`Falha de rede: ${e.message}. Execute \`npm start\` na pasta do projeto e abra http://127.0.0.1:3847`);
   }
 }
+
+async function runQuickDecode() {
+  const raw = (document.getElementById('decodeInput')?.value || '').trim();
+  if (!raw) { addLog('Decode: cole uma string primeiro.', 'warn'); return; }
+  const selectedPlatformRadio = document.querySelector('input[name="platformMod"]:checked');
+  const platform = selectedPlatformRadio?.value || 'solyd';
+  addLog('Decode: identificando base64/base32...', 'info');
+  try {
+    const res = await fetch(apiUrl('/api/ghostctf/decode'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: raw, platform }),
+    });
+    const rawBody = await res.text();
+    let data = null;
+    try {
+      data = JSON.parse(rawBody);
+    } catch {
+      data = null;
+    }
+    if (!data && !res.ok) {
+      addLog(`Decode: endpoint indisponível (HTTP ${res.status}). Reinicia o servidor (npm start).`, 'error');
+      const msg = String(rawBody || '').replace(/\s+/g, ' ').slice(0, 140);
+      if (msg) addLog(`Decode: resposta bruta: ${msg}`, 'warn');
+      return;
+    }
+    if (!data) {
+      addLog('Decode: resposta inválida do servidor (não-JSON).', 'error');
+      return;
+    }
+    if (!res.ok || !data?.ok) {
+      addLog(`Decode: falha (${data?.error || 'erro desconhecido'})`, 'error');
+      return;
+    }
+    addLog(`Decode: tipo detectado = ${data.detected}`, 'info');
+    const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+    if (!candidates.length) {
+      addLog('Decode: não parece Base64/Base32 válido.', 'warn');
+      return;
+    }
+    for (const c of candidates) {
+      const one = String(c.decoded || '').replace(/\s+/g, ' ').slice(0, 220);
+      addLog(`Decode ${c.kind}: ${one}${one.length >= 220 ? '…' : ''}`, 'find');
+    }
+    const flags = Array.isArray(data.flags) ? data.flags : [];
+    for (const f of flags) {
+      const flag = String(f.flag || '').trim();
+      if (!flag) continue;
+      const already = findings.some((x) => x && x.type === 'flag' && String(x.value || '').trim() === flag);
+      if (already) {
+        addLog(`FLAG já presente: ${flag}`, 'info');
+        continue;
+      }
+      addFinding({
+        type: 'flag',
+        prio: 'high',
+        score: 99,
+        value: flag,
+        meta: `decoded-via=${f.source || 'unknown'}; quick-decode=1`,
+        url: '',
+      });
+      updateStat('flags', Number(stats.flags || 0) + 1);
+      updateStat('high', Number(stats.high || 0) + 1);
+      addLog(`FLAG detectada no decode: ${flag}`, 'success');
+    }
+  } catch (e) {
+    addLog(`Decode: erro de rede (${e.message || e})`, 'error');
+  }
+}
+
+async function runQuickHash() {
+  const raw = (document.getElementById('decodeInput')?.value || '');
+  if (!raw.trim()) { addLog('Hash: cole um texto/hash primeiro.', 'warn'); return; }
+  addLog('Hash: calculando MD5/SHA1/SHA256...', 'info');
+  try {
+    const res = await fetch(apiUrl('/api/ghostctf/hash'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: raw }),
+    });
+    const body = await res.text();
+    let data = null;
+    try { data = JSON.parse(body); } catch { data = null; }
+    if (!data || !res.ok || !data.ok) {
+      addLog(`Hash: falha (${data?.error || `HTTP ${res.status}`})`, 'error');
+      return;
+    }
+    addLog(`Hash: tipo detectado = ${data.detected}`, 'info');
+    addLog(`MD5: ${data.hashes?.md5 || '-'}`, 'find');
+    addLog(`SHA1: ${data.hashes?.sha1 || '-'}`, 'find');
+    addLog(`SHA256: ${data.hashes?.sha256 || '-'}`, 'find');
+    if (String(data.detected || '').startsWith('hash-')) {
+      addLog('Hash: entrada parece já ser hash (não reversível localmente sem wordlist/rainbow).', 'warn');
+    }
+  } catch (e) {
+    addLog(`Hash: erro de rede (${e.message || e})`, 'error');
+  }
+}
+
+async function runMd5CrackMode() {
+  const raw = (document.getElementById('crackHashInput')?.value || '').trim();
+  if (!raw) { addLog('Crack Mode: informe um hash MD5.', 'warn'); return; }
+  if (!/^[a-fA-F0-9]{32}$/.test(raw)) {
+    addLog('Crack Mode: entrada precisa ser hash MD5 (32 hex).', 'warn');
+    return;
+  }
+  const wl = (document.getElementById('crackWordlistInput')?.value || '').trim();
+  addLog('Crack Mode: tentando wordlists locais...', 'info');
+  try {
+    const res = await fetch(apiUrl('/api/ghostctf/hash-crack'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: raw, wordlist: wl, maxLines: 300000 }),
+    });
+    const body = await res.text();
+    let data = null;
+    try { data = JSON.parse(body); } catch { data = null; }
+    if (!data || !res.ok || !data.ok) {
+      addLog(`Crack Mode: falha (${data?.error || `HTTP ${res.status}`})`, 'error');
+      return;
+    }
+    if (data.found) {
+      const engine = data.engine || 'wordlist';
+      addLog(`Crack Mode: encontrado! ${raw} -> ${data.plaintext} (${engine})`, 'success');
+      addFinding({
+        type: 'secret',
+        prio: 'high',
+        score: 92,
+        value: `MD5 cracked: ${raw}`,
+        meta: `plaintext=${data.plaintext}; engine=${engine}; wordlist=${data.wordlist}; tried=${data.tried}`,
+        url: '',
+      });
+      updateStat('secrets', Number(stats.secrets || 0) + 1);
+      updateStat('high', Number(stats.high || 0) + 1);
+    } else {
+      addLog(`Crack Mode: não encontrado (limite aproximado ${data.triedApprox || 300000}).`, 'info');
+    }
+  } catch (e) {
+    addLog(`Crack Mode: erro de rede (${e.message || e})`, 'error');
+  }
+}
+
+async function runJohnCrackMode() {
+  const hash = (document.getElementById('johnHashInput')?.value || '').trim();
+  const format = String(document.getElementById('johnFormatSelect')?.value || 'raw-sha256').trim() || 'raw-sha256';
+  const wordlist = (document.getElementById('johnWordlistInput')?.value || '').trim();
+  const enableRules = Boolean(document.getElementById('johnRulesChk')?.checked);
+  const enableIncremental = Boolean(document.getElementById('johnIncrementalChk')?.checked);
+  const incrementalMode = String(document.getElementById('johnIncrementalMode')?.value || 'Digits').trim() || 'Digits';
+  if (!hash) {
+    addLog('John Crack: informe um hash.', 'warn');
+    return;
+  }
+  addLog(`John Crack: format=${format} ...`, 'info');
+  try {
+    const res = await fetch(apiUrl('/api/ghostctf/john-crack'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hash, format, wordlist, maxRunSec: 60, enableRules, enableIncremental, incrementalMode }),
+    });
+    const body = await res.text();
+    let data = null;
+    try { data = JSON.parse(body); } catch { data = null; }
+    if (!data || !res.ok || !data.ok) {
+      addLog(`John Crack: falha (${data?.error || `HTTP ${res.status}`})`, 'error');
+      return;
+    }
+    if (data.found) {
+      addLog(`John Crack: encontrado! ${hash} -> ${data.plaintext} (${data.format}, phase=${data.phase || 'unknown'})`, 'success');
+      addFinding({
+        type: 'secret',
+        prio: 'high',
+        score: 93,
+        value: `John cracked: ${hash}`,
+        meta: `plaintext=${data.plaintext}; format=${data.format}; wordlist=${data.wordlist}`,
+        url: '',
+      });
+      updateStat('secrets', Number(stats.secrets || 0) + 1);
+      updateStat('high', Number(stats.high || 0) + 1);
+    } else {
+      addLog(`John Crack: não encontrado (format=${data.format}, wordlists=${data.triedWordlists || 0}, phases=${(data.phasesTried || []).length}).`, 'info');
+    }
+  } catch (e) {
+    addLog(`John Crack: erro de rede (${e.message || e})`, 'error');
+  }
+}
+
 
 // ─── EXPORT FUNCTIONS ────────────────────────────────────
 function exportJSON() {
@@ -1763,6 +2052,7 @@ document.getElementById('domainInput').addEventListener('keydown', e => {
 
 async function fetchKaliCapabilities() {
   const line = document.getElementById('kaliCapLine');
+  const crackLine = document.getElementById('crackCapLine');
   const toggle = document.getElementById('kaliModeToggle');
   window.__kaliScanAvailable = false;
   try {
@@ -1774,6 +2064,10 @@ async function fetchKaliCapabilities() {
     if (line) {
       line.style.color = c.kali ? 'var(--accent2)' : 'var(--text-dim)';
       line.textContent = c.kali ? `Disponível — ${parts.join(' ')}` : `${c.message || 'Indisponível'} — ${parts.join(' ')}`;
+    }
+    if (crackLine) {
+      crackLine.style.color = t.john ? 'var(--accent2)' : 'var(--accent3)';
+      crackLine.textContent = `john:${t.john ? '✓' : '✗'} · fallback-wordlist:✓`;
     }
     if (c.kali) {
       window.__kaliScanAvailable = true;
@@ -1792,6 +2086,10 @@ async function fetchKaliCapabilities() {
     if (toggle) {
       toggle.disabled = true;
       toggle.checked = false;
+    }
+    if (crackLine) {
+      crackLine.style.color = 'var(--accent3)';
+      crackLine.textContent = 'Crack Mode: servidor offline.';
     }
   }
 }
@@ -1825,13 +2123,32 @@ function updatePlatformTags() {
   set('platformTag-google_ctf', 'google_ctf');
 }
 
+function updateModuleTags() {
+  document.querySelectorAll('input.mod').forEach((cb) => {
+    const item = cb.closest('.checkbox-item');
+    if (!item) return;
+    const tag = item.querySelector('.tag');
+    if (!tag) return;
+    const on = Boolean(cb.checked);
+    tag.textContent = on ? 'ON' : 'OFF';
+    tag.className = on ? 'tag tag-low' : 'tag tag-med';
+  });
+}
+
 document.querySelectorAll('input[name="platformMod"]').forEach(r => {
   r.addEventListener('change', () => {
     updatePlatformTags();
   });
 });
 
+document.querySelectorAll('input.mod').forEach((cb) => {
+  cb.addEventListener('change', () => {
+    updateModuleTags();
+  });
+});
+
 updatePlatformTags();
+updateModuleTags();
 
 fetchKaliCapabilities();
 loadRunsHistory();

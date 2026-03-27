@@ -49,6 +49,7 @@ export async function getKaliCapabilities() {
     searchsploit: await pathWhich('searchsploit'),
     wpscan: await pathWhich('wpscan'),
     whois: await pathWhich('whois'),
+    john: await pathWhich('john'),
   };
 
   const ready = qualifyDistro && tools.nmap;

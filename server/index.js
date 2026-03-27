@@ -1,6 +1,12 @@
 import 'dotenv/config';
 import express from 'express';
 import path from 'path';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import readline from 'node:readline';
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'url';
 import { fetchCrtShSubdomains } from './modules/subdomains.js';
 import { resolves } from './modules/dns.js';
@@ -40,6 +46,7 @@ import { googleCseSearch, urlMatchesTarget } from './modules/google-cse.js';
 import { getKaliCapabilities, runKaliAggressiveScan } from './modules/kali-scan.js';
 import { enumerateSubdomainsWithSubfinder, enumerateSubdomainsWithAmass } from './modules/kali-subdomain-tools.js';
 import { runGhostCtfPipeline } from './ghostctf/pipeline.js';
+import { getPlatform } from './ghostctf/platforms.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -995,6 +1002,458 @@ app.get('/api/capabilities', async (_req, res) => {
   } catch (e) {
     res.status(500).json({ kali: false, message: e.message, tools: {} });
   }
+});
+
+function decodeBase64Maybe(s) {
+  let x = String(s ?? '').trim();
+  if (!x) return null;
+  x = x.replace(/-/g, '+').replace(/_/g, '/');
+  const mod = x.length % 4;
+  if (mod === 2) x += '==';
+  else if (mod === 3) x += '=';
+  else if (mod === 1) return null;
+  try {
+    const out = Buffer.from(x, 'base64').toString('utf8');
+    return out && out.length >= 1 ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeBase32Maybe(s) {
+  let x = String(s ?? '').trim().replace(/=+$/g, '');
+  if (!x) return null;
+  x = x.toUpperCase();
+  if (!/^[A-Z2-7]+$/.test(x)) return null;
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const ch of x) {
+    const idx = alphabet.indexOf(ch);
+    if (idx < 0) return null;
+    bits += idx.toString(2).padStart(5, '0');
+  }
+  let out = '';
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    out += String.fromCharCode(parseInt(bits.slice(i, i + 8), 2));
+  }
+  if (!out) return null;
+  try {
+    return decodeURIComponent(escape(out));
+  } catch {
+    return out;
+  }
+}
+
+function extractFlagsByPlatform(text, platformId) {
+  const platform = getPlatform(platformId);
+  if (!platform) return [];
+  const t = String(text ?? '');
+  const re = new RegExp(platform.flagRegex.source, platform.flagRegex.flags);
+  const out = [];
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    const f = m[0];
+    if (platform.validateFlag(f)) out.push(f);
+    if (out.length >= 25) break;
+  }
+  return [...new Set(out)];
+}
+
+app.post('/api/ghostctf/decode', async (req, res) => {
+  const input = String(req.body?.input ?? '').trim();
+  const platformId = String(req.body?.platform || 'solyd').trim().toLowerCase();
+  if (!input) {
+    res.status(400).json({ ok: false, error: 'input vazio' });
+    return;
+  }
+
+  const b64 = decodeBase64Maybe(input);
+  const b32 = decodeBase32Maybe(input);
+  const candidates = [];
+  if (b64 != null) candidates.push({ kind: 'base64', decoded: b64 });
+  if (b32 != null) candidates.push({ kind: 'base32', decoded: b32 });
+
+  let detected = 'unknown';
+  if (b64 != null && b32 == null) detected = 'base64';
+  else if (b32 != null && b64 == null) detected = 'base32';
+  else if (b64 != null && b32 != null) detected = 'ambiguous';
+
+  const flags = [];
+  for (const c of candidates) {
+    const hits = extractFlagsByPlatform(c.decoded, platformId);
+    for (const h of hits) flags.push({ flag: h, source: c.kind });
+  }
+  const uniq = [];
+  const seen = new Set();
+  for (const f of flags) {
+    if (seen.has(f.flag)) continue;
+    seen.add(f.flag);
+    uniq.push(f);
+  }
+
+  res.json({
+    ok: true,
+    detected,
+    candidates: candidates.map((c) => ({
+      kind: c.kind,
+      decoded: c.decoded.slice(0, 4000),
+    })),
+    flags: uniq,
+  });
+});
+
+app.post('/api/ghostctf/hash', async (req, res) => {
+  const input = String(req.body?.input ?? '');
+  if (!input.trim()) {
+    res.status(400).json({ ok: false, error: 'input vazio' });
+    return;
+  }
+  const text = input;
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+
+  const md5 = crypto.createHash('md5').update(text, 'utf8').digest('hex');
+  const sha1 = crypto.createHash('sha1').update(text, 'utf8').digest('hex');
+  const sha256 = crypto.createHash('sha256').update(text, 'utf8').digest('hex');
+
+  let detected = 'texto';
+  if (/^[a-f0-9]{32}$/.test(lower)) detected = 'hash-md5';
+  else if (/^[a-f0-9]{40}$/.test(lower)) detected = 'hash-sha1';
+  else if (/^[a-f0-9]{64}$/.test(lower)) detected = 'hash-sha256';
+
+  res.json({
+    ok: true,
+    detected,
+    inputLength: text.length,
+    hashes: { md5, sha1, sha256 },
+  });
+});
+
+async function crackMd5WithWordlist({ targetHash, wordlistPath, maxLines = 300000 }) {
+  return await new Promise((resolve, reject) => {
+    const stream = fs.createReadStream(wordlistPath, { encoding: 'utf8' });
+    stream.on('error', (e) => reject(e));
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+    let tried = 0;
+    let found = null;
+
+    rl.on('line', (line) => {
+      if (found) return;
+      tried += 1;
+      const candidate = String(line ?? '');
+      const digest = crypto.createHash('md5').update(candidate, 'utf8').digest('hex');
+      if (digest === targetHash) {
+        found = candidate;
+        rl.close();
+      } else if (tried >= maxLines) {
+        rl.close();
+      }
+    });
+    rl.on('close', () => resolve({ tried, found }));
+  });
+}
+
+function runProc(cmd, args, timeoutMs = 90000) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = [];
+    const err = [];
+    let killed = false;
+    const t = setTimeout(() => {
+      killed = true;
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        // ignore
+      }
+      reject(new Error(`${cmd} timeout (${timeoutMs}ms)`));
+    }, timeoutMs);
+    child.stdout.on('data', (d) => out.push(d));
+    child.stderr.on('data', (d) => err.push(d));
+    child.on('error', (e) => {
+      clearTimeout(t);
+      reject(e);
+    });
+    child.on('close', (code) => {
+      clearTimeout(t);
+      if (killed) return;
+      resolve({
+        code,
+        stdout: Buffer.concat(out).toString('utf8'),
+        stderr: Buffer.concat(err).toString('utf8'),
+      });
+    });
+  });
+}
+
+async function hasCommand(cmd) {
+  const finder = process.platform === 'win32' ? 'where' : 'which';
+  try {
+    const r = await runProc(finder, [cmd], 4000);
+    return r.code === 0;
+  } catch {
+    return false;
+  }
+}
+
+async function crackMd5WithJohn({ targetHash, wordlistPath, maxRunSec = 45 }) {
+  const johnOk = await hasCommand('john');
+  if (!johnOk) return { ok: false, found: false, reason: 'john_missing' };
+  if (!wordlistPath || !fs.existsSync(wordlistPath)) return { ok: false, found: false, reason: 'wordlist_missing' };
+
+  const dir = await mkdtemp(path.join(tmpdir(), 'ghjohn-'));
+  const hashFile = path.join(dir, 'hashes.txt');
+  const potFile = path.join(dir, 'john.pot');
+  try {
+    await writeFile(hashFile, `${targetHash}\n`, 'utf8');
+    const runArgs = [
+      '--format=raw-md5',
+      '--wordlist',
+      wordlistPath,
+      `--pot=${potFile}`,
+      `--max-run-time=${Math.max(5, Math.min(180, Number(maxRunSec) || 45))}`,
+      hashFile,
+    ];
+    await runProc('john', runArgs, 120000);
+
+    const showArgs = ['--show', '--format=raw-md5', `--pot=${potFile}`, hashFile];
+    const shown = await runProc('john', showArgs, 15000);
+    const lines = String(shown.stdout || '')
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const crackLine = lines.find((x) => x.includes(':') && !/^\d+\s+password hash/i.test(x));
+    if (!crackLine) return { ok: true, found: false };
+
+    const parts = crackLine.split(':');
+    const plaintext = parts.length >= 2 ? parts[1] : '';
+    if (!plaintext) return { ok: true, found: false };
+    return { ok: true, found: true, plaintext };
+  } catch (e) {
+    return { ok: false, found: false, reason: e?.message || String(e) };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+async function crackHashWithJohn({
+  hashLine,
+  format,
+  wordlistPath,
+  maxRunSec = 60,
+  useRules = false,
+  incrementalMode = '',
+} = {}) {
+  const johnOk = await hasCommand('john');
+  if (!johnOk) return { ok: false, found: false, reason: 'john_missing' };
+  const hasWordlist = wordlistPath && fs.existsSync(wordlistPath);
+  if (!hasWordlist && !incrementalMode) return { ok: false, found: false, reason: 'wordlist_missing' };
+
+  const fmt = String(format || '').trim() || 'raw-md5';
+  const dir = await mkdtemp(path.join(tmpdir(), 'ghjohnx-'));
+  const hashFile = path.join(dir, 'hashes.txt');
+  const potFile = path.join(dir, 'john.pot');
+  try {
+    await writeFile(hashFile, `${String(hashLine || '').trim()}\n`, 'utf8');
+    const runArgs = [`--format=${fmt}`, `--pot=${potFile}`, `--max-run-time=${Math.max(5, Math.min(300, Number(maxRunSec) || 60))}`];
+    if (incrementalMode) {
+      runArgs.push(`--incremental=${incrementalMode}`);
+    } else {
+      runArgs.push('--wordlist', wordlistPath);
+      if (useRules) runArgs.push('--rules');
+    }
+    runArgs.push(hashFile);
+    const run = await runProc('john', runArgs, 180000);
+    const showArgs = ['--show', `--format=${fmt}`, `--pot=${potFile}`, hashFile];
+    const shown = await runProc('john', showArgs, 20000);
+    const lines = String(shown.stdout || '')
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const crackLine = lines.find((x) => x.includes(':') && !/^\d+\s+password hash/i.test(x));
+    if (!crackLine) return { ok: true, found: false, runCode: run.code };
+    const parts = crackLine.split(':');
+    const plaintext = parts.length >= 2 ? parts[1] : '';
+    if (!plaintext) return { ok: true, found: false, runCode: run.code };
+    return { ok: true, found: true, plaintext, runCode: run.code };
+  } catch (e) {
+    return { ok: false, found: false, reason: e?.message || String(e) };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+app.post('/api/ghostctf/hash-crack', async (req, res) => {
+  const inputRaw = String(req.body?.input ?? '').trim().toLowerCase();
+  const isMd5 = /^[a-f0-9]{32}$/.test(inputRaw);
+  if (!isMd5) {
+    res.status(400).json({ ok: false, error: 'informe um hash MD5 (32 hex)' });
+    return;
+  }
+
+  const customWordlist = String(req.body?.wordlist ?? '').trim();
+  const maxLines = Math.max(1000, Math.min(2000000, Number(req.body?.maxLines) || 300000));
+  const wordlists = [
+    customWordlist || null,
+    '/usr/share/wordlists/rockyou.txt',
+    '/usr/share/wordlists/dirb/common.txt',
+    '/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt',
+    '/usr/share/seclists/Passwords/Common-Credentials/500-worst-passwords.txt',
+  ].filter(Boolean);
+
+  for (const wl of wordlists) {
+    if (!fs.existsSync(wl)) continue;
+    try {
+      const j = await crackMd5WithJohn({ targetHash: inputRaw, wordlistPath: wl, maxRunSec: 45 });
+      if (j.found) {
+        res.json({
+          ok: true,
+          found: true,
+          plaintext: j.plaintext,
+          tried: null,
+          engine: 'john',
+          wordlist: wl,
+        });
+        return;
+      }
+      const r = await crackMd5WithWordlist({ targetHash: inputRaw, wordlistPath: wl, maxLines });
+      if (r.found != null) {
+        res.json({
+          ok: true,
+          found: true,
+          plaintext: r.found,
+          tried: r.tried,
+          engine: 'local-wordlist',
+          wordlist: wl,
+        });
+        return;
+      }
+    } catch {
+      // tenta próxima
+    }
+  }
+
+  res.json({
+    ok: true,
+    found: false,
+    plaintext: null,
+    triedApprox: maxLines,
+    message: 'não encontrado nas wordlists disponíveis dentro do limite',
+  });
+});
+
+app.post('/api/ghostctf/john-crack', async (req, res) => {
+  const hashLine = String(req.body?.hash ?? '').trim();
+  if (!hashLine) {
+    res.status(400).json({ ok: false, error: 'hash vazio' });
+    return;
+  }
+  const format = String(req.body?.format ?? 'raw-md5').trim() || 'raw-md5';
+  const customWordlist = String(req.body?.wordlist ?? '').trim();
+  const maxRunSec = Math.max(5, Math.min(300, Number(req.body?.maxRunSec) || 60));
+  const enableRules = Boolean(req.body?.enableRules ?? true);
+  const enableIncremental = Boolean(req.body?.enableIncremental ?? false);
+  const incrementalMode = String(req.body?.incrementalMode ?? 'Digits').trim() || 'Digits';
+
+  const wordlists = [
+    customWordlist || null,
+    '/usr/share/wordlists/rockyou.txt',
+    '/usr/share/wordlists/dirb/common.txt',
+    '/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt',
+    '/usr/share/seclists/Passwords/Common-Credentials/500-worst-passwords.txt',
+  ].filter(Boolean);
+
+  let triedWordlists = 0;
+  let phasesTried = [];
+  for (const wl of wordlists) {
+    if (!fs.existsSync(wl)) continue;
+    triedWordlists += 1;
+    // Fase 1: wordlist direta
+    let r = await crackHashWithJohn({
+      hashLine,
+      format,
+      wordlistPath: wl,
+      maxRunSec,
+      useRules: false,
+      incrementalMode: '',
+    });
+    phasesTried.push(`wordlist:${wl}`);
+    if (r.found) {
+      res.json({
+        ok: true,
+        found: true,
+        engine: 'john',
+        plaintext: r.plaintext,
+        format,
+        wordlist: wl,
+        phase: 'wordlist',
+      });
+      return;
+    }
+    // Fase 2: wordlist + rules
+    if (enableRules) {
+      r = await crackHashWithJohn({
+        hashLine,
+        format,
+        wordlistPath: wl,
+        maxRunSec,
+        useRules: true,
+        incrementalMode: '',
+      });
+      phasesTried.push(`wordlist+rules:${wl}`);
+      if (r.found) {
+        res.json({
+          ok: true,
+          found: true,
+          engine: 'john',
+          plaintext: r.plaintext,
+          format,
+          wordlist: wl,
+          phase: 'wordlist+rules',
+        });
+        return;
+      }
+    }
+    if (!r.ok && r.reason === 'john_missing') {
+      res.status(400).json({ ok: false, error: 'john não encontrado no PATH' });
+      return;
+    }
+  }
+
+  // Fase 3: incremental curto (opcional, sem wordlist)
+  if (enableIncremental) {
+    phasesTried.push(`incremental:${incrementalMode}`);
+    const r = await crackHashWithJohn({
+      hashLine,
+      format,
+      wordlistPath: '',
+      maxRunSec: Math.min(maxRunSec, 45),
+      useRules: false,
+      incrementalMode,
+    });
+    if (r.found) {
+      res.json({
+        ok: true,
+        found: true,
+        engine: 'john',
+        plaintext: r.plaintext,
+        format,
+        wordlist: null,
+        phase: `incremental:${incrementalMode}`,
+      });
+      return;
+    }
+  }
+
+  res.json({
+    ok: true,
+    found: false,
+    engine: 'john',
+    format,
+    triedWordlists,
+    phasesTried,
+    message: 'não encontrado nas wordlists disponíveis',
+  });
 });
 
 app.get('/api/runs', async (req, res) => {
