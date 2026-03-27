@@ -1103,6 +1103,7 @@
         <label class="checkbox-item"><input type="checkbox" class="mod" value="udpScan"><div class="checkbox-box"></div><span class="checkbox-text">UDP scan</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="tcpAllPorts"><div class="checkbox-box"></div><span class="checkbox-text">TCP all ports (-p-)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="exploitdb"><div class="checkbox-box"></div><span class="checkbox-text">Exploit-DB lookup (searchsploit)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="lfiProbe"><div class="checkbox-box"></div><span class="checkbox-text">LFI probe (/etc/passwd em params suspeitos)</span><span class="tag tag-med">OFF</span></label>
       </div>
     </div>
   </aside>
@@ -1622,7 +1623,7 @@ async function startRecon() {
   const platform = selectedPlatformRadio?.value || 'solyd';
   const udpScan = selectedMods.includes('udpScan');
   const tcpAllPorts = selectedMods.includes('tcpAllPorts');
-  const modulesGhost = selectedMods.filter((v) => v === 'udpScan' || v === 'tcpAllPorts' || v === 'exploitdb');
+  const modulesGhost = selectedMods.filter((v) => v === 'udpScan' || v === 'tcpAllPorts' || v === 'exploitdb' || v === 'lfiProbe');
 
   addLog(`Iniciando GHOSTCTF para: ${targetDomain}`, 'section');
   addLog(`Módulos (GhostCTF): ${modulesGhost.join(', ') || '(nenhum)' }`, 'info');

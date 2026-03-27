@@ -7,6 +7,9 @@ import { searchExploitDbFromNmap } from './exploitdb.js';
 import { expandWebResponsesWithLinkCrawl } from './html-links.js';
 import { appendRobotsTxtResponses } from './robots-probe.js';
 import { ftpPortsFromNmap, probeFtpAnonymous } from './ftp-anonymous-probe.js';
+import { probeSshService, sshPortsFromNmap } from './ssh-probe.js';
+import { mysqlPortsFromNmap, probeMysqlService } from './mysql-probe.js';
+import { runLfiPasswdProbe } from './lfi-probe.js';
 
 export async function runGhostCtfPipeline({
   ip,
@@ -137,6 +140,93 @@ export async function runGhostCtfPipeline({
         const msg = e?.message || String(e);
         ftpAnonymousSummary.errors.push(`${ftpPort}:${msg}`);
         log(`FTP probe ${ip}:${ftpPort}: ${msg}`, 'warn');
+      }
+    }
+  }
+
+  /** @type {{ tried: number; okPorts: number[]; errors: string[] }} */
+  const sshSummary = { tried: 0, okPorts: [], errors: [] };
+  const sshPorts = sshPortsFromNmap(nmapRows);
+  if (sshPorts.length) {
+    log(`SSH detetado (porta(s) ${sshPorts.join(', ')}) — a recolher banner + hostkeys...`, 'info');
+    for (const sshPort of sshPorts) {
+      sshSummary.tried += 1;
+      try {
+        const sr = await probeSshService({ host: ip, port: sshPort, timeoutMs: 12000 });
+        const keyHint = Array.isArray(sr.hostKeys) ? sr.hostKeys.slice(0, 2).join(' | ').slice(0, 220) : '';
+        if (sr.ok) {
+          sshSummary.okPorts.push(sshPort);
+          const meta = [
+            sr.banner ? `banner=${sr.banner}` : null,
+            keyHint ? `keyscan=${keyHint}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          addFinding(
+            {
+              type: 'endpoint',
+              prio: 'med',
+              score: 64,
+              value: `SSH ativo @ ${ip}:${sshPort}`,
+              meta: meta || 'SSH respondeu (banner/keyscan)',
+              url: null,
+            },
+            'endpoints',
+          );
+          log(`SSH probe ${ip}:${sshPort}: ${sr.banner || 'banner ausente'}${keyHint ? ' · hostkey recolhida' : ''}`, 'success');
+          intel(`SSH ${ip}:${sshPort} — ${sr.banner || 'banner não exposto'}${keyHint ? ' · keyscan OK' : ''}`);
+        } else {
+          const err = sr.bannerError || sr.keyscanError || 'sem resposta';
+          sshSummary.errors.push(`${sshPort}:${err}`);
+          log(`SSH probe ${ip}:${sshPort}: ${err}`, 'info');
+        }
+      } catch (e) {
+        const msg = e?.message || String(e);
+        sshSummary.errors.push(`${sshPort}:${msg}`);
+        log(`SSH probe ${ip}:${sshPort}: ${msg}`, 'warn');
+      }
+    }
+  }
+
+  /** @type {{ tried: number; okPorts: number[]; errors: string[] }} */
+  const mysqlSummary = { tried: 0, okPorts: [], errors: [] };
+  const mysqlPorts = mysqlPortsFromNmap(nmapRows);
+  if (mysqlPorts.length) {
+    log(`MySQL detetado (porta(s) ${mysqlPorts.join(', ')}) — a recolher handshake/version...`, 'info');
+    for (const mysqlPort of mysqlPorts) {
+      mysqlSummary.tried += 1;
+      try {
+        const mr = await probeMysqlService({ host: ip, port: mysqlPort, timeoutMs: 12000 });
+        if (mr.ok) {
+          mysqlSummary.okPorts.push(mysqlPort);
+          const meta = [
+            mr.serverVersion ? `version=${mr.serverVersion}` : null,
+            Number.isFinite(mr.protocolVersion) ? `proto=${mr.protocolVersion}` : null,
+            Number.isFinite(mr.connectionId) ? `connId=${mr.connectionId}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          addFinding(
+            {
+              type: 'endpoint',
+              prio: 'med',
+              score: 66,
+              value: `MySQL ativo @ ${ip}:${mysqlPort}`,
+              meta: meta || 'handshake MySQL recebido',
+              url: null,
+            },
+            'endpoints',
+          );
+          log(`MySQL probe ${ip}:${mysqlPort}: ${mr.serverVersion || 'handshake OK'}`, 'success');
+          intel(`MySQL ${ip}:${mysqlPort} — ${mr.serverVersion || 'versão não exposta'}`);
+        } else {
+          mysqlSummary.errors.push(`${mysqlPort}:${mr.error || 'sem handshake'}`);
+          log(`MySQL probe ${ip}:${mysqlPort}: ${mr.error || 'sem handshake'}`, 'info');
+        }
+      } catch (e) {
+        const msg = e?.message || String(e);
+        mysqlSummary.errors.push(`${mysqlPort}:${msg}`);
+        log(`MySQL probe ${ip}:${mysqlPort}: ${msg}`, 'warn');
       }
     }
   }
@@ -333,6 +423,52 @@ export async function runGhostCtfPipeline({
   // 7) PARAM DISCOVERY / FLAG SCAN (mapa para "params")
   pipe('params', 'active');
   progress(78);
+
+  /** @type {{ attempts: number; hits: number }} */
+  const lfiSummary = { attempts: 0, hits: 0 };
+  if (Array.isArray(modules) && modules.includes('lfiProbe')) {
+    try {
+      const lfiSeedUrls = [];
+      for (const r of webResponses || []) {
+        if (!r?.url) continue;
+        lfiSeedUrls.push(String(r.url));
+        if (r.finalUrl) lfiSeedUrls.push(String(r.finalUrl));
+      }
+      const lfi = await runLfiPasswdProbe({
+        urls: lfiSeedUrls,
+        log,
+        maxAttempts: 24,
+        timeoutMs: 12000,
+        maxBodyBytes: 180000,
+      });
+      lfiSummary.attempts = Number(lfi?.attempts || 0);
+      const hits = Array.isArray(lfi?.hits) ? lfi.hits : [];
+      lfiSummary.hits = hits.length;
+      for (const h of hits) {
+        addFinding(
+          {
+            type: 'param',
+            prio: 'high',
+            score: 94,
+            value: `Possível LFI via ${h.param} em ${h.baseUrl}`,
+            meta: `payload=${h.payload} · status=${h.status} · evidência=${h.evidence}`,
+            url: h.testUrl || h.baseUrl,
+          },
+          'params',
+        );
+        log(`LFI provável: ${h.testUrl} (${h.evidence})`, 'success');
+        if (h.snippet) intel(`LFI snippet: ${h.snippet}`);
+      }
+      if (!hits.length) {
+        log(`LFI probe: sem evidência de /etc/passwd (tentativas=${lfiSummary.attempts})`, 'info');
+      }
+    } catch (e) {
+      log(`LFI probe: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('LFI probe: OFF (ative em Modules)', 'info');
+  }
+
   log('Scan de flags Solyd{...} e validação do formato (com base64/base32 decoding)...', 'info');
 
   ingestFlagFindingsFromWebResponses({
@@ -392,6 +528,20 @@ export async function runGhostCtfPipeline({
       tried: ftpAnonymousSummary.tried,
       okPorts: ftpAnonymousSummary.successPorts,
       errors: ftpAnonymousSummary.errors,
+    },
+    sshProbe: {
+      tried: sshSummary.tried,
+      okPorts: sshSummary.okPorts,
+      errors: sshSummary.errors,
+    },
+    mysqlProbe: {
+      tried: mysqlSummary.tried,
+      okPorts: mysqlSummary.okPorts,
+      errors: mysqlSummary.errors,
+    },
+    lfiProbe: {
+      attempts: lfiSummary.attempts,
+      hits: lfiSummary.hits,
     },
   };
 
