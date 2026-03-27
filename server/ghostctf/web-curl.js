@@ -32,7 +32,8 @@ function extractLastHeaderBlock(bufText) {
 
 function parseStatusCode(headersText) {
   const firstLine = String(headersText || '').split(/\r?\n/)[0] || '';
-  const m = firstLine.match(/HTTP\/\d\.\d\s+(\d{3})/i);
+  // curl com HTTP/2 usa "HTTP/2 200", não "HTTP/1.1 200"
+  const m = firstLine.match(/HTTP\/\d(?:\.\d)?\s+(\d{3})\b/i);
   return m ? Number(m[1]) : null;
 }
 
@@ -129,6 +130,8 @@ function isProbablyHttpService(name, product) {
 /** Uma porta → um esquema: TLS explícito ou 443/8443 → https; caso contrário http (sem duplicar os dois na mesma porta). */
 export function rowPrefersHttps(port, name, product, extrainfo) {
   const p = Number(port);
+  // Na 80 o browser e a maioria dos CTFs falam HTTP; nmap "ssl/http" na 80 gerava https://IP:80/ (inútil e falha link crawl).
+  if (p === 80) return false;
   const s = `${name || ''} ${product || ''} ${extrainfo || ''}`.toLowerCase();
   if (p === 443 || p === 8443) return true;
   if (/\bssl\b|https|tls/.test(s)) return true;
@@ -185,8 +188,27 @@ export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, l
     }
   }
 
+  // Prioridade: curl http://IP/ primeiro (CTFs com nmap “ssl/http” na 80 ou só HTTPS na lista).
+  const seedRoot = `http://${ip}/`;
+  if (!seen.has(seedRoot)) {
+    seen.add(seedRoot);
+    webCandidates.unshift({ url: seedRoot, port: 80, portName: 'seed-http-root', proto: 'tcp' });
+  }
+
+  // Descarta https explícito na porta 80 (url canon incorrecta).
+  const saneCandidates = webCandidates.filter((c) => {
+    try {
+      const u = new URL(String(c.url));
+      if (u.protocol !== 'https:') return true;
+      const p = u.port;
+      return p !== '80';
+    } catch {
+      return true;
+    }
+  });
+
   const out = [];
-  for (const c of webCandidates) {
+  for (const c of saneCandidates) {
     try {
       if (typeof log === 'function') {
         log(`[http] GET ${c.url} (repro: curl -k -sS --compressed -L '${c.url}')`, 'info');

@@ -76,9 +76,13 @@ export function decodeBodyBufferToUtf8(bodyBuf, lastHeaderBlockText) {
   return bodyBuf.toString('utf8');
 }
 
+/** Janela maior que 16k: páginas com <head>/scripts longos tinham o primeiro <a> fora do slice e o crawl era ignorado. */
+const HTMLISH_SCAN_MAX = 500_000;
+
 export function bodyLooksHtmlish(text) {
-  const s = String(text || '').slice(0, 16000);
-  if (s.length < 6) return false;
+  const full = String(text || '');
+  if (full.length < 6) return false;
+  const s = full.length <= HTMLISH_SCAN_MAX ? full : full.slice(0, HTMLISH_SCAN_MAX);
   return (
     /<(html|head|body|!DOCTYPE|a[\s>]|div[\s>]|span[\s>]|nav[\s>]|ul[\s>]|\?php)/i.test(s) ||
     /\bhref\s*=/i.test(s) ||

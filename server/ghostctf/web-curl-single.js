@@ -30,7 +30,7 @@ function extractLastHeaderBlock(bufText) {
 
 function parseStatusCode(headersText) {
   const firstLine = String(headersText || '').split(/\r?\n/)[0] || '';
-  const m = firstLine.match(/HTTP\/\d\.\d\s+(\d{3})/i);
+  const m = firstLine.match(/HTTP\/\d(?:\.\d)?\s+(\d{3})\b/i);
   return m ? Number(m[1]) : null;
 }
 

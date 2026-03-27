@@ -12,7 +12,7 @@ export function detectTech(headers, bodySnippet) {
   const cf = headers.get('cf-ray');
   if (cf) list.push('Cloudflare (CF-Ray presente)');
 
-  const lower = bodySnippet.slice(0, 12000).toLowerCase();
+  const lower = String(bodySnippet == null ? '' : bodySnippet).slice(0, 12000).toLowerCase();
   const hints = [
     ['wp-content', 'WordPress'],
     ['react', 'React (hint)'],
@@ -30,5 +30,5 @@ export function detectTech(headers, bodySnippet) {
   }
 
   const base = [...new Set(list)];
-  return enrichTechWithVersions(headers, bodySnippet.slice(0, 50000), base);
+  return enrichTechWithVersions(headers, String(bodySnippet == null ? '' : bodySnippet).slice(0, 50000), base);
 }

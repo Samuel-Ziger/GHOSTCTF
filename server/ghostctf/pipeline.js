@@ -157,6 +157,7 @@ export async function runGhostCtfPipeline({
   // Segue links no HTML (mesmo host que o IP), p.ex. index → noticias.php (flags em comentários / outras páginas)
   let linkPagesFetched = 0;
   try {
+    log('Rastreio de links no HTML (href → curl no mesmo IP/host que resolve para o alvo)...', 'info');
     const linkRes = await expandWebResponsesWithLinkCrawl(webResponses, {
       ip,
       log,
@@ -199,33 +200,14 @@ export async function runGhostCtfPipeline({
 
   // Se a flag já aparecer em headers/body do primeiro probe,
   // emitimos imediatamente e continuamos o pipeline.
-  {
-    const evidenceChunks = [];
-    for (const r of webResponses || []) {
-      if (!r) continue;
-      const ht = safeToString(r.headersText || '');
-      const bt = safeToString(r.bodyText || '');
-      if (ht) evidenceChunks.push(ht);
-      if (bt) evidenceChunks.push(bt);
-    }
-    const rawText = evidenceChunks.join('\n').slice(0, 500000);
-    const flagHits = detectFlagsWithDecoding({ rawText, platformId });
-    for (const hit of flagHits) {
-      if (foundFlagSet.has(hit.flag)) continue;
-      foundFlagSet.add(hit.flag);
-      addFinding(
-        {
-          type: 'flag',
-          prio: 'high',
-          score: 99,
-          value: hit.flag,
-          meta: `platform=${platformId}; evidence=${hit.evidence || 'unknown'}; decodedFrom=${hit.decodedFrom || ''}`,
-          url: null,
-        },
-        'flags',
-      );
-    }
-  }
+  ingestFlagFindingsFromWebResponses({
+    webResponses,
+    platformId,
+    foundFlagSet,
+    addFinding,
+    log,
+    maxTextLen: 500_000,
+  });
   pipe('alive', 'done');
   progress(52);
 
@@ -308,34 +290,14 @@ export async function runGhostCtfPipeline({
   progress(78);
   log('Scan de flags Solyd{...} e validação do formato (com base64/base32 decoding)...', 'info');
 
-  {
-    const evidenceChunks = [];
-    for (const r of webResponses || []) {
-      if (!r) continue;
-      const ht = safeToString(r.headersText || '');
-      const bt = safeToString(r.bodyText || '');
-      if (ht) evidenceChunks.push(ht);
-      if (bt) evidenceChunks.push(bt);
-    }
-
-    const rawText = evidenceChunks.join('\n').slice(0, 900000);
-    const flagHits = detectFlagsWithDecoding({ rawText, platformId });
-    for (const hit of flagHits) {
-      if (foundFlagSet.has(hit.flag)) continue;
-      foundFlagSet.add(hit.flag);
-      addFinding(
-        {
-          type: 'flag',
-          prio: 'high',
-          score: 99,
-          value: hit.flag,
-          meta: `platform=${platformId}; evidence=${hit.evidence || 'unknown'}; decodedFrom=${hit.decodedFrom || ''}`,
-          url: null,
-        },
-        'flags',
-      );
-    }
-  }
+  ingestFlagFindingsFromWebResponses({
+    webResponses,
+    platformId,
+    foundFlagSet,
+    addFinding,
+    log,
+    maxTextLen: 900_000,
+  });
 
   // stats “params” conta flags novas (deduplicadas)
   pipe('params', 'done');
@@ -421,5 +383,52 @@ export async function runGhostCtfPipeline({
 
 function safeToString(v) {
   return v == null ? '' : String(v);
+}
+
+/**
+ * Agrega headers/bodies das respostas web e extrai flags (com decoding).
+ * Usa array garantido — evita ReferenceError se detectFlagsWithDecoding falhar.
+ */
+function ingestFlagFindingsFromWebResponses({
+  webResponses,
+  platformId,
+  foundFlagSet,
+  addFinding,
+  log,
+  maxTextLen = 900_000,
+}) {
+  const evidenceChunks = [];
+  for (const r of webResponses || []) {
+    if (!r) continue;
+    const ht = safeToString(r.headersText || '');
+    const bt = safeToString(r.bodyText || '');
+    if (ht) evidenceChunks.push(ht);
+    if (bt) evidenceChunks.push(bt);
+  }
+  const rawText = evidenceChunks.join('\n').slice(0, maxTextLen);
+  let flagHits = [];
+  try {
+    const hits = detectFlagsWithDecoding({ rawText, platformId });
+    flagHits = Array.isArray(hits) ? hits : [];
+  } catch (e) {
+    if (typeof log === 'function') log(`scan de flags: ${e?.message || String(e)}`, 'warn');
+    flagHits = [];
+  }
+  for (const hit of flagHits) {
+    if (!hit || !hit.flag) continue;
+    if (foundFlagSet.has(hit.flag)) continue;
+    foundFlagSet.add(hit.flag);
+    addFinding(
+      {
+        type: 'flag',
+        prio: 'high',
+        score: 99,
+        value: hit.flag,
+        meta: `platform=${platformId}; evidence=${hit.evidence || 'unknown'}; decodedFrom=${hit.decodedFrom || ''}`,
+        url: null,
+      },
+      'flags',
+    );
+  }
 }
 
