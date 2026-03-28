@@ -1,47 +1,70 @@
-# GHOSTCTF / GhostRecon
+<div align="center">
 
-**Console web para recon em CTF por IPv4** com pipeline servidor em Node.js, e **API de recon passivo por domínio** voltada a bug bounty / OSINT (no mesmo backend).
+# GHOSTCTF
 
-O `package.json` chama o projeto de **ghostrecon**; a UI marca **GHOSTCTF**. São duas faces do mesmo serviço: automação agressiva opcional no alvo do lab e, via HTTP, enumeração passiva quando trabalhas com domínios.
+**Console web e API de recon automatizado para Capture The Flag** — um pipeline único que junta `nmap`, provas HTTP, enumeração de diretórios, deteção de flags, playbooks e dezenas de módulos opcionais, com histórico e exportação.
+
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
+![Interface GHOSTCTF — pipeline CTF, decode, shell PTY, findings e exportação](GhostCtf.png)
+
+*UI escura, pipeline por etapas, terminal de log, decode rápido, cheats de shell reversa, histórico e triagem de achados.*
+
+</div>
 
 ---
 
-## O que isto faz
+## O que é
 
-| Modo | Entrada | Destaque |
-|------|---------|----------|
-| **GHOSTCTF** (UI) | IPv4 | `nmap`, enumeração web, diretórios, deteção de flags (Solyd, HTB, Google CTF), playbooks, provas opcionais (LFI, SQLMap, WPScan, FTP anónimo, SSH, MySQL, Exploit-DB, …). Stream **NDJSON** para o terminal da página. |
-| **GhostRecon** (API) | Domínio válido | Subdomínios (crt.sh, VirusTotal opcional), DNS, RDAP, cabeçalhos de segurança, `robots.txt` / sitemaps, Wayback, Common Crawl, análise de JS, segredos heurísticos, dorks, Google CSE / GitHub opcionais, modo **Kali** opcional (ffuf, nuclei, …). |
+O **GHOSTCTF** é uma aplicação **Node.js** (Express) que serve uma **SPA** (`index.html`) e expõe APIs para:
 
-Os runs podem ser **gravados** (SQLite local por omissão, ou **Supabase/Postgres** via `DATABASE_URL` ou chaves da API).
+| Caminho | Uso |
+|--------|-----|
+| **CTF por IP** (`/api/ghostctf/stream`) | Alvo **IPv4** — `nmap`, curl web (IP e nomes em `/etc/hosts`), `robots.txt`, rastreio de links, **ffuf / gobuster / dirb**, flags (Solyd, HackTheBox, Google CTF), playbook, LFI/SQLMap opcionais, WPScan, FTP/SSH/MySQL, Exploit-DB, vhost/sitemap, disclosure, etc. Stream **NDJSON** em tempo real. |
+| **Recon por domínio** (`/api/recon/stream`) | **Domínio** — subdomínios, DNS, RDAP, Wayback, Common Crawl, análise de JS, dorks, modo **Kali** opcional (ferramentas no `PATH`). |
+
+Os runs podem ser **persistidos** em **SQLite** (local) ou **Postgres / Supabase**.
+
+---
+
+## Funcionalidades (destaques)
+
+- **Pipeline visual** — etapas tipo *INPUT → Nmap + serviços → UDP/RDAP → Web + links → Dir enum / superfície → descoberta de URLs*, com progresso e logs.
+- **Findings** — triagem por prioridade (HIGH / MED / LOW), endpoints, parâmetros, flags e secrets; contadores em tempo real.
+- **Decode / hash / crack** — Base64, Base32, operações de hash e integração com ferramentas do sistema (ex.: John) na própria UI.
+- **Shell reversa (PTY)** — atalhos copiáveis (`script`, `TERM`, `python3 -c pty…`) e servidor HTTP rápido para transferir ficheiros.
+- **Mini-terminal** — integração com fluxo de trabalho (ex.: `nc`), configurável por variáveis de ambiente.
+- **Exportação** — relatórios em **JSON**, **Markdown** e **TXT**.
+- **Histórico** — lista de execuções anteriores (quando usas base de dados).
+
+Plataformas de flag suportadas no núcleo: **Solyd**, **HackTheBox**, **Google CTF** (regex e validação em `server/ghostctf/platforms.js`).
 
 ---
 
 ## Requisitos
 
 - **Node.js** ≥ 18  
-- Ferramentas **opcionais**:
-  - **Kali** (ou ambiente com as mesmas ferramentas no `PATH`) para scans agressivos no modo domínio ou capacidades extra detetadas em `/api/capabilities`.
-  - **John the Ripper** / wordlists para os endpoints de cracking usados pela UI.
-  - **`nmap`** obrigatório para a parte GhostCTF baseada em IP (o pipeline chama o binário).
+- **`nmap`** no sistema para o pipeline principal por IP  
+- **Kali** ou ferramentas equivalentes no `PATH` para módulos agressivos / recon por domínio com `kaliMode` (opcional)
 
 ---
 
 ## Arranque rápido
 
 ```bash
+git clone <teu-repo> && cd ghostctf
 npm install
 cp .env.example .env
-# Edita .env: PORT (default 3847), DATABASE_URL ou Supabase, chaves opcionais
+# Editar .env: PORT (padrão 3847), DATABASE_URL ou Supabase se quiseres cloud
 npm start
 ```
 
-Abre **`http://127.0.0.1:3847`** (ou a porta definida em `PORT`). O servidor serve o `index.html` e a API na mesma origem.
-
-Desenvolvimento com reload:
+Abre **`http://127.0.0.1:3847`**. A UI e a API partilham a mesma origem.
 
 ```bash
-npm run dev
+npm run dev    # servidor com --watch
+npm test       # testes em server/tests/
 ```
 
 ---
@@ -53,118 +76,73 @@ docker build -t ghostctf .
 docker run --rm -p 3847:3847 --env-file .env ghostctf
 ```
 
-A imagem copia `server/` e `index.html`. Configura variáveis de ambiente como no `.env.example`.
-
 ---
 
-## Configuração (.env)
+## Configuração
 
-Copia **`.env.example`** para **`.env`**. Entre outras:
+Variáveis principais (ver **`.env.example`**):
 
 | Variável | Função |
 |----------|--------|
 | `PORT` | Porta HTTP (default `3847`) |
-| `DATABASE_URL` | Postgres direto (recomendado com Supabase Session Pooler em IPv4) |
-| `SUPABASE_*` | Alternativa à URL directa |
-| `VIRUSTOTAL_API_KEY` | Módulo `virustotal` no pipeline de domínio |
-| `GOOGLE_CSE_KEY` / `GOOGLE_CSE_CX` | Google Programmable Search no pipeline passivo |
-| `GITHUB_TOKEN` | Code Search no pipeline passivo |
-| `GHOSTRECON_WEBHOOK_URL` | Webhook JSON após run gravado (ex.: Discord) |
-| `GHOSTRECON_RL_MAX` / `GHOSTRECON_RL_WINDOW_MS` | Rate limit dos POST de stream |
-| `GHOSTRECON_CC_CDX_API` | Índice Common Crawl personalizado |
-| `GHOSTCTF_RL_MAX` / `GHOSTCTF_RL_WINDOW_MS` | Alias aceites pelo código |
-| `GHOSTCTF_FORCE_KALI` | Forçar deteção de ambiente tipo Kali fora do Kali |
-| `GHOSTCTF_NMAP_ARGS` | Args extra para `nmap` no recon por domínio (quando aplicável) |
+| `DATABASE_URL` / `SUPABASE_*` | Persistência Postgres |
+| `GHOSTCTF_RL_MAX` / `GHOSTCTF_RL_WINDOW_MS` | Rate limit dos POST de stream |
+| `GHOSTCTF_WEBHOOK_URL` | Webhook após run gravado (ex.: Discord) |
+| `GHOSTCTF_FORCE_KALI` | Forçar deteção “estilo Kali” fora do Kali |
+| `VIRUSTOTAL_API_KEY`, `GOOGLE_CSE_*`, `GITHUB_TOKEN` | Módulos opcionais no recon por domínio |
 
-Nunca commits o ficheiro `.env`.
+*Compatibilidade:* o código aceita ainda prefixos `GHOSTRECON_*` em várias variáveis (legado).
+
+Se abrires o `index.html` via `file://`, define `localStorage.setItem('ghostctf_api_base', 'http://127.0.0.1:3847')`.
 
 ---
 
 ## API (resumo)
 
-Todas as rotas abaixo estão no `server/index.js`. Respostas de stream usam **NDJSON** (uma linha JSON por evento).
-
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| `GET` | `/api/health` | Saúde do serviço |
-| `GET` | `/api/capabilities` | Ferramentas Kali disponíveis no host |
-| `POST` | `/api/recon/stream` | Pipeline **passivo por domínio** — body: `{ domain, modules[], exactMatch?, kaliMode? }` |
-| `POST` | `/api/ghostctf/stream` | Pipeline **CTF por IP** — body: `{ ip, platform, modules[], udpScan?, tcpAllPorts? }` |
-| `POST` | `/api/ghostctf/decode` | Base64/Base32 + extração de flags por plataforma |
-| `POST` | `/api/ghostctf/hash` | Operações de hash (ver corpo em `index.js`) |
-| `POST` | `/api/ghostctf/hash-crack` | Crack MD5 com ferramentas do sistema |
-| `POST` | `/api/ghostctf/john-crack` | John integrado |
-| `GET` | `/api/runs` | Lista de runs guardados |
-| `GET` | `/api/runs/:id` | Detalhe de um run |
-| `GET` | `/api/runs/:newerId/diff/:baselineId` | Diff entre runs |
-| `GET` | `/api/intel/:target` | Corpus deduplicado por alvo |
-| `GET` | `/api/knowledge` | Biblioteca de padrões (SQLite; vazio em Supabase-only) |
+| `GET` | `/api/health` | Healthcheck |
+| `GET` | `/api/capabilities` | Ferramentas detetadas no host |
+| `POST` | `/api/recon/stream` | Recon por **domínio** |
+| `POST` | `/api/ghostctf/stream` | Pipeline **CTF por IP** |
+| `POST` | `/api/ghostctf/decode` | Decode / extração de flags |
+| `POST` | `/api/ghostctf/hash` / `hash-crack` / `john-crack` | Hash e cracking |
+| `GET` | `/api/runs`, `/api/runs/:id` | Runs guardados |
 
-### Módulos úteis do `POST /api/recon/stream`
-
-Inclui, entre outros (passa os IDs exactamente como o backend espera):  
-`subdomains`, `virustotal`, `dns_enrichment`, `rdap`, `security_headers`, `robots_sitemap`, `wellknown_security_txt`, `wellknown_openid`, `wayback`, `common_crawl`, `google_cse`, `github`, `pastebin`, e com `kaliMode: true` também `subfinder`, `amass` quando disponíveis.
-
-Os **dorks** são construídos conforme o array `modules` (ver `buildDorks` / categorias no código).
+Detalhes de corpos e módulos: `server/index.js`.
 
 ---
 
-## Interface (index.html)
-
-- **Alvo:** apenas **IPv4** no fluxo principal (validação no cliente); chama `/api/ghostctf/stream`.
-- **Plataforma de flag:** Solyd, HackTheBox, Google CTF.
-- **Módulos GhostCTF:** UDP scan, todas as portas TCP, Exploit-DB, LFI, SQLMap, VHost/sitemap, disclosure, reutilização de credenciais, foco WordPress, WPScan.
-- **Crack mode:** MD5 e John com formatos comuns.
-- **Decode rápido:** Base64/Base32 na sidebar.
-- Exportação dos achados: **JSON**, **Markdown**, **TXT**.
-
-Se abrires o HTML em `file://`, define a base da API em `localStorage`:
-
-`ghostctf_api_base` → `http://127.0.0.1:3847` (ou a tua porta).
-
----
-
-## Base de dados (Supabase)
-
-- Migrações em `supabase/migrations/` (tabelas `runs`, `findings`, `bounty_intel`).
-- Scripts npm: `db:link`, `db:push`, `db:migration:new` (CLI Supabase como devDependency).
-
-RLS está definido nas migrações; ajusta políticas se expuseres a BD publicamente.
-
----
-
-## Testes
-
-```bash
-npm test
-```
-
-Executa `node --test` sobre os testes em `server/tests/`.
-
----
-
-## Estrutura do repositório (núcleo)
+## Estrutura do repositório
 
 ```
 server/
-  index.js          # Express, rotas, orquestração
-  config.js         # Limites, UA, rate limit
-  modules/          # DNS, probe, DB, integrações externas, …
-  ghostctf/         # Pipeline CTF (nmap, dir-enum, flags, …)
-index.html          # SPA estática
-supabase/           # Migrações e config CLI
- Dockerfile
- .env.example
+  index.js           # Express, rotas, NDJSON streams
+  config.js          # UA, limites, rate limit
+  modules/           # DNS, probe, DB, integrações, Kali, …
+  ghostctf/          # Pipeline CTF: nmap-scan, web-curl, dir-enum, flags, playbook, …
+index.html           # Interface GHOSTCTF
+supabase/            # Migrações (opcional)
+Dockerfile
+.env.example
+LICENSE              # MIT
+GhostCtf.png         # Captura da UI
 ```
 
 ---
 
-## Ética e uso legítimo
+## Segurança e ética
 
-Usa isto só em **alvos que te autorizem** (labs de CTF, programas de bug bounty, ambientes próprios). Scans agressivos, SQLMap, enumeração de passwords e ferramentas tipo nuclei podem ser **ilegais ou violar ToS** se apontados para sistemas sem permissão. A responsabilidade é sempre tua.
+Usa o GHOSTCTF **apenas em alvos autorizados** (labs de CTF, ambientes próprios, programas com permissão explícita). Scans agressivos, enumeração e exploração automatizada podem ser **ilegais** ou violar termos de serviço noutros contextos. **A responsabilidade é sempre tua.**
+
+---
+
+## Licença
+
+Este projeto usa a [**Licença MIT**](./LICENSE): é **permissiva** — qualquer pessoa pode usar, modificar e redistribuir o código, inclusive em projetos privados ou comerciais, mantendo o aviso de copyright. **Não** exige publicar alterações (ao contrário de licenças *copyleft* como a AGPL) e é a opção habitual para ferramentas open source quando queres máxima liberdade para ti e para quem forkar, com texto jurídico simples e reconhecido em todo o lado.
 
 ---
 
 ## Créditos
 
-Feito para acelerar recon em CTF e consolidar truques de **OSINT / recon passivo** num único serviço Node, com opção de Postgres partilhado via Supabase.
+Desenvolvido para acelerar **recon e automação em CTF** num único painel, com backend extensível em JavaScript (ES modules).

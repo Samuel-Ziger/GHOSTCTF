@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { createServer } from 'node:http';
 import path from 'path';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -47,6 +48,7 @@ import { getKaliCapabilities, runKaliAggressiveScan } from './modules/kali-scan.
 import { enumerateSubdomainsWithSubfinder, enumerateSubdomainsWithAmass } from './modules/kali-subdomain-tools.js';
 import { runGhostCtfPipeline } from './ghostctf/pipeline.js';
 import { getPlatform } from './ghostctf/platforms.js';
+import { attachShellWebSocket } from './ghostctf/shell-ws.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -963,8 +965,15 @@ app.post('/api/ghostctf/stream', async (req, res) => {
   const ipRaw = req.body?.ip;
   const platform = req.body?.platform || 'solyd';
   const modules = Array.isArray(req.body?.modules) ? req.body.modules : [];
+  const extraHostsRaw = req.body?.extraHosts;
+  const extraHosts = Array.isArray(extraHostsRaw)
+    ? extraHostsRaw.map((s) => String(s).trim()).filter(Boolean)
+    : typeof extraHostsRaw === 'string'
+      ? extraHostsRaw.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean)
+      : [];
   const udpScan = Boolean(req.body?.udpScan);
   const tcpAllPorts = Boolean(req.body?.tcpAllPorts);
+  const hostsOnlyWeb = Boolean(req.body?.hostsOnlyWeb);
 
   if (!ipRaw || !isValidIpv4(normIp(ipRaw))) {
     send({ type: 'error', message: 'IP inválido (use IPv4)' });
@@ -979,6 +988,8 @@ app.post('/api/ghostctf/stream', async (req, res) => {
       ip,
       platformId: platform,
       modules,
+      extraHosts,
+      hostsOnlyWeb,
       udpScan,
       tcpAllPorts,
       emit: send,
@@ -1550,7 +1561,9 @@ app.get('/', (_req, res) => {
 });
 
 const PORT = Number(process.env.PORT) || 3847;
-const server = app.listen(PORT, () => {
+const server = createServer(app);
+attachShellWebSocket(server);
+server.listen(PORT, () => {
   console.log(`GHOSTCTF → http://127.0.0.1:${PORT}`);
 });
 server.on('error', (err) => {

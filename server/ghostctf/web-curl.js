@@ -138,18 +138,54 @@ export function rowPrefersHttps(port, name, product, extrainfo) {
   return false;
 }
 
-/** URL canónica: host só com o IP; 80/443 sem :porto no texto. */
-export function webOriginUrl(ip, port, useHttps) {
+/**
+ * URL canónica para IP ou hostname; 80/443 sem :porto no texto.
+ * Mesma regra para `1.2.3.4` e `challenge.ctf`.
+ */
+export function webOriginUrlForTarget(host, port, useHttps) {
+  const h = String(host || '').trim();
   const p = Number(port);
   if (useHttps) {
-    if (p === 443) return `https://${ip}/`;
-    return `https://${ip}:${p}/`;
+    if (p === 443) return `https://${h}/`;
+    return `https://${h}:${p}/`;
   }
-  if (p === 80) return `http://${ip}/`;
-  return `http://${ip}:${p}/`;
+  if (p === 80) return `http://${h}/`;
+  return `http://${h}:${p}/`;
 }
 
-export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, log }) {
+/** @deprecated use webOriginUrlForTarget — mantido para imports antigos */
+export function webOriginUrl(ip, port, useHttps) {
+  return webOriginUrlForTarget(ip, port, useHttps);
+}
+
+/**
+ * Curl nas mesmas portas web que o nmap sugere — **idêntico** para IP ou hostname.
+ * O nmap corre sempre contra o IP; as portas aplicam-se ao hostname via /etc/hosts.
+ */
+const DEFAULT_WEB_PORT_TRIES = [
+  { port: 80, https: false },
+  { port: 443, https: true },
+  { port: 8080, https: false },
+  { port: 8081, https: false },
+  { port: 8000, https: false },
+  { port: 8443, https: true },
+];
+
+export async function curlWebFromNmapForHost({
+  host,
+  nmapRows,
+  timeoutMs,
+  maxBodyBytes,
+  log,
+  /** Só para o log (ex.: mesmo host com contexto diferente). */
+  hostLabel,
+  /**
+   * Se true, junta sempre a lista de portas HTTP “típicas” às inferidas do nmap
+   * (útil no modo só hostnames: o nmap pode não classificar um serviço como http).
+   */
+  alwaysIncludeDefaultWebPorts = false,
+} = {}) {
+  const label = hostLabel != null ? String(hostLabel) : String(host || '');
   const webCandidates = [];
   const seen = new Set();
 
@@ -164,38 +200,27 @@ export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, l
     if (!isProbablyWebPort(port) && !isProbablyHttpService(name, product) && !isProbablyHttpService(extra, name)) continue;
 
     const https = rowPrefersHttps(port, name, product, extra);
-    const u = webOriginUrl(ip, port, https);
+    const u = webOriginUrlForTarget(host, port, https);
     if (seen.has(u)) continue;
     seen.add(u);
     webCandidates.push({ url: u, port, portName: name, proto: 'tcp' });
   }
 
-  if (!webCandidates.length) {
-    // fallback: uma tentativa por porta (http em tudo excepto 443/https-ish)
-    const defaults = [
-      { port: 80, https: false },
-      { port: 443, https: true },
-      { port: 8080, https: false },
-      { port: 8081, https: false },
-      { port: 8000, https: false },
-      { port: 8443, https: true },
-    ];
-    for (const d of defaults) {
-      const u = webOriginUrl(ip, d.port, d.https);
+  if (!webCandidates.length || alwaysIncludeDefaultWebPorts) {
+    for (const d of DEFAULT_WEB_PORT_TRIES) {
+      const u = webOriginUrlForTarget(host, d.port, d.https);
       if (seen.has(u)) continue;
       seen.add(u);
       webCandidates.push({ url: u, port: d.port, proto: 'tcp' });
     }
   }
 
-  // Prioridade: curl http://IP/ primeiro (CTFs com nmap “ssl/http” na 80 ou só HTTPS na lista).
-  const seedRoot = `http://${ip}/`;
+  const seedRoot = `http://${host}/`;
   if (!seen.has(seedRoot)) {
     seen.add(seedRoot);
     webCandidates.unshift({ url: seedRoot, port: 80, portName: 'seed-http-root', proto: 'tcp' });
   }
 
-  // Descarta https explícito na porta 80 (url canon incorrecta).
   const saneCandidates = webCandidates.filter((c) => {
     try {
       const u = new URL(String(c.url));
@@ -211,7 +236,10 @@ export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, l
   for (const c of saneCandidates) {
     try {
       if (typeof log === 'function') {
-        log(`[http] GET ${c.url} (repro: curl -k -sS --compressed -L '${c.url}')`, 'info');
+        log(
+          `[http] GET ${c.url} · alvo=${label} (repro: curl -k -sS --compressed -L '${c.url}')`,
+          'info',
+        );
       }
       const r = await runCurl({ url: c.url, timeoutMs, maxBodyBytes });
       out.push({
@@ -224,11 +252,21 @@ export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, l
         tech: r.tech,
       });
     } catch (e) {
-      // ignora failures: CTFs costumam ter portas “abertas” mas não web de verdade
       out.push({ port: c.port, url: c.url, status: 0, headersText: '', bodyText: '', tech: [] });
     }
   }
 
   return out;
+}
+
+export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, log }) {
+  return curlWebFromNmapForHost({
+    host: ip,
+    nmapRows,
+    timeoutMs,
+    maxBodyBytes,
+    log,
+    hostLabel: ip,
+  });
 }
 

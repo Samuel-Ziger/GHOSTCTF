@@ -1,5 +1,5 @@
 import { scanIpPorts } from './nmap-scan.js';
-import { curlWebFromNmap, rowPrefersHttps, webOriginUrl } from './web-curl.js';
+import { curlWebFromNmap, curlWebFromNmapForHost, rowPrefersHttps, webOriginUrl } from './web-curl.js';
 import { dirEnumAllTools } from './dir-enum.js';
 import { detectFlagsWithDecoding } from './flag-detector.js';
 import { buildCtfPlaybookSuggestions } from './playbook.js';
@@ -15,11 +15,15 @@ import { runVhostAndSitemapProbe } from './vhost-sitemap-probe.js';
 import { runCredentialReuseProbe, runDisclosureHunt, runWordpressCredentialReuse } from './disclosure-cred-probe.js';
 import { runWordpressFocusProbe } from './wordpress-focus-probe.js';
 import { extractWpscanFindings, runWpscanJson } from '../modules/wpscan.js';
+import { normalizeExtraHostnames } from './extra-hosts-web.js';
 
 export async function runGhostCtfPipeline({
   ip,
   platformId,
   modules = [],
+  extraHosts = [],
+  /** Só com etcHostsProbe + nomes: não faz curl inicial em http(s)://IP (só hostnames). */
+  hostsOnlyWeb = false,
   udpScan = false,
   tcpAllPorts = false,
   emit,
@@ -259,8 +263,76 @@ export async function runGhostCtfPipeline({
   // 4) WEB PROBE (mapa para "alive")
   pipe('alive', 'active');
   progress(35);
-  log('Probe HTTP/HTTPS com curl nas portas web candidatas...', 'info');
-  const webResponses = await curlWebFromNmap({ ip, nmapRows, timeoutMs: 12000, maxBodyBytes: 250000, log });
+  const namesForEtc = normalizeExtraHostnames(extraHosts);
+  const useHostsOnlyWeb =
+    Boolean(hostsOnlyWeb) &&
+    Array.isArray(modules) &&
+    modules.includes('etcHostsProbe') &&
+    namesForEtc.length > 0;
+
+  if (hostsOnlyWeb && Array.isArray(modules) && modules.includes('etcHostsProbe') && !namesForEtc.length) {
+    log('Modo “só hostnames”: lista vazia — a fazer curl no IP como habitual.', 'warn');
+  }
+
+  let webResponses;
+  if (useHostsOnlyWeb) {
+    log(
+      'Modo só hostnames: a saltar curl HTTP inicial no IP literal (mantém-se nmap + FTP/SSH/MySQL no IP).',
+      'info',
+    );
+    webResponses = [];
+  } else {
+    log('Probe HTTP/HTTPS com curl nas portas web candidatas (IP)...', 'info');
+    webResponses = await curlWebFromNmap({ ip, nmapRows, timeoutMs: 12000, maxBodyBytes: 250000, log });
+  }
+
+  /** @type {{ enabled: boolean, hosts: string[], urls: number }} */
+  let etcHostsSummary = { enabled: false, hosts: [], urls: 0 };
+  if (Array.isArray(modules) && modules.includes('etcHostsProbe')) {
+    etcHostsSummary.enabled = true;
+    const names = namesForEtc;
+    etcHostsSummary.hosts = names;
+    if (names.length) {
+      log(
+        `Hostnames (/etc/hosts): mesmo curl web que no IP (portas nmap + seed http://<nome>/) para: ${names.join(', ')} — o SO tem de resolver para ${ip}`,
+        'info',
+      );
+      try {
+        let urlCount = 0;
+        for (const h of names) {
+          const chunk = await curlWebFromNmapForHost({
+            host: h,
+            nmapRows,
+            timeoutMs: 12000,
+            maxBodyBytes: 250000,
+            log,
+            hostLabel: `${h} → ${ip}`,
+            /** No modo só hostnames, cobre também portas HTTP típicas além do que o nmap classificou como http. */
+            alwaysIncludeDefaultWebPorts: useHostsOnlyWeb,
+          });
+          for (const row of chunk) {
+            webResponses.push({
+              ...row,
+              __via: 'etc-hosts-name',
+              __vhostName: h,
+            });
+            urlCount += 1;
+          }
+        }
+        etcHostsSummary.urls = urlCount;
+        log(
+          `Hostnames (/etc/hosts): ${urlCount} resposta(s) — pipeline idêntico ao do IP (links/robots/dir/… depois usam tudo)`,
+          urlCount ? 'success' : 'warn',
+        );
+      } catch (e) {
+        log(`Hostnames (/etc/hosts): ${e?.message || String(e)}`, 'warn');
+      }
+    } else {
+      log('Hostnames (/etc/hosts): módulo ON — preenche a lista de nomes (um por linha) antes do RUN.', 'warn');
+    }
+  } else {
+    log('Hostnames (/etc/hosts): OFF (ative em Modules se usares nomes no /etc/hosts)', 'info');
+  }
 
   let robotsFetched = 0;
   let robotsDisallowFetched = 0;
@@ -270,6 +342,8 @@ export async function runGhostCtfPipeline({
       log,
       timeoutMs: 10000,
       maxBodyBytes: 128000,
+      skipIpFallback: useHostsOnlyWeb,
+      originHostFallbacks: useHostsOnlyWeb ? namesForEtc : [],
     });
     robotsFetched = rb.fetched || 0;
     robotsDisallowFetched = rb.disallowFetched || 0;
@@ -287,6 +361,8 @@ export async function runGhostCtfPipeline({
         log,
         timeoutMs: 12000,
         maxBodyBytes: 220000,
+        seedHostnames: namesForEtc.length ? namesForEtc : [],
+        skipIpOriginFallback: useHostsOnlyWeb,
       });
       vhostSitemapSummary = {
         enabled: true,
@@ -399,13 +475,16 @@ export async function runGhostCtfPipeline({
 
   for (const r of webResponses) {
     if (!r.status) continue;
-    if (!r.bodyText && r.__via !== 'robots.txt' && r.__via !== 'robots-disallow') continue;
+    if (!r.bodyText && r.__via !== 'robots.txt' && r.__via !== 'robots-disallow' && r.__via !== 'etc-hosts-name')
+      continue;
     const via =
       r.__via === 'robots.txt'
         ? ' · via=robots.txt'
         : r.__via === 'robots-disallow'
           ? ` · via=robots Disallow · path=${String(r.__disallowPath || '?')} · robots=${String(r.__robotsSource || '?')}`
-          : '';
+          : r.__via === 'etc-hosts-name'
+            ? ` · via=/etc/hosts · nome=${String(r.__vhostName || '?')}`
+            : '';
     addFinding(
       {
         type: 'tech',
@@ -848,6 +927,12 @@ export async function runGhostCtfPipeline({
     linkPagesFetched: linkPagesFetched || 0,
     robotsFetched: robotsFetched || 0,
     robotsDisallowFetched: robotsDisallowFetched || 0,
+    etcHosts: {
+      enabled: etcHostsSummary.enabled,
+      hosts: etcHostsSummary.hosts || [],
+      urls: etcHostsSummary.urls || 0,
+      hostsOnlyWeb: Boolean(useHostsOnlyWeb),
+    },
     flagsFound: foundFlagSet.size,
     dirEnumTools: dirEnumToolsAgg,
     ftpAnonymous: {
@@ -950,7 +1035,9 @@ function ingestFlagFindingsFromWebResponses({
     const via =
       r.__via === 'robots-disallow'
         ? `; via=robots-disallow; path=${String(r.__disallowPath || '')}`
-        : '';
+        : r.__via === 'etc-hosts-name'
+          ? `; via=etc-hosts-name; host=${String(r.__vhostName || '')}`
+          : '';
     for (const hit of flagHits) {
       if (!hit || !hit.flag) continue;
       if (foundFlagSet.has(hit.flag)) continue;

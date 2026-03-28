@@ -141,7 +141,8 @@ function compactRobotsPreview(bodyText, maxLines = 12, maxChars = 420) {
 /**
  * Para cada origem (protocolo + host:porta) onde já houve resposta HTTP no recon,
  * pede `/robots.txt`. Se não houver origens (curl falhou em tudo), tenta
- * `http://IP/robots.txt` (sem duplicar https no fallback).
+ * `http://IP/robots.txt` (sem duplicar https no fallback), salvo `skipIpFallback`:
+ * aí pode usar-se `originHostFallbacks` (ex. nomes /etc/hosts) em vez do IP.
  * Só acrescenta ao array quando o servidor responde **200** (ficheiro existe).
  */
 export async function appendRobotsTxtResponses(webResponses, {
@@ -153,6 +154,13 @@ export async function appendRobotsTxtResponses(webResponses, {
   disallowTimeoutMs,
   disallowMaxBodyBytes,
   maxDisallowUrls = 28,
+  /** Se true, não faz fallback `http://IP/robots.txt` quando não há origens (ex.: modo só hostnames). */
+  skipIpFallback = false,
+  /**
+   * Com `skipIpFallback` e sem origens nas respostas: tentar `http://<host>/robots.txt`
+   * para estes nomes (ex. lista /etc/hosts), em vez do IP.
+   */
+  originHostFallbacks = [],
 } = {}) {
   const logger = typeof log === 'function' ? log : () => {};
   /** @type {Set<string>} */
@@ -168,7 +176,14 @@ export async function appendRobotsTxtResponses(webResponses, {
     }
   }
 
-  if (origins.size === 0 && ip) origins.add(`http://${ip}`);
+  if (origins.size === 0 && ip && !skipIpFallback) origins.add(`http://${ip}`);
+  if (origins.size === 0 && skipIpFallback && Array.isArray(originHostFallbacks)) {
+    for (const h of originHostFallbacks) {
+      const hh = String(h || '').trim().toLowerCase();
+      if (!hh) continue;
+      origins.add(`http://${hh}`);
+    }
+  }
 
   const tried = new Set();
   let fetched = 0;

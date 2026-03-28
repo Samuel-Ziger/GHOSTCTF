@@ -1,7 +1,8 @@
 {
-  "name": "ghostrecon",
+  "name": "ghostctf",
   "version": "1.0.0",
-  "description": "Framework passivo de OSINT / recon para bug bounty",
+  "description": "Console e API de recon para CTF: pipeline por IP (nmap, web, dir enum, flags, playbooks) e recon opcional por domínio no mesmo backend.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "start": "node server/index.js",
@@ -19,7 +20,8 @@
     "better-sqlite3": "^11.7.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "postgres": "^3.4.8"
+    "postgres": "^3.4.8",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "supabase": "^2.84.1"
