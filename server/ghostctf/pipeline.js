@@ -17,6 +17,31 @@ import { runWordpressFocusProbe } from './wordpress-focus-probe.js';
 import { extractWpscanFindings, runWpscanJson } from '../modules/wpscan.js';
 import { normalizeExtraHostnames } from './extra-hosts-web.js';
 
+/** Uma seed por origem (ex.: :80 vs :443 vs :8080) para dir-enum não ficar só nas primeiras URLs da mesma porta. */
+function collectDirEnumSeedUrls(webResponses, { maxOrigins = 8 } = {}) {
+  const byOrigin = new Map();
+  for (const r of webResponses || []) {
+    if (!r?.url || !r.status) continue;
+    let parsed;
+    try {
+      parsed = new URL(String(r.url).split('#')[0]);
+    } catch {
+      continue;
+    }
+    const origin = parsed.origin;
+    const path = parsed.pathname || '/';
+    const depth = path === '/' || path === '' ? 0 : path.split('/').filter(Boolean).length;
+    const prev = byOrigin.get(origin);
+    if (!prev || depth < prev.depth) {
+      byOrigin.set(origin, { url: parsed.href, depth });
+    }
+  }
+  return [...byOrigin.values()]
+    .sort((a, b) => a.depth - b.depth)
+    .map((x) => x.url)
+    .slice(0, maxOrigins);
+}
+
 export async function runGhostCtfPipeline({
   ip,
   platformId,
@@ -507,6 +532,9 @@ export async function runGhostCtfPipeline({
       log,
       timeoutMs: 15000,
       maxBodyBytes: 350000,
+      /** Listagens grandes (ex. Python em /) — seguir mais níveis até ficheiros tipo shell. */
+      maxDepth: 4,
+      maxNewFetches: 150,
     });
     linkPagesFetched = linkRes.fetched || 0;
     if (linkPagesFetched) log(`HTML links: ${linkPagesFetched} página(s) extra com curl`, 'success');
@@ -560,15 +588,17 @@ export async function runGhostCtfPipeline({
   progress(58);
   log('Enumeração de diretórios (ffuf + gobuster + dirb, em paralelo) nas seeds web…', 'info');
 
-  const urlsSeedUniq = [];
-  const seedSeen = new Set();
-  for (const r of webResponses) {
-    if (!r || !r.status || !r.url) continue;
-    const k = String(r.url).split('#')[0];
-    if (seedSeen.has(k)) continue;
-    seedSeen.add(k);
-    urlsSeedUniq.push(k);
-    if (urlsSeedUniq.length >= 4) break;
+  let urlsSeedUniq = collectDirEnumSeedUrls(webResponses, { maxOrigins: 8 });
+  if (!urlsSeedUniq.length) {
+    const seedSeen = new Set();
+    for (const r of webResponses) {
+      if (!r || !r.status || !r.url) continue;
+      const k = String(r.url).split('#')[0];
+      if (seedSeen.has(k)) continue;
+      seedSeen.add(k);
+      urlsSeedUniq.push(k);
+      if (urlsSeedUniq.length >= 4) break;
+    }
   }
 
   const discoveredUrls = new Set();

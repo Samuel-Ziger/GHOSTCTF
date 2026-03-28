@@ -165,10 +165,13 @@ export function webOriginUrl(ip, port, useHttps) {
 const DEFAULT_WEB_PORT_TRIES = [
   { port: 80, https: false },
   { port: 443, https: true },
+  /** Mesma porta: HTTP cru (ex. `python3 -m http.server 443`) — não confundir com https://IP/ */
+  { port: 443, https: false },
   { port: 8080, https: false },
   { port: 8081, https: false },
   { port: 8000, https: false },
   { port: 8443, https: true },
+  { port: 8443, https: false },
 ];
 
 export async function curlWebFromNmapForHost({
@@ -201,9 +204,18 @@ export async function curlWebFromNmapForHost({
 
     const https = rowPrefersHttps(port, name, product, extra);
     const u = webOriginUrlForTarget(host, port, https);
-    if (seen.has(u)) continue;
-    seen.add(u);
-    webCandidates.push({ url: u, port, portName: name, proto: 'tcp' });
+    if (!seen.has(u)) {
+      seen.add(u);
+      webCandidates.push({ url: u, port, portName: name, proto: 'tcp' });
+    }
+    // 443/8443: serviço pode ser TLS ou HTTP em claro (p.ex. Python SimpleHTTPServer).
+    if ((port === 443 || port === 8443) && https) {
+      const uPlain = webOriginUrlForTarget(host, port, false);
+      if (!seen.has(uPlain)) {
+        seen.add(uPlain);
+        webCandidates.push({ url: uPlain, port, portName: `${name || 'tcp'}-http-plain`, proto: 'tcp' });
+      }
+    }
   }
 
   if (!webCandidates.length || alwaysIncludeDefaultWebPorts) {
@@ -267,6 +279,8 @@ export async function curlWebFromNmap({ ip, nmapRows, timeoutMs, maxBodyBytes, l
     maxBodyBytes,
     log,
     hostLabel: ip,
+    /** Junta 80/443/8080/… ao que o nmap listou — top-500 nem sempre inclui 8080; dedupe por URL. */
+    alwaysIncludeDefaultWebPorts: true,
   });
 }
 

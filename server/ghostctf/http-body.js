@@ -89,3 +89,16 @@ export function bodyLooksHtmlish(text) {
     /<\s*link\s+/i.test(s)
   );
 }
+
+/** Listagem de diretório (Apache/nginx/Python http.server) — há links a seguir no crawl. */
+export function bodyLooksLikeDirectoryListing(text) {
+  const full = String(text || '');
+  if (full.length < 24) return false;
+  const s = full.length <= 16000 ? full : full.slice(0, 16000);
+  const listing =
+    /index of\s*\/|directory listing for|<h1>\s*directory listing for\b|<title>\s*directory listing for\b|<title>\s*index of\b|\bparent directory\b/i.test(
+      s,
+    );
+  if (!listing) return false;
+  return /\bhref\s*=/i.test(s);
+}

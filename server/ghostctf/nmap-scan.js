@@ -34,8 +34,8 @@ function buildNmapArgs({ ip, tcpAllPorts, udpScan }) {
   if (tcpAllPorts) {
     portArgs = ['-p-'];
   } else {
-    // padrão mais conservador (rápido o suficiente pra MVP)
-    portArgs = ['--top-ports', '500'];
+    // 1000 inclui 8080/8443 com frequência; top-500 omitia 8080 e falhava curl/web no alvo típico CTF.
+    portArgs = ['--top-ports', '1000'];
   }
 
   const protoArgs = [];

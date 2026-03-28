@@ -1,5 +1,5 @@
 import dns from 'node:dns/promises';
-import { bodyLooksHtmlish, effectiveUrlAfterRedirects } from './http-body.js';
+import { bodyLooksHtmlish, bodyLooksLikeDirectoryListing, effectiveUrlAfterRedirects } from './http-body.js';
 import { curlWebSingle } from './web-curl-single.js';
 
 export function urlDedupKey(href) {
@@ -218,7 +218,7 @@ function responseOkForLinkParsing(r) {
   if (!r || !r.url) return false;
   const bt = String(r.bodyText || '');
   if (bt.length < 6) return false;
-  if (!bodyLooksHtmlish(bt)) return false;
+  if (!bodyLooksHtmlish(bt) && !bodyLooksLikeDirectoryListing(bt)) return false;
   const st = Number(r.status);
   // 401/403/404 às vezes devolvem HTML com menu; gzip já vem como texto após decode no curl
   if (st >= 200 && st < 600) return true;
