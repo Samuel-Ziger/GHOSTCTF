@@ -10,6 +10,9 @@ const DISCLOSURE_PATHS = [
   '/index.php~',
   '/.git/config',
   '/admin/',
+  '/wp-config.php',
+  '/wp-config.php.bak',
+  '/wp-config.txt',
 ];
 
 function collectOrigins(webResponses, ip) {
@@ -36,6 +39,29 @@ function parseComments(html) {
     if (!txt) continue;
     out.push(txt.slice(0, 220));
     if (out.length >= 20) break;
+  }
+  return out;
+}
+
+/** Credenciais a partir de define('DB_USER'...) em wp-config exposto. */
+function extractWpConfigCredentials(text, urlHint) {
+  const t = String(text || '');
+  const m = {};
+  const re = /define\s*\(\s*['"]DB_(NAME|USER|PASSWORD|HOST)['"]\s*,\s*['"]([^'"]*)['"]\s*\)/gi;
+  let x;
+  while ((x = re.exec(t)) !== null) {
+    m[String(x[1] || '').toLowerCase()] = String(x[2] || '').trim();
+  }
+  const out = [];
+  if (m.user && m.password) {
+    out.push({
+      username: m.user,
+      password: m.password,
+      source: 'wp-config:DB_USER/DB_PASSWORD',
+      url: urlHint,
+      wpDbName: m.name || '',
+      wpDbHost: m.host || '',
+    });
   }
   return out;
 }
@@ -90,6 +116,7 @@ export async function runDisclosureHunt(webResponses, { ip, log, timeoutMs = 100
     if (!bt) continue;
     for (const c of parseComments(bt)) comments.push({ url: r.url, text: c });
     for (const cred of extractCredentialsFromText(bt)) credentials.push({ ...cred, url: r.url });
+    for (const cred of extractWpConfigCredentials(bt, r.url)) credentials.push(cred);
   }
 
   for (const origin of origins.slice(0, 12)) {
@@ -108,6 +135,7 @@ export async function runDisclosureHunt(webResponses, { ip, log, timeoutMs = 100
         const bt = String(r.bodyText || '');
         for (const c of parseComments(bt)) comments.push({ url: u, text: c });
         for (const cred of extractCredentialsFromText(bt)) credentials.push({ ...cred, url: u });
+        for (const cred of extractWpConfigCredentials(bt, u)) credentials.push(cred);
       } catch {
         // ignore
       }

