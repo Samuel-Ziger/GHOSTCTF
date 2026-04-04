@@ -50,6 +50,7 @@ import { runGhostCtfPipeline } from './ghostctf/pipeline.js';
 import { getPlatform } from './ghostctf/platforms.js';
 import { attachShellWebSocket } from './ghostctf/shell-ws.js';
 import { makeGhostctfPayload, saveGhostctfPayloadToProject } from './ghostctf/payload-kit.js';
+import { runMsfvenomWandenreichBuild } from './ghostctf/msfvenom-wandenreich.js';
 import { resolveNgrokTcpForLocalPort, startNgrokTcpAndResolve } from './ghostctf/ngrok-local.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1232,6 +1233,38 @@ app.post('/api/ghostctf/payload-save', async (req, res) => {
       absolutePath: out.absolutePath,
       filename: out.filename,
       lport: out.lport,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+/** Wandenreich: gera payload com msfvenom no host (Kali) e grava em payloads/. */
+app.post('/api/ghostctf/msfvenom-build', async (req, res) => {
+  try {
+    const preset = String(req.body?.preset || '').trim();
+    const lhost = String(req.body?.lhost || '').trim();
+    const lport = Number(req.body?.lport);
+    const encoder = String(req.body?.encoder || '').trim();
+    const iterations = Number(req.body?.iterations);
+    const out = await runMsfvenomWandenreichBuild({
+      preset,
+      lhost,
+      lport,
+      encoder: encoder || undefined,
+      iterations,
+    });
+    if (!out.ok) {
+      res.status(out.status).json({ ok: false, error: out.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      relativePath: out.relativePath,
+      filename: out.filename,
+      preset: out.preset,
+      encoder: out.encoder,
+      iterations: out.iterations,
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e?.message || String(e) });
