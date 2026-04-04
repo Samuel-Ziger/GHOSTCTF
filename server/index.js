@@ -51,6 +51,7 @@ import { getPlatform } from './ghostctf/platforms.js';
 import { attachShellWebSocket } from './ghostctf/shell-ws.js';
 import { makeGhostctfPayload, saveGhostctfPayloadToProject } from './ghostctf/payload-kit.js';
 import { runMsfvenomWandenreichBuild } from './ghostctf/msfvenom-wandenreich.js';
+import { saveHistoricoGhostMarkdown } from './ghostctf/historico-ghost-save.js';
 import { resolveNgrokTcpForLocalPort, startNgrokTcpAndResolve } from './ghostctf/ngrok-local.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1234,6 +1235,22 @@ app.post('/api/ghostctf/payload-save', async (req, res) => {
       filename: out.filename,
       lport: out.lport,
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+/** Grava relatório Markdown do recon em historicos/historicosGhost/<nome>/recon_<iso>.md */
+app.post('/api/ghostctf/historico-ghost-md', async (req, res) => {
+  try {
+    const folderName = req.body?.folderName;
+    const markdown = req.body?.markdown;
+    const out = await saveHistoricoGhostMarkdown(folderName, markdown);
+    if (!out.ok) {
+      res.status(out.status).json({ ok: false, error: out.error });
+      return;
+    }
+    res.json({ ok: true, relativePath: out.relativePath, filename: out.filename });
   } catch (e) {
     res.status(500).json({ ok: false, error: e?.message || String(e) });
   }

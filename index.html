@@ -1349,6 +1349,11 @@
       <div id="fileModeWarn" style="display:none;margin-bottom:12px;padding:10px;border:1px solid var(--accent4);background:rgba(255,43,214,0.08);font-family:var(--mono);font-size:10px;color:var(--accent4);line-height:1.45">
         Abriste o HTML pelo <strong>disco</strong> (file://). O histórico e o recon usam o servidor em <span id="fileModeApiUrl">http://127.0.0.1:3847</span> — corre <code style="color:var(--text-bright)">npm start</code>. Melhor: abre <a id="fileModeOpenLink" href="#" style="color:var(--accent)">http://127.0.0.1:3847</a> no browser.
       </div>
+      <div class="section-label">Nome do histórico</div>
+      <div class="input-wrap">
+        <span class="input-prefix">#</span>
+        <input class="domain-input" id="historicoGhostNameInput" type="text" placeholder="ex.: ctf9_solyd (opcional — MD automático)" autocomplete="off" spellcheck="false" title="Se preencheres, ao terminar o recon o relatório MD grava-se em historicos/historicosGhost/&lt;nome&gt;/">
+      </div>
       <div class="section-label">Target</div>
       <div class="input-wrap">
         <span class="input-prefix">$</span>
@@ -3421,6 +3426,7 @@ async function startRecon() {
           showIntelMergeBanner(ev.target, ev.intelMerge);
           addLog('Exporte JSON / MD / TXT na barra inferior.', 'info');
           loadRunsHistory();
+          void persistHistoricoGhostMd();
         }
       }
     }
@@ -3628,17 +3634,51 @@ function exportJSON() {
   download(`ghostctf_${targetDomain}_${Date.now()}.json`, JSON.stringify(out, null, 2), 'application/json');
 }
 
-function exportMarkdown() {
+function buildMarkdownReport() {
   const groups = {};
-  findings.forEach(f => { if (!groups[f.type]) groups[f.type] = []; groups[f.type].push(f); });
-  let md = `# GHOSTCTF Report\n**Target:** ${targetDomain}\n**Date:** ${new Date().toISOString()}\n\n`;
+  findings.forEach((f) => {
+    if (!groups[f.type]) groups[f.type] = [];
+    groups[f.type].push(f);
+  });
+  const label = String(document.getElementById('historicoGhostNameInput')?.value || '').trim();
+  let md = `# GHOSTCTF Report\n**Target:** ${targetDomain}\n**Date:** ${new Date().toISOString()}\n`;
+  if (label) md += `**Pasta histórico:** \`${label}\` (normalizado no servidor)\n`;
+  md += '\n';
   md += `## Summary\n| Metric | Count |\n|---|---|\n`;
   md += `| Flags | ${stats.flags} |\n| Endpoints | ${stats.endpoints} |\n| Parâmetros | ${stats.params} |\n| Secrets | ${stats.secrets} |\n| Alto Risco | ${stats.high} |\n\n`;
   for (const [type, items] of Object.entries(groups)) {
     md += `## ${type.toUpperCase()}\n`;
-    items.forEach(f => { md += `- **[${f.prio.toUpperCase()}]** \`${f.value}\`${f.meta ? ` — ${f.meta}` : ''}\n`; });
+    items.forEach((f) => {
+      md += `- **[${f.prio.toUpperCase()}]** \`${f.value}\`${f.meta ? ` — ${f.meta}` : ''}\n`;
+    });
     md += '\n';
   }
+  return md;
+}
+
+async function persistHistoricoGhostMd() {
+  const folder = String(document.getElementById('historicoGhostNameInput')?.value || '').trim();
+  if (!folder) return;
+  const md = buildMarkdownReport();
+  try {
+    const res = await fetch(apiUrl('/api/ghostctf/historico-ghost-md'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderName: folder, markdown: md }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) {
+      addLog(j.error || `[histórico] Falha ao guardar MD (HTTP ${res.status})`, 'error');
+      return;
+    }
+    addLog(`Histórico MD: ${j.relativePath}`, 'success');
+  } catch (e) {
+    addLog(`[histórico] ${e?.message || String(e)}`, 'error');
+  }
+}
+
+function exportMarkdown() {
+  const md = buildMarkdownReport();
   download(`ghostctf_${targetDomain}_${Date.now()}.md`, md, 'text/markdown');
 }
 
