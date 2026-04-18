@@ -1,0 +1,17 @@
+{
+  "target": "44.211.59.106",
+  "fingerprint": "fa1d3c1dd97003f04d157767b68d1660044d9777ecb11e3ace87a3834611720c",
+  "validated_at": "2026-04-18T01:08:37.130Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "low",
+    "value": "Flag 1: PDF «Baixe o e-book prévia do workshop» (download na página inicial)",
+    "url": "http://44.211.59.106/",
+    "meta": "Primeira flag no conteúdo do PDF (prévia workshop).",
+    "desafio": "CTF2_Workshop_Empreendedorismo",
+    "projectName": "CTF2_Workshop_Empreendedorismo"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

@@ -1,8 +1,9 @@
 import { UA, limits, interestingPathRe, sensitiveExtRe } from '../config.js';
+import { fetchWithBackoff } from './http-utils.js';
 
 export async function fetchWaybackUrls(domain) {
   const u = `https://web.archive.org/cdx/search/cdx?url=*.${encodeURIComponent(domain)}/*&output=json&fl=original&collapse=urlkey&filter=statuscode:200&limit=${limits.waybackCollapseLimit}`;
-  const res = await fetch(u, {
+  const res = await fetchWithBackoff(u, {
     headers: { 'User-Agent': UA },
     signal: AbortSignal.timeout(120000),
   });

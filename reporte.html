@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GHOSTCTF · Reporte</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #050508;
+      --bg2: #080b12;
+      --bg3: #0d1220;
+      --panel: #0a0e1a;
+      --border: #2a1233;
+      --border-bright: #ff2bd6;
+      --accent: #ff2bd6;
+      --accent2: #00ff88;
+      --accent3: #ff3366;
+      --accent4: #00d4ff;
+      --text: #c8d8f0;
+      --text-bright: #e8f4ff;
+      --text2: #6a7898;
+      --dim: #6a7898;
+      --ok: #00ff88;
+      --err: #ff3366;
+      --mono: 'Share Tech Mono', ui-monospace, monospace;
+      --sans: 'Rajdhani', system-ui, sans-serif;
+      --display: 'Orbitron', system-ui, sans-serif;
+      --scan: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.15) 2px,
+        rgba(0, 0, 0, 0.15) 4px
+      );
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13px;
+      line-height: 1.45;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background: var(--scan);
+      z-index: 9999;
+    }
+    body::after {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 43, 214, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 43, 214, 0.035) 1px, transparent 1px),
+        radial-gradient(ellipse 55% 42% at 12% 0%, rgba(255, 43, 214, 0.07) 0%, transparent 58%),
+        radial-gradient(ellipse 48% 38% at 88% 100%, rgba(0, 212, 255, 0.06) 0%, transparent 55%);
+      background-size: 40px 40px, 40px 40px, auto, auto;
+      z-index: 0;
+    }
+    header.reporte-hd {
+      position: relative;
+      z-index: 10;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(6, 9, 16, 0.97) 0%, rgba(5, 5, 8, 0.92) 100%);
+      backdrop-filter: blur(12px) saturate(1.15);
+      overflow: hidden;
+    }
+    header.reporte-hd::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent4), var(--accent2), transparent);
+      opacity: 0.35;
+    }
+    .reporte-ghost-bg {
+      position: absolute;
+      right: 4%;
+      top: 50%;
+      transform: translateY(-50%);
+      width: min(160px, 32vw);
+      max-height: 100px;
+      opacity: 0.1;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .reporte-ghost-bg svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 0 14px rgba(255, 43, 214, 0.4)) drop-shadow(0 0 8px rgba(0, 212, 255, 0.22));
+    }
+    .reporte-hd-inner {
+      position: relative;
+      z-index: 1;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .reporte-ghost-bg .ghost-anim-reporte,
+      .reporte-ghost-bg .ghost-eye-reporte {
+        animation: none !important;
+      }
+    }
+    .reporte-ghost-bg .ghost-anim-reporte {
+      transform-origin: 24px 26px;
+      animation: reporte-ghost-sway 3s ease-in-out infinite;
+    }
+    .reporte-ghost-bg .ghost-eye-reporte {
+      transform-origin: center;
+      transform-box: fill-box;
+      animation: reporte-ghost-blink 5s ease-in-out infinite;
+    }
+    .reporte-ghost-bg .ghost-eye-reporte-r {
+      animation-delay: 0.06s;
+    }
+    @keyframes reporte-ghost-sway {
+      0%,
+      100% {
+        transform: rotate(-3deg);
+      }
+      50% {
+        transform: rotate(3deg);
+      }
+    }
+    @keyframes reporte-ghost-blink {
+      0%,
+      47%,
+      53%,
+      100% {
+        transform: scaleY(1);
+      }
+      50% {
+        transform: scaleY(0.12);
+      }
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-family: var(--display);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-bright);
+    }
+    h1 span {
+      color: var(--accent);
+    }
+    .sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--dim);
+    }
+    .reporte-playbook-hint {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text2);
+      line-height: 1.55;
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      background: rgba(10, 8, 18, 0.78);
+      border-radius: 2px;
+    }
+    .reporte-playbook-hint code {
+      color: var(--accent4);
+      font-size: 9px;
+    }
+    main {
+      position: relative;
+      z-index: 1;
+      padding: 16px 20px 120px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    button, .btn {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent4);
+      box-shadow: 0 0 12px rgba(255, 43, 214, 0.12);
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary {
+      border-color: rgba(255, 43, 214, 0.55);
+      color: var(--accent);
+      background: rgba(255, 43, 214, 0.06);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 72px;
+      gap: 10px 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      background: rgba(10, 8, 18, 0.88);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+    .row.validated { border-color: rgba(0, 255, 136, 0.35); }
+    .val-toggle {
+      margin-top: 2px;
+      width: 64px;
+      height: 24px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--dim);
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      font-family: var(--mono);
+      font-size: 8px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 999px;
+      position: relative;
+      justify-self: end;
+    }
+    .val-toggle::before {
+      content: '';
+      width: 18px;
+      height: 18px;
+      border: 1px solid var(--border);
+      background: rgba(122, 138, 158, 0.2);
+      display: inline-block;
+      border-radius: 50%;
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    }
+    .val-toggle::after {
+      content: attr(data-state);
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: inherit;
+    }
+    .val-toggle:hover:not(:disabled) {
+      border-color: var(--accent4);
+      color: var(--accent4);
+    }
+    .val-toggle.is-on {
+      border-color: rgba(0, 255, 136, 0.65);
+      color: var(--ok);
+      background: rgba(0, 255, 136, 0.07);
+    }
+    .val-toggle.is-on::before {
+      border-color: var(--ok);
+      background: linear-gradient(180deg, rgba(0, 255, 136, 0.28), rgba(0, 255, 136, 0.1));
+      box-shadow: inset 0 0 0 2px rgba(10, 14, 20, 0.9);
+      transform: translateX(39px);
+    }
+    .val-toggle.is-on::after {
+      left: 8px;
+      right: auto;
+    }
+    .val-toggle:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+    .meta {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--dim);
+      margin-bottom: 4px;
+    }
+    .val { font-size: 12px; word-break: break-word; margin-bottom: 6px; }
+    .url {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(0, 212, 255, 0.35);
+      border-radius: 4px;
+      padding: 3px 7px;
+      color: var(--accent4);
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      z-index: 5;
+      pointer-events: auto;
+      background: rgba(0, 212, 255, 0.06);
+    }
+    .url:hover {
+      border-color: var(--accent4);
+      color: #b8f0ff;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+    }
+    .taxo-tags {
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .taxo-tag {
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--bg3);
+      color: var(--text2);
+    }
+    .taxo-tag.owasp {
+      border-color: rgba(0, 212, 255, 0.4);
+      color: var(--accent4);
+      background: rgba(0, 212, 255, 0.06);
+    }
+    .taxo-tag.mitre {
+      border-color: rgba(255, 43, 214, 0.45);
+      color: #ff8ad4;
+      background: rgba(255, 43, 214, 0.08);
+    }
+    .ctf-flags {
+      margin: 8px 0 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .ctf-flags-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-right: 2px;
+    }
+    .ctf-flag {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border: 1px solid rgba(0, 255, 136, 0.35);
+      border-radius: 4px;
+      color: var(--ok);
+      background: rgba(0, 255, 136, 0.06);
+      word-break: break-all;
+    }
+    .notes-in {
+      width: 100%;
+      margin-top: 6px;
+      padding: 6px 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+    }
+    .log {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim);
+      margin-top: 8px;
+      white-space: pre-wrap;
+    }
+    .log.err { color: var(--err); }
+    .log.ok { color: var(--ok); }
+    footer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(5, 5, 8, 0.95) 0%, rgba(8, 6, 14, 0.98) 100%);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    footer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      pointer-events: none;
+      background: linear-gradient(90deg, transparent, var(--accent4), var(--accent), transparent);
+      opacity: 0.25;
+    }
+    .empty { text-align: center; padding: 40px 20px; color: var(--dim); font-family: var(--mono); font-size: 11px; }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(6, 3, 12, 0.82);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.is-open {
+      display: flex;
+    }
+    .modal-box {
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow: auto;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 16px 18px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 212, 255, 0.06);
+      position: relative;
+    }
+    .modal-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent4), transparent);
+      opacity: 0.55;
+      border-radius: 0;
+      pointer-events: none;
+    }
+    .modal-head {
+      font-family: var(--display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .modal-p {
+      margin: 0 0 12px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .modal-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .brain-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .brain-chip {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .brain-chip:hover {
+      border-color: var(--accent4);
+      color: var(--accent4);
+    }
+    .brain-chip.is-sel {
+      border-color: var(--ok);
+      color: var(--ok);
+    }
+    .brain-chip-new {
+      border-style: dashed;
+    }
+    .brain-badge {
+      margin-top: 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--ok);
+    }
+    .brain-add-btn {
+      margin-top: 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 6px 10px;
+      border: 1px dashed var(--border);
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+    }
+    .brain-add-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent4);
+    }
+
+    /* JSON dock (estilo ramificação / Ghostmap) */
+    .report-json-dock-wrap {
+      position: fixed;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 60;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      max-height: 85vh;
+    }
+    .report-json-dock-tab {
+      flex-shrink: 0;
+      width: 38px;
+      min-height: 120px;
+      margin: 0;
+      padding: 12px 0;
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      background: rgba(10, 8, 18, 0.96);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      position: relative;
+      z-index: 2;
+    }
+    .report-json-dock-tab:hover {
+      background: rgba(18, 10, 24, 0.98);
+      border-color: rgba(255, 43, 214, 0.4);
+      color: var(--text-bright);
+    }
+    .report-json-dock-wrap.is-open .report-json-dock-tab {
+      border-color: rgba(255, 43, 214, 0.35);
+      background: rgba(12, 8, 20, 0.98);
+    }
+    .report-json-dock-panel {
+      width: min(340px, calc(100vw - 44px));
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 12px 14px 14px;
+      margin: 0;
+      background: rgba(10, 8, 18, 0.97);
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      font-size: 10px;
+      color: var(--dim);
+      line-height: 1.45;
+      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+      transform: translateX(-100%);
+      opacity: 0;
+      visibility: hidden;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease, visibility 0.22s;
+      pointer-events: none;
+      position: relative;
+      z-index: 1;
+    }
+    .report-json-dock-wrap.is-open .report-json-dock-panel {
+      transform: translateX(0);
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .report-json-dock-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .report-json-dock-title {
+      font-family: var(--display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0;
+    }
+    .report-json-dock-close {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--dim);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .report-json-dock-close:hover {
+      border-color: var(--accent);
+      color: var(--accent4);
+      background: rgba(255, 43, 214, 0.08);
+    }
+    .report-json-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--dim);
+    }
+    .report-json-toggle-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .report-json-toggle-row input {
+      accent-color: var(--accent4);
+    }
+    .report-json-import-bar {
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px dashed rgba(255, 43, 214, 0.35);
+      border-radius: 4px;
+      background: rgba(32, 8, 40, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .report-json-import-bar > label {
+      font-size: 9px;
+      line-height: 1.45;
+      color: var(--dim);
+    }
+    .report-json-import-bar textarea {
+      width: 100%;
+      min-height: 100px;
+      resize: vertical;
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1.4;
+      padding: 8px 10px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+    }
+    .report-json-import-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .report-json-import-actions button {
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 6px 10px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .report-json-import-actions button:hover {
+      border-color: var(--accent4);
+      color: var(--accent4);
+    }
+    .report-json-import-actions input[type='file'] {
+      font-family: var(--mono);
+      font-size: 9px;
+      max-width: 100%;
+    }
+    .report-json-hint {
+      font-size: 9px;
+      color: var(--dim);
+      margin: 0;
+    }
+    .report-flag-manual {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 43, 214, 0.22);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .report-flag-manual h3 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent4);
+    }
+    .report-flag-field label {
+      display: block;
+      font-size: 9px;
+      color: var(--dim);
+      margin-bottom: 3px;
+    }
+    .report-flag-field input,
+    .report-flag-field select,
+    .report-flag-field textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 6px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+    }
+    .report-flag-field textarea {
+      min-height: 52px;
+      resize: vertical;
+    }
+    .report-flag-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .report-flag-actions .btn-primary {
+      font-size: 9px;
+      padding: 7px 12px;
+    }
+  </style>
+</head>
+<body>
+  <header class="reporte-hd">
+    <div class="reporte-ghost-bg" aria-hidden="true">
+      <svg viewBox="0 0 48 52" xmlns="http://www.w3.org/2000/svg" width="100" height="108" focusable="false">
+        <defs>
+          <linearGradient id="reporteBgGhostGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffe8fb" />
+            <stop offset="40%" stop-color="#ff5ee6" />
+            <stop offset="100%" stop-color="#b8149a" />
+          </linearGradient>
+          <linearGradient id="reporteBgGhostSheen" x1="15%" y1="0%" x2="75%" y2="85%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.35)" />
+            <stop offset="45%" stop-color="rgba(255,255,255,0)" />
+            <stop offset="100%" stop-color="rgba(0,212,255,0.15)" />
+          </linearGradient>
+        </defs>
+        <g class="ghost-anim-reporte">
+          <path
+            fill="url(#reporteBgGhostGrad)"
+            stroke="rgba(255,43,214,0.5)"
+            stroke-width="0.55"
+            d="M 24 5 C 13 5 5 13.5 5 24.5 V 40 Q 8.5 36.5 12 40 Q 15.5 36.5 19 40 Q 22.5 36.5 26 40 Q 29.5 36.5 33 40 Q 36.5 36.5 40 40 Q 43.5 36.5 43 40 V 24.5 C 43 13.5 35 5 24 5 Z"
+          />
+          <path
+            fill="url(#reporteBgGhostSheen)"
+            d="M 24 8 C 15 8 9 15 9 23.5 V 33 Q 16 28 24 32 Q 32 28 39 33 V 23.5 C 39 15 33 8 24 8 Z"
+            opacity="0.88"
+          />
+          <ellipse class="ghost-eye-reporte" cx="17" cy="22" rx="3.2" ry="4.2" fill="#050709" />
+          <ellipse class="ghost-eye-reporte ghost-eye-reporte-r" cx="31" cy="22" rx="3.2" ry="4.2" fill="#050709" />
+        </g>
+      </svg>
+    </div>
+    <div class="reporte-hd-inner">
+      <h1>GHOST<span>CTF</span> · Reporte</h1>
+      <div class="sub" id="headLine">A carregar…</div>
+    </div>
+  </header>
+  <main>
+    <div class="toolbar">
+      <button type="button" id="btnReload">Recarregar da base</button>
+      <button type="button" class="btn-primary" id="btnAi" disabled>Gerar relatório IA (validados)</button>
+      <span class="sub" id="countLine"></span>
+    </div>
+    <p class="reporte-playbook-hint">
+      Alinhado ao playbook do run: GETs em caminhos CTF típicos (<code>/flag</code>, <code>/flag.txt</code>, …) por origem HTTP — no JSON do run vê <code>correlation.ctfFlagPathProbe</code> (tentativas e origens). Sessão autenticada: <code>GHOSTCTF_HTTP_COOKIE</code> no <code>.env</code> do servidor ou campo “Cookie (pós-login)” no POST <code>/api/ghostctf/stream</code> (<code>httpSessionCookie</code>) na consola.
+    </p>
+    <div id="list"></div>
+    <div class="log" id="msg"></div>
+  </main>
+
+  <div id="reportJsonDockWrap" class="report-json-dock-wrap">
+    <button
+      type="button"
+      id="reportJsonDockTab"
+      class="report-json-dock-tab"
+      aria-expanded="false"
+      aria-controls="reportJsonDockPanel"
+      title="Importar JSON ou documentar flag manual (painel à esquerda)"
+    >
+      Importar
+    </button>
+    <aside
+      id="reportJsonDockPanel"
+      class="report-json-dock-panel"
+      aria-label="Importar JSON no checklist"
+      aria-hidden="true"
+    >
+      <div class="report-json-dock-head">
+        <h2 class="report-json-dock-title">Importar JSON</h2>
+        <button type="button" class="report-json-dock-close" id="reportJsonDockClose" aria-label="Fechar painel de importação">×</button>
+      </div>
+      <div class="report-json-toggle-row">
+        <label for="reportJsonPanelToggle"
+          ><input type="checkbox" id="reportJsonPanelToggle" checked /> Mostrar campo importar</label
+        >
+      </div>
+      <div id="reportJsonPanelWrap" style="display: none">
+        <div class="report-json-import-bar">
+          <label for="reportImportJson"
+            >Cola ou escolhe um ficheiro <code>.json</code> com <code>target</code> e <code>findings</code> (por exemplo payload vindo do recon ou de cópia manual). Atualiza o checklist nesta página e grava em
+            <code>sessionStorage</code> nesta aba.</label
+          >
+          <textarea
+            id="reportImportJson"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder='{ "target": "exemplo.com", "findings": [ { "type": "endpoint", "prio": "high", "value": "…", "url": "https://…", "flags": [ "Solyd{…}" ] } ] }'
+          ></textarea>
+          <div class="report-json-import-actions">
+            <input type="file" id="reportImportFile" accept=".json,application/json" />
+            <button type="button" id="reportImportApply">Aplicar checklist</button>
+            <button type="button" id="reportImportClearField">Limpar campo</button>
+          </div>
+          <p class="report-json-hint">
+            «Aplicar» substitui <code>target</code> e <code>findings</code> em memória, sincroniza com SQLite se o alvo for válido, e actualiza a sessão. Opcional por achado: <code>flags</code> (array de strings, ex. flags da plataforma) associadas à vulnerabilidade onde o GHOSTCTF as encontrou. Linhas sem fingerprint SHA-256 válido não aparecem na checklist. Máx. 6000 achados por importação.
+          </p>
+        </div>
+      </div>
+      <div class="report-flag-manual" id="reportFlagManualBlock">
+        <h3>Flag manual</h3>
+        <p class="report-json-hint" style="margin-bottom: 4px">
+          Para flags encontradas fora do recon: gera o mesmo formato de achado (<code>type: flag</code>), grava na base e no JSON da sessão, e opcionalmente liga já à categoria do Cortex.
+        </p>
+        <div class="report-flag-field">
+          <label for="flagManualTarget">Alvo (domínio ou IP)</label>
+          <input type="text" id="flagManualTarget" maxlength="200" placeholder="ex.: alvo.ctf ou 10.0.0.5" autocomplete="off" />
+        </div>
+        <div class="report-flag-field">
+          <label for="flagManualValue">Flag (texto completo)</label>
+          <textarea id="flagManualValue" maxlength="500" rows="2" placeholder="Solyd{…} ou formato da plataforma" spellcheck="false"></textarea>
+        </div>
+        <div class="report-flag-field">
+          <label for="flagManualUrl">URL (opcional — onde apareceu)</label>
+          <input type="text" id="flagManualUrl" maxlength="2000" placeholder="https://… (vazio → https://alvo/)" autocomplete="off" />
+        </div>
+        <div class="report-flag-field">
+          <label for="flagManualMeta">Meta / contexto curto (opcional)</label>
+          <input type="text" id="flagManualMeta" maxlength="800" placeholder="ex.: Discord, ficheiro anexo, etc." />
+        </div>
+        <div class="report-flag-field">
+          <label for="flagManualDesafio">Desafio / projecto (opcional)</label>
+          <input type="text" id="flagManualDesafio" maxlength="120" placeholder="Preenche ou fica o da sessão do GHOSTCTF" />
+        </div>
+        <div class="report-flag-field">
+          <label for="flagManualPrio">Prioridade</label>
+          <select id="flagManualPrio">
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+          </select>
+        </div>
+        <div class="report-flag-field">
+          <label for="flagManualCategory">Categoria no Cortex</label>
+          <select id="flagManualCategory">
+            <option value="">— Só checklist (ligar ao cérebro depois) —</option>
+          </select>
+        </div>
+        <div class="report-flag-field">
+          <label for="flagManualNotes">Notas (checklist)</label>
+          <textarea id="flagManualNotes" maxlength="2000" rows="2" placeholder="Como obtiveste a flag…"></textarea>
+        </div>
+        <div class="report-flag-actions">
+          <button type="button" class="btn-primary" id="flagManualSubmit">Adicionar à checklist e gravar</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="brainModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="brainModalHead">
+      <div class="modal-head" id="brainModalHead">Modo cérebro</div>
+      <div id="brainModalBody"></div>
+      <div class="modal-actions" id="brainModalActions"></div>
+    </div>
+  </div>
+  <footer>
+    <span class="sub" id="footHint"
+      >Marca apenas o que testaste manualmente. No painel <strong>Importar</strong>: JSON ou <strong>Flag manual</strong> (fora do recon). Opcional: após validar, liga ao <strong>cérebro</strong> (SQLite) por tipo — fingerprints alinham com recons no mesmo alvo.</span>
+  </footer>
+  <script>
+    const REPORTE_PAYLOAD_KEY = 'ghostctf_reporte_payload';
+    const REPORTE_PAYLOAD_SHARED_KEY = 'ghostctf_reporte_payload_shared';
+
+    function getApiBase() {
+      try {
+        const proto = window.location.protocol;
+        if (proto === 'file:' || proto === 'blob:') {
+          const saved = localStorage.getItem('ghostctf_api_base');
+          return (saved || 'http://127.0.0.1:3847').replace(/\/+$/, '');
+        }
+      } catch (_) {}
+      return '';
+    }
+    function apiUrl(p) {
+      const path = p.startsWith('/') ? p : '/' + p;
+      const base = getApiBase();
+      return base ? base + path : path;
+    }
+
+    let csrf = '';
+    let target = '';
+    let findings = [];
+    /** Nome do desafio / pasta histórico (hub ou JSON) — entra no snapshot ao validar. */
+    let sessionDesafio = '';
+    const validatedFp = new Set();
+    let serverItems = [];
+    let aiUseOpenrouter = false;
+    const FP_URL_NORMALIZE_TYPES = new Set([
+      'endpoint',
+      'param',
+      'js',
+      'security',
+      'tls',
+      'nuclei',
+      'xss',
+      'sqli',
+      'dalfox',
+      'wpscan',
+      'intel',
+    ]);
+
+    function normalizeTarget(raw) {
+      let s = String(raw || '')
+        .trim()
+        .toLowerCase();
+      if (!s) return '';
+      s = s.replace(/^\*\./, '');
+      if (/^[a-z][a-z0-9+.-]*:\/\//.test(s)) {
+        try {
+          s = String(new URL(s).hostname || '').toLowerCase();
+        } catch (_) {}
+      } else if (/[/?#]/.test(s)) {
+        s = s.split(/[/?#]/, 1)[0];
+      }
+      s = s.replace(/:\d+$/, '').replace(/\.$/, '');
+      return s;
+    }
+
+    function targetUsableForApi(t) {
+      const s = normalizeTarget(t);
+      if (!s) return false;
+      if (/^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(s)) return true;
+      return /^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(s);
+    }
+
+    function deriveTargetFromFindings(rows) {
+      for (const r of rows || []) {
+        const one = deriveTargetFromFinding(r);
+        if (one) return one;
+      }
+      return '';
+    }
+
+    function deriveTargetFromFinding(r) {
+      if (!r || typeof r !== 'object') return '';
+      const urlRaw = String(r.url || '').trim();
+      if (urlRaw) {
+        try {
+          const host = normalizeTarget(new URL(urlRaw).hostname || '');
+          if (targetUsableForApi(host)) return host;
+        } catch (_) {
+          const host = normalizeTarget(urlRaw);
+          if (targetUsableForApi(host)) return host;
+        }
+      }
+      const valueRaw = String(r.value || '').trim();
+      if (valueRaw) {
+        const direct = normalizeTarget(valueRaw);
+        if (targetUsableForApi(direct)) return direct;
+        if (/^[a-z][a-z0-9+.-]*:\/\//i.test(valueRaw)) {
+          try {
+            const host = normalizeTarget(new URL(valueRaw).hostname || '');
+            if (targetUsableForApi(host)) return host;
+          } catch (_) {}
+        }
+      }
+      return '';
+    }
+
+    function resolveTargetForValidation(f) {
+      if (targetUsableForApi(target)) return normalizeTarget(target);
+      const fromFinding = deriveTargetFromFinding(f);
+      if (targetUsableForApi(fromFinding)) return fromFinding;
+      const fromList = deriveTargetFromFindings(findings);
+      if (targetUsableForApi(fromList)) return fromList;
+      return '';
+    }
+
+    function normSpace(s) {
+      return String(s == null ? '' : s)
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+    }
+
+    function normUrlForFingerprintBrowser(u) {
+      if (!u) return '';
+      try {
+        const x = new URL(String(u));
+        x.hash = '';
+        const keys = [...new Set([...x.searchParams.keys()])].sort();
+        const sp = new URLSearchParams();
+        for (const k of keys) {
+          for (const v of x.searchParams.getAll(k)) sp.append(k, v);
+        }
+        const q = sp.toString();
+        x.search = q ? '?' + q : '';
+        return x.href.toLowerCase();
+      } catch (_) {
+        return normSpace(u);
+      }
+    }
+
+    async function sha256Hex(text) {
+      if (!globalThis.crypto || !globalThis.crypto.subtle || typeof TextEncoder === 'undefined') {
+        throw new Error('SHA-256 indisponível neste browser');
+      }
+      const data = new TextEncoder().encode(String(text || ''));
+      const dig = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(dig)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function ensureFindingFingerprint(targetRaw, finding) {
+      const f = finding && typeof finding === 'object' ? { ...finding } : {};
+      const fpIn = String(f.fingerprint || '').trim().toLowerCase();
+      if (/^[a-f0-9]{64}$/.test(fpIn)) {
+        f.fingerprint = fpIn;
+        return f;
+      }
+      const typeNorm = normSpace(f.type);
+      const urlPart = FP_URL_NORMALIZE_TYPES.has(typeNorm)
+        ? normUrlForFingerprintBrowser(f.url)
+        : normSpace(f.url);
+      const raw = normSpace(targetRaw) + '|' + typeNorm + '|' + normSpace(f.value) + '|' + urlPart;
+      try {
+        f.fingerprint = await sha256Hex(raw);
+      } catch (_) {
+        f.fingerprint = '';
+      }
+      return f;
+    }
+
+    async function hydrateFindingsFingerprints(rows, targetRaw) {
+      const out = [];
+      for (const row of rows || []) {
+        if (!row || typeof row !== 'object') continue;
+        out.push(await ensureFindingFingerprint(targetRaw, row));
+      }
+      return out;
+    }
+
+    async function fetchCsrf() {
+      try {
+        const r = await fetch(apiUrl('/api/csrf-token'));
+        if (r.ok) {
+          const d = await r.json().catch(() => ({}));
+          csrf = String(d.token || '');
+        }
+      } catch (_) {}
+      if (!csrf) csrf = 'ghostctf-local';
+    }
+
+    async function loadServerState() {
+      if (!targetUsableForApi(target)) {
+        serverItems = [];
+        validatedFp.clear();
+        return;
+      }
+      const r = await fetch(apiUrl('/api/manual-validations/' + encodeURIComponent(target)));
+      if (!r.ok) throw new Error('GET validações: ' + r.status);
+      const d = await r.json();
+      serverItems = Array.isArray(d.items) ? d.items : [];
+      validatedFp.clear();
+      for (const it of serverItems) {
+        if (it.fingerprint) validatedFp.add(String(it.fingerprint).toLowerCase());
+      }
+    }
+
+    async function loadAiState() {
+      try {
+        const r = await fetch(apiUrl('/api/capabilities'));
+        if (!r.ok) return;
+        const d = await r.json().catch(() => ({}));
+        aiUseOpenrouter = Boolean(d && d.ai && d.ai.openrouter);
+      } catch (_) {}
+    }
+
+    async function loadLatestRunIntoChecklist(preferredTargetRaw) {
+      const preferredTarget = normalizeTarget(preferredTargetRaw || target);
+      const rList = await fetch(apiUrl('/api/runs?limit=50'));
+      if (!rList.ok) throw new Error('Não foi possível listar recons na base (' + rList.status + ').');
+      const dList = await rList.json().catch(() => ({}));
+      const runs = Array.isArray(dList.runs) ? dList.runs : [];
+      if (!runs.length) throw new Error('Ainda não há recons gravados na base.');
+      let chosen = null;
+      if (preferredTarget) {
+        chosen = runs.find((x) => normalizeTarget(x && x.target) === preferredTarget) || null;
+      }
+      if (!chosen) chosen = runs[0];
+      if (!chosen || !Number.isFinite(Number(chosen.id))) {
+        throw new Error('Recon inválido retornado pela API.');
+      }
+      const runId = Number(chosen.id);
+      const rRun = await fetch(apiUrl('/api/runs/' + runId));
+      if (!rRun.ok) throw new Error('Não foi possível carregar run #' + String(runId) + ' (' + rRun.status + ').');
+      const run = await rRun.json().catch(() => ({}));
+      const rows0 = extractFindingsFromImportRoot(run)
+        .map(normalizeImportedFinding)
+        .filter(Boolean)
+        .slice(0, REPORT_IMPORT_MAX);
+      if (!rows0.length) throw new Error('Run #' + String(runId) + ' não contém achados utilizáveis.');
+      target = normalizeTarget((run && run.target) || preferredTarget || target);
+      findings = await hydrateFindingsFingerprints(rows0, target);
+      syncPayloadToSession();
+      updateHeadLineFromState();
+      return { runId, rows: findings };
+    }
+
+    function setMsg(t, cls) {
+      const el = document.getElementById('msg');
+      el.textContent = t || '';
+      el.className = 'log' + (cls ? ' ' + cls : '');
+    }
+
+    function normalizeFlagsFromImport(f) {
+      const maxN = 12;
+      const maxLen = 220;
+      const out = [];
+      const push = (s) => {
+        const t = String(s || '').trim();
+        if (!t || out.length >= maxN) return;
+        out.push(t.length > maxLen ? t.slice(0, maxLen) : t);
+      };
+      if (f && Array.isArray(f.flags)) {
+        for (const x of f.flags) push(typeof x === 'string' ? x : x != null ? String(x) : '');
+      } else if (f && f.flag != null && String(f.flag).trim()) {
+        push(f.flag);
+      }
+      return out;
+    }
+
+    function snapshotFromFinding(f) {
+      const owasp = normalizeTaxonomyTags(f && f.owasp, /^A\d{2}$/i);
+      const mitre = normalizeTaxonomyTags(f && f.mitre, /^T\d{4}(?:\.\d{3})?$/i);
+      const out = {
+        type: f.type,
+        prio: f.prio,
+        value: f.value,
+        url: f.url || '',
+        meta: (f.meta || '').slice(0, 800),
+        owasp: owasp.length ? owasp : undefined,
+        mitre: mitre.length ? mitre : undefined,
+      };
+      const flagArr = normalizeFlagsFromImport(f);
+      if (flagArr.length) out.flags = flagArr;
+      const dz = String(f.desafio || f.projectName || '').trim().slice(0, 120);
+      if (dz) {
+        out.desafio = dz;
+        out.projectName = dz;
+      }
+      return out;
+    }
+
+    const REPORT_IMPORT_MAX = 6000;
+
+    function normalizeImportedFinding(f) {
+      if (!f || typeof f !== 'object') return null;
+      const fp = String(f.fingerprint || '').trim().toLowerCase();
+      const prio = f.prio != null ? f.prio : f.priority != null ? f.priority : '';
+      const out = {
+        type: f.type != null ? String(f.type) : '',
+        prio: prio !== '' && prio != null ? String(prio) : '',
+        value: f.value != null ? String(f.value) : '',
+        url: f.url != null ? String(f.url) : '',
+        meta: f.meta != null ? String(f.meta) : '',
+      };
+      if (f.score != null) out.score = f.score;
+      if (Array.isArray(f.owasp)) out.owasp = f.owasp;
+      if (Array.isArray(f.mitre)) out.mitre = f.mitre;
+      if (f.desafio != null && String(f.desafio).trim()) out.desafio = String(f.desafio).trim().slice(0, 120);
+      if (f.projectName != null && String(f.projectName).trim())
+        out.projectName = String(f.projectName).trim().slice(0, 120);
+      const flagArr = normalizeFlagsFromImport(f);
+      if (flagArr.length) out.flags = flagArr;
+      if (/^[a-f0-9]{64}$/.test(fp)) out.fingerprint = fp;
+      return out;
+    }
+
+    function normalizeTaxonomyTags(list, idRe) {
+      const out = [];
+      for (const t of list || []) {
+        const id = typeof t === 'string' ? t : t && t.id != null ? String(t.id) : '';
+        const clean = String(id || '').trim().toUpperCase();
+        if (!idRe.test(clean)) continue;
+        if (!out.some((x) => x.id === clean)) {
+          out.push({
+            id: clean,
+            title: t && t.title != null ? String(t.title) : undefined,
+            label: t && t.label != null ? String(t.label) : undefined,
+            url: t && t.url != null ? String(t.url) : undefined,
+          });
+        }
+      }
+      return out.slice(0, 12);
+    }
+
+    function taxonomyIds(list, idRe) {
+      return normalizeTaxonomyTags(list, idRe).map((x) => x.id);
+    }
+
+    function extractFindingsFromImportRoot(obj) {
+      if (Array.isArray(obj)) return obj;
+      if (obj && Array.isArray(obj.findings)) return obj.findings;
+      if (obj && Array.isArray(obj.items)) return obj.items;
+      return [];
+    }
+
+    function syncPayloadToSession() {
+      const payload = {
+        target,
+        updatedAt: new Date().toISOString(),
+        findings: findings.map((x) => ({ ...x })),
+      };
+      const d0 = String(sessionDesafio || '').trim();
+      if (d0) {
+        payload.desafio = d0;
+        payload.projectName = d0;
+      }
+      const raw = JSON.stringify(payload);
+      if (raw.length > 4_500_000) throw new Error('Pacote demasiado grande para sessionStorage (máx. ~4,5 MB).');
+      sessionStorage.setItem(REPORTE_PAYLOAD_KEY, raw);
+      try {
+        localStorage.setItem(REPORTE_PAYLOAD_SHARED_KEY, raw);
+      } catch (_) {}
+    }
+
+    function readPayloadRawFromStorage() {
+      try {
+        const raw = sessionStorage.getItem(REPORTE_PAYLOAD_KEY);
+        if (raw) {
+          // Consome uma vez: refresh da aba não deve reabrir payload antigo.
+          sessionStorage.removeItem(REPORTE_PAYLOAD_KEY);
+          return raw;
+        }
+      } catch (_) {}
+      try {
+        const raw = localStorage.getItem(REPORTE_PAYLOAD_SHARED_KEY) || '';
+        if (raw) {
+          // Evita reutilizar payload antigo quando o Reporte é aberto fora do fluxo atual.
+          localStorage.removeItem(REPORTE_PAYLOAD_SHARED_KEY);
+        }
+        return raw;
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function updateHeadLineFromState() {
+      const el = document.getElementById('headLine');
+      if (!el) return;
+      el.textContent = targetUsableForApi(target)
+        ? 'Alvo: ' + target + ' · checklist'
+        : 'Sem alvo válido — importa JSON com "target" ou indica o Target ($) no GHOSTCTF.';
+    }
+
+    async function applyReporteJsonImportText(raw) {
+      const trimmed = String(raw || '').trim();
+      if (!trimmed) throw new Error('Campo JSON vazio.');
+      let obj;
+      try {
+        obj = JSON.parse(trimmed);
+      } catch {
+        throw new Error('JSON inválido (parse).');
+      }
+      if (Array.isArray(obj)) obj = { target: '', findings: obj };
+      const newTarget = normalizeTarget(obj.target || '');
+      let rows = extractFindingsFromImportRoot(obj)
+        .map(normalizeImportedFinding)
+        .filter(Boolean);
+      if (rows.length > REPORT_IMPORT_MAX) rows = rows.slice(0, REPORT_IMPORT_MAX);
+      if (newTarget) target = newTarget;
+      if (!targetUsableForApi(target)) {
+        const inferredTarget = deriveTargetFromFindings(rows);
+        if (inferredTarget) target = inferredTarget;
+      }
+      const dImp = String(obj.desafio || obj.projectName || '').trim();
+      if (dImp) sessionDesafio = dImp.slice(0, 120);
+      findings = await hydrateFindingsFingerprints(rows, target);
+      syncPayloadToSession();
+      updateHeadLineFromState();
+      await loadServerState();
+      render();
+      const withFp = findings.filter((r) => /^[a-f0-9]{64}$/.test(String(r.fingerprint || ''))).length;
+      const targetMsg = targetUsableForApi(target)
+        ? ' alvo: ' + target + '.'
+        : ' sem alvo válido para gravação (inclui "target" no JSON ou URL completa num achado).';
+      setMsg(
+        'Checklist actualizado: ' + findings.length + ' registo(s), ' + withFp + ' com fingerprint válido para marcar;' + targetMsg,
+        'ok',
+      );
+    }
+
+    function setReportJsonDockOpen(on) {
+      const wrap = document.getElementById('reportJsonDockWrap');
+      const tab = document.getElementById('reportJsonDockTab');
+      const panel = document.getElementById('reportJsonDockPanel');
+      if (!wrap || !tab || !panel) return;
+      wrap.classList.toggle('is-open', on);
+      tab.setAttribute('aria-expanded', on ? 'true' : 'false');
+      panel.setAttribute('aria-hidden', on ? 'false' : 'true');
+      if (on) {
+        void populateFlagManualCategorySelect();
+        const tIn = document.getElementById('flagManualTarget');
+        if (tIn && targetUsableForApi(target)) tIn.value = target;
+        else if (tIn && !tIn.value.trim()) tIn.value = '';
+        const dIn = document.getElementById('flagManualDesafio');
+        if (dIn) {
+          if (sessionDesafio) dIn.placeholder = 'Sessão: ' + sessionDesafio;
+          if (!String(dIn.value || '').trim() && sessionDesafio) dIn.value = sessionDesafio;
+        }
+      }
+    }
+
+    async function populateFlagManualCategorySelect() {
+      const sel = document.getElementById('flagManualCategory');
+      if (!sel) return;
+      const keep = String(sel.value || '');
+      sel.innerHTML = '<option value="">— Só checklist (ligar ao cérebro depois) —</option>';
+      try {
+        const r = await fetch(apiUrl('/api/brain/categories'));
+        const d = await r.json().catch(() => ({}));
+        const items = Array.isArray(d.items) ? d.items : [];
+        for (const c of items) {
+          if (!c || c.id == null) continue;
+          const o = document.createElement('option');
+          o.value = String(c.id);
+          o.textContent = String(c.title || '—');
+          sel.appendChild(o);
+        }
+        if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
+      } catch (_) {
+        /* SQLite / rede indisponível: mantém só opção vazia */
+      }
+    }
+
+    async function submitManualFlag() {
+      const tRaw = document.getElementById('flagManualTarget')?.value || '';
+      const tNorm = normalizeTarget(tRaw);
+      const flagText = String(document.getElementById('flagManualValue')?.value || '').trim();
+      if (!targetUsableForApi(tNorm)) {
+        throw new Error('Indica um alvo válido (domínio ou IPv4).');
+      }
+      if (!flagText) {
+        throw new Error('Indica o texto da flag.');
+      }
+      let url = String(document.getElementById('flagManualUrl')?.value || '').trim();
+      if (!url) url = 'https://' + tNorm + '/';
+      const meta =
+        String(document.getElementById('flagManualMeta')?.value || '').trim().slice(0, 800) ||
+        'Flag documentada manualmente (Reporte · fora do recon)';
+      const desafioField = String(document.getElementById('flagManualDesafio')?.value || '').trim().slice(0, 120);
+      const desafio = desafioField || String(sessionDesafio || '').trim().slice(0, 120);
+      const prio = String(document.getElementById('flagManualPrio')?.value || 'high');
+      const catRaw = String(document.getElementById('flagManualCategory')?.value || '').trim();
+      const catId = catRaw ? Number(catRaw) : NaN;
+      const notes = String(document.getElementById('flagManualNotes')?.value || '').trim().slice(0, 2000);
+
+      const finding = {
+        type: 'flag',
+        prio,
+        score: 95,
+        value: flagText,
+        url,
+        meta,
+        flags: [flagText],
+      };
+      if (desafio) {
+        finding.desafio = desafio;
+        finding.projectName = desafio;
+      }
+
+      target = tNorm;
+      updateHeadLineFromState();
+      const f2 = await ensureFindingFingerprint(tNorm, finding);
+      const fp = String(f2.fingerprint || '').toLowerCase();
+      if (!/^[a-f0-9]{64}$/.test(fp)) {
+        throw new Error('Não foi possível calcular fingerprint (SHA-256).');
+      }
+      const dup = findings.some((x) => String(x.fingerprint || '').toLowerCase() === fp);
+      if (dup) {
+        throw new Error('Já existe um achado com o mesmo fingerprint nesta checklist (mesmo alvo + tipo + valor + URL).');
+      }
+
+      findings.push(f2);
+      if (desafio) sessionDesafio = desafio.slice(0, 120);
+      syncPayloadToSession();
+      await persistValidation(fp, true, f2, notes);
+      await loadServerState();
+
+      if (Number.isFinite(catId) && catId > 0) {
+        await fetchCsrf();
+        const r = await fetch(apiUrl('/api/brain/link'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+          body: JSON.stringify({ target: tNorm, fingerprint: fp, categoryId: catId }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || String(r.status));
+      }
+
+      try {
+        localStorage.setItem('ghostctf_manual_val_bump', String(Date.now()));
+      } catch (_) {}
+
+      render();
+      updateAiButton();
+      const v = document.getElementById('flagManualValue');
+      if (v) v.value = '';
+      const n = document.getElementById('flagManualNotes');
+      if (n) n.value = '';
+      const u = document.getElementById('flagManualUrl');
+      if (u) u.value = '';
+      const m = document.getElementById('flagManualMeta');
+      if (m) m.value = '';
+
+      let catLabel = '';
+      if (Number.isFinite(catId) && catId > 0) {
+        const selEl = document.getElementById('flagManualCategory');
+        const opt = selEl && selEl.selectedOptions && selEl.selectedOptions[0];
+        catLabel = opt ? String(opt.textContent || '').trim() : '';
+      }
+      setMsg(
+        catLabel
+          ? 'Flag gravada na checklist e ligada ao Cortex: ' + catLabel + '.'
+          : 'Flag gravada na checklist (podes ligar ao cérebro com + Cérebro).',
+        'ok',
+      );
+    }
+
+    function syncReportJsonPanelVisibility() {
+      const on = Boolean(document.getElementById('reportJsonPanelToggle')?.checked);
+      const w = document.getElementById('reportJsonPanelWrap');
+      if (w) w.style.display = on ? 'block' : 'none';
+    }
+
+    function wireReportJsonDock() {
+      const wrap = document.getElementById('reportJsonDockWrap');
+      const tab = document.getElementById('reportJsonDockTab');
+      const panelClose = document.getElementById('reportJsonDockClose');
+      document.getElementById('reportJsonPanelToggle')?.addEventListener('change', syncReportJsonPanelVisibility);
+      syncReportJsonPanelVisibility();
+      tab?.addEventListener('click', (e) => {
+        e.preventDefault();
+        setReportJsonDockOpen(!wrap?.classList.contains('is-open'));
+      });
+      panelClose?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setReportJsonDockOpen(false);
+      });
+      document.getElementById('reportImportApply')?.addEventListener('click', async () => {
+        const ta = document.getElementById('reportImportJson');
+        try {
+          await applyReporteJsonImportText((ta?.value || '').trim());
+        } catch (e) {
+          setMsg(String(e.message || e), 'err');
+        }
+      });
+      document.getElementById('reportImportClearField')?.addEventListener('click', () => {
+        const ta = document.getElementById('reportImportJson');
+        if (ta) ta.value = '';
+        const fi = document.getElementById('reportImportFile');
+        if (fi) fi.value = '';
+      });
+      document.getElementById('reportImportFile')?.addEventListener('change', (ev) => {
+        const f = ev.target?.files?.[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = () => {
+          const ta = document.getElementById('reportImportJson');
+          if (ta) ta.value = String(r.result || '');
+        };
+        r.readAsText(f);
+      });
+      document.getElementById('flagManualSubmit')?.addEventListener('click', async () => {
+        try {
+          await fetchCsrf();
+          await submitManualFlag();
+        } catch (e) {
+          setMsg(String(e.message || e), 'err');
+        }
+      });
+    }
+
+    async function persistValidation(fp, on, f, notesText) {
+      const targetForSave = resolveTargetForValidation(f);
+      if (!targetUsableForApi(targetForSave)) {
+        throw new Error('Não foi possível inferir um domínio válido para gravar a validação. Inclui "target" no JSON importado ou URL completa no achado.');
+      }
+      target = targetForSave;
+      updateHeadLineFromState();
+      await fetchCsrf();
+      let snap = on ? snapshotFromFinding(f) : undefined;
+      if (on && snap && typeof snap === 'object') {
+        const d0 = String(sessionDesafio || '').trim().slice(0, 120);
+        if (d0) {
+          snap = { ...snap, desafio: d0, projectName: d0 };
+        }
+      }
+      const body = {
+        target: targetForSave,
+        fingerprint: fp,
+        validated: on,
+        snapshot: snap,
+        notes: on ? String(notesText || '').slice(0, 2000) : undefined,
+      };
+      const r = await fetch(apiUrl('/api/manual-validations'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || r.status);
+      try {
+        localStorage.setItem('ghostctf_manual_val_bump', String(Date.now()));
+      } catch (_) {}
+    }
+
+    function closeBrainModal() {
+      const overlay = document.getElementById('brainModal');
+      if (!overlay) return;
+      overlay.classList.remove('is-open');
+      overlay.setAttribute('aria-hidden', 'true');
+      const bodyEl = document.getElementById('brainModalBody');
+      const actionsEl = document.getElementById('brainModalActions');
+      if (bodyEl) bodyEl.innerHTML = '';
+      if (actionsEl) actionsEl.innerHTML = '';
+    }
+
+    /**
+     * @param {string} fp
+     * @param {object} f finding
+     * @param {{ askFirst?: boolean }} opts askFirst=true após novo check; false no botão «+ Cérebro»
+     */
+    async function offerBrainModal(fp, f, opts) {
+      const askFirst = opts && opts.askFirst !== false;
+      const overlay = document.getElementById('brainModal');
+      const bodyEl = document.getElementById('brainModalBody');
+      const actionsEl = document.getElementById('brainModalActions');
+      if (!overlay || !bodyEl || !actionsEl) return;
+
+      overlay.classList.add('is-open');
+      overlay.setAttribute('aria-hidden', 'false');
+
+      const runPicker = async (preferredId) => {
+        let cats = [];
+        try {
+          const r = await fetch(apiUrl('/api/brain/categories'));
+          const d = await r.json().catch(() => ({}));
+          cats = Array.isArray(d.items) ? d.items : [];
+        } catch (_) {}
+        let selectedId =
+          preferredId != null && Number.isFinite(Number(preferredId)) ? Number(preferredId) : null;
+        if (selectedId != null && !cats.some((c) => c.id === selectedId)) selectedId = null;
+        if (selectedId == null) selectedId = cats[0]?.id ?? null;
+
+        if (!cats.length) {
+          bodyEl.innerHTML =
+            '<p class="modal-p">Ainda não há categorias. Cria a primeira (título) — requer <strong>SQLite local</strong> no servidor.</p>' +
+            '<div id="brainNewWrap" style="margin-top:10px">' +
+            '<input type="text" id="brainNewTitle" class="notes-in" placeholder="Título (ex.: FTP anónimo)" maxlength="120" /> ' +
+            '<button type="button" id="brainNewCreate" class="btn">Criar categoria</button></div>';
+          document.getElementById('brainNewCreate')?.addEventListener('click', async () => {
+            const inp = document.getElementById('brainNewTitle');
+            const title = (inp && inp.value) ? inp.value.trim() : '';
+            if (!title) return;
+            try {
+              await fetchCsrf();
+              const r = await fetch(apiUrl('/api/brain/categories'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+                body: JSON.stringify({ title }),
+              });
+              const d = await r.json().catch(() => ({}));
+              if (!r.ok) throw new Error(d.error || String(r.status));
+              const newId = d.id != null ? Number(d.id) : null;
+              await runPicker(newId);
+            } catch (e) {
+              setMsg(String(e.message || e), 'err');
+            }
+          });
+        } else {
+          bodyEl.innerHTML =
+            '<p class="modal-p">Escolhe a vulnerabilidade no cérebro para ligar a este achado validado:</p>' +
+            '<div class="brain-chips" id="brainChipsHost"></div>' +
+            '<div id="brainNewWrap" style="display:none;margin-top:10px">' +
+            '<input type="text" id="brainNewTitle" class="notes-in" placeholder="Título (ex.: FTP anónimo)" maxlength="120" /> ' +
+            '<button type="button" id="brainNewCreate" class="btn">Criar categoria</button></div>';
+          const host = document.getElementById('brainChipsHost');
+          const mkChip = (c, sel) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'brain-chip' + (sel ? ' is-sel' : '');
+            b.textContent = c.title;
+            b.dataset.id = String(c.id);
+            b.addEventListener('click', () => {
+              selectedId = Number(c.id);
+              host.querySelectorAll('.brain-chip:not(.brain-chip-new)').forEach((x) => {
+                x.classList.toggle('is-sel', Number(x.dataset.id) === selectedId);
+              });
+            });
+            host.appendChild(b);
+          };
+          for (const c of cats) mkChip(c, selectedId === c.id);
+          const nb = document.createElement('button');
+          nb.type = 'button';
+          nb.className = 'brain-chip brain-chip-new';
+          nb.textContent = '+ Nova…';
+          nb.dataset.new = '1';
+          host.appendChild(nb);
+          const newWrap = document.getElementById('brainNewWrap');
+          nb.addEventListener('click', () => {
+            if (newWrap) newWrap.style.display = newWrap.style.display === 'none' ? 'block' : 'none';
+          });
+          document.getElementById('brainNewCreate')?.addEventListener('click', async () => {
+            const inp = document.getElementById('brainNewTitle');
+            const title = (inp && inp.value) ? inp.value.trim() : '';
+            if (!title) return;
+            try {
+              await fetchCsrf();
+              const r = await fetch(apiUrl('/api/brain/categories'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+                body: JSON.stringify({ title }),
+              });
+              const d = await r.json().catch(() => ({}));
+              if (!r.ok) throw new Error(d.error || String(r.status));
+              const newId = d.id != null ? Number(d.id) : null;
+              await runPicker(newId);
+            } catch (e) {
+              setMsg(String(e.message || e), 'err');
+            }
+          });
+        }
+
+        actionsEl.innerHTML =
+          '<button type="button" id="brainSave">Guardar no cérebro</button><button type="button" id="brainCancel">Cancelar</button>';
+        document.getElementById('brainCancel').onclick = () => closeBrainModal();
+        document.getElementById('brainSave').onclick = async () => {
+          if (!selectedId) {
+            setMsg('Selecciona ou cria uma categoria.', 'err');
+            return;
+          }
+          try {
+            await fetchCsrf();
+            const r = await fetch(apiUrl('/api/brain/link'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+              body: JSON.stringify({ target, fingerprint: fp, categoryId: selectedId }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || String(r.status));
+            await loadServerState();
+            render();
+            const label =
+              cats.find((c) => c.id === selectedId)?.title ||
+              document.querySelector('.brain-chip.is-sel')?.textContent ||
+              'OK';
+            setMsg('Ligado ao cérebro: ' + label, 'ok');
+            closeBrainModal();
+          } catch (e) {
+            setMsg(String(e.message || e), 'err');
+          }
+        };
+      };
+
+      if (askFirst) {
+        bodyEl.innerHTML =
+          '<p class="modal-p">Queres adicionar este achado confirmado ao <strong>modo cérebro</strong> (agregação por tipo de vulnerabilidade na base local)?</p>';
+        actionsEl.innerHTML =
+          '<button type="button" id="brainYes">Sim, escolher tipo</button><button type="button" id="brainNo">Não</button>';
+        document.getElementById('brainNo').onclick = () => closeBrainModal();
+        document.getElementById('brainYes').onclick = () => {
+          void runPicker(null);
+        };
+      } else {
+        await runPicker(null);
+      }
+    }
+
+    function render() {
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+      if (!findings.length) {
+        list.innerHTML =
+          '<div class="empty">Sem achados neste pacote. Corre <strong>RUN RECON</strong> e volta a abrir o Reporte, usa <strong>Importar</strong> no painel à esquerda, ou <strong>Flag manual</strong> no mesmo painel para documentar uma flag fora do recon.</div>';
+        document.getElementById('btnAi').disabled = true;
+        document.getElementById('countLine').textContent = '0 achados';
+        return;
+      }
+      let nVal = 0;
+      for (const f of findings) {
+        const fp = String(f.fingerprint || '').toLowerCase();
+        if (!/^[a-f0-9]{64}$/.test(fp)) continue;
+        const on = validatedFp.has(fp);
+        if (on) nVal++;
+        const prev = serverItems.find((x) => String(x.fingerprint || '').toLowerCase() === fp);
+        const brainTitle =
+          prev && Array.isArray(prev.brainCategoryTitles) && prev.brainCategoryTitles.length
+            ? prev.brainCategoryTitles.map((t) => String(t || '').trim()).filter(Boolean).join(' · ')
+            : prev && prev.brainCategoryTitle
+              ? String(prev.brainCategoryTitle)
+              : '';
+        const brainBadge = on && brainTitle
+          ? `<div class="brain-badge" title="Modo cérebro (podes ligar a mais categorias no Cortex)">🧠 ${escapeHtml(brainTitle)}</div>`
+          : '';
+        const brainBtn = on
+          ? `<button type="button" class="brain-add-btn" data-brain-fp="${escapeAttr(fp)}">${brainTitle ? '+ Outra categoria' : '+ Cérebro'}</button>`
+          : '';
+        const row = document.createElement('div');
+        row.className = 'row' + (on ? ' validated' : '');
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'val-toggle' + (on ? ' is-on' : '');
+        toggle.dataset.fp = fp;
+        setValidateToggleState(toggle, on);
+        toggle.addEventListener('click', async () => {
+          const nextOn = !validatedFp.has(fp);
+          toggle.disabled = true;
+          try {
+            const ta0 = row.querySelector('textarea');
+            const note0 = (ta0 && ta0.value) || '';
+            await persistValidation(fp, nextOn, f, note0);
+            if (nextOn) validatedFp.add(fp);
+            else validatedFp.delete(fp);
+            row.classList.toggle('validated', nextOn);
+            setValidateToggleState(toggle, nextOn);
+            updateAiButton();
+            setMsg(nextOn ? 'Gravado como validado.' : 'Validação removida.', 'ok');
+            if (nextOn) void offerBrainModal(fp, f, { askFirst: true });
+          } catch (e) {
+            setValidateToggleState(toggle, validatedFp.has(fp));
+            setMsg(String(e.message || e), 'err');
+          }
+          toggle.disabled = false;
+        });
+        const body = document.createElement('div');
+        const extUrl = toExternalUrl(f.url) || toExternalUrl(f.value);
+        const owaspIds = taxonomyIds(f && f.owasp, /^A\d{2}$/i);
+        const mitreIds = taxonomyIds(f && f.mitre, /^T\d{4}(?:\.\d{3})?$/i);
+        const taxHtml =
+          owaspIds.length || mitreIds.length
+            ? `<div class="taxo-tags">` +
+              owaspIds.map((id) => `<span class="taxo-tag owasp" title="OWASP">${escapeHtml(id)}</span>`).join('') +
+              mitreIds.map((id) => `<span class="taxo-tag mitre" title="MITRE ATT&CK">${escapeHtml(id)}</span>`).join('') +
+              `</div>`
+            : '';
+        const flagArr = Array.isArray(f.flags) ? f.flags.map((x) => String(x || '').trim()).filter(Boolean) : [];
+        const flagsHtml =
+          flagArr.length > 0
+            ? `<div class="ctf-flags" aria-label="Flags associadas a este achado"><span class="ctf-flags-label">Flags</span>${flagArr
+                .map((fl) => `<code class="ctf-flag">${escapeHtml(fl)}</code>`)
+                .join('')}</div>`
+            : '';
+        body.innerHTML =
+          `<div class="meta">${escapeHtml(String(f.type || ''))} · ${escapeHtml(String(f.prio || ''))} · <code>${fp.slice(0, 12)}…</code></div>` +
+          `<div class="val">${escapeHtml(String(f.value || ''))}</div>` +
+          flagsHtml +
+          (extUrl
+            ? `<div class="url report-open-url-hit" role="link" tabindex="0" aria-label="Abrir URL em nova aba" data-url="${escapeAttr(extUrl)}">↗ URL</div>`
+            : '') +
+          taxHtml +
+          `<textarea class="notes-in" data-fp="${fp}" rows="2" placeholder="Notas do teste manual (opcional)"></textarea>` +
+          brainBadge +
+          brainBtn;
+        row.appendChild(body);
+        row.appendChild(toggle);
+        const urlBtn = row.querySelector('.report-open-url-hit');
+        if (urlBtn) {
+          urlBtn.style.cursor = 'pointer';
+          urlBtn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            openExternalUrl(String(urlBtn.getAttribute('data-url') || ''));
+          });
+          urlBtn.addEventListener('keydown', (ev) => {
+            if (ev.key !== 'Enter' && ev.key !== ' ') return;
+            ev.preventDefault();
+            openExternalUrl(String(urlBtn.getAttribute('data-url') || ''));
+          });
+        }
+        const ta = row.querySelector('textarea');
+        if (ta) {
+          if (prev && prev.notes) ta.value = prev.notes;
+          ta.addEventListener('blur', async () => {
+            if (!validatedFp.has(fp)) return;
+            try {
+              await fetchCsrf();
+              await persistValidation(fp, true, f, ta.value);
+              setMsg('Notas actualizadas.', 'ok');
+            } catch (e) {
+              setMsg(String(e.message || e), 'err');
+            }
+          });
+        }
+        list.appendChild(row);
+      }
+      document.getElementById('countLine').textContent =
+        findings.length + ' achados · ' + validatedFp.size + ' com validação na base (nesta vista)';
+      updateAiButton();
+    }
+
+    function updateAiButton() {
+      const btn = document.getElementById('btnAi');
+      let n = 0;
+      for (const f of findings) {
+        const fp = String(f.fingerprint || '').toLowerCase();
+        if (/^[a-f0-9]{64}$/.test(fp) && validatedFp.has(fp)) n++;
+      }
+      btn.disabled = n === 0;
+      btn.textContent = 'Gerar relatório IA (' + n + ' validados nesta lista)';
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+    function escapeAttr(s) {
+      return escapeHtml(s).replace(/'/g, '&#39;');
+    }
+
+    function toExternalUrl(raw) {
+      const s = String(raw || '').trim();
+      if (!s) return '';
+      if (/^https?:\/\//i.test(s)) {
+        try { return new URL(s).href; } catch (_) { return encodeURI(s); }
+      }
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return '';
+      if (/^[a-z0-9][a-z0-9.-]*[a-z0-9](\/.*)?$/i.test(s)) {
+        const guess = 'https://' + s;
+        try { return new URL(guess).href; } catch (_) { return encodeURI(guess); }
+      }
+      return '';
+    }
+
+    function onListClick(ev) {
+      const a = ev.target.closest('.report-open-url-hit');
+      if (a) {
+        const raw = String(a.getAttribute('data-url') || '').trim();
+        openExternalUrl(raw);
+        return;
+      }
+      const b = ev.target.closest('.brain-add-btn');
+      if (!b) return;
+      const ffp = String(b.getAttribute('data-brain-fp') || '').toLowerCase();
+      const fx = findings.find((x) => String(x.fingerprint || '').toLowerCase() === ffp);
+      if (fx) void offerBrainModal(ffp, fx, { askFirst: false });
+    }
+
+    function openExternalUrl(raw) {
+      const url = toExternalUrl(raw);
+      if (!url) return;
+      const w = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!w) setMsg('Popup bloqueado ao abrir URL. Permite popups para esta página.', 'err');
+    }
+
+    function setValidateToggleState(btn, on) {
+      if (!btn) return;
+      const state = Boolean(on);
+      btn.classList.toggle('is-on', state);
+      btn.setAttribute('aria-pressed', state ? 'true' : 'false');
+      btn.setAttribute('aria-label', state ? 'Validado manualmente' : 'Marcar como validado');
+      btn.title = state ? 'Validado manualmente' : 'Marcar como validado';
+      btn.dataset.state = state ? 'ON' : 'OFF';
+    }
+
+    document.getElementById('btnReload').addEventListener('click', async () => {
+      setMsg('A sincronizar…', '');
+      try {
+        if (!findings.length) {
+          const loaded = await loadLatestRunIntoChecklist(target);
+          setMsg('Checklist carregada do run #' + loaded.runId + '. A sincronizar validações…', '');
+        }
+        await loadServerState();
+        render();
+        setMsg('Sincronizado com a base.', 'ok');
+      } catch (e) {
+        setMsg(String(e.message || e), 'err');
+      }
+    });
+
+    document.getElementById('btnAi').addEventListener('click', async () => {
+      const sel = findings.filter((f) => {
+        const fp = String(f.fingerprint || '').toLowerCase();
+        return /^[a-f0-9]{64}$/.test(fp) && validatedFp.has(fp);
+      });
+      if (!sel.length) return;
+      setMsg('A pedir relatório por IA… (pode demorar)', '');
+      document.getElementById('btnAi').disabled = true;
+      try {
+        await fetchCsrf();
+        const r = await fetch(apiUrl('/api/manual-validations/ai-report'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+          body: JSON.stringify({
+            target,
+            findings: sel,
+            aiPrimaryCloud: 'openrouter',
+            aiUseOpenrouter,
+            stats: { subs: 0, endpoints: 0, params: 0, secrets: 0, dorks: 0, high: 0 },
+          }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || String(r.status));
+        const okO = d.openrouter?.ok;
+        const okL = d.lmstudio?.ok;
+        const okC = d.claude?.ok;
+        const dir = d.outputDir || '';
+        setMsg(
+          'IA concluída (GHOSTCTF: só OpenRouter na cloud; sem Gemini). OpenRouter: ' +
+            (okO ? 'OK' : d.openrouter?.error || '—') +
+            ' · LM Studio: ' +
+            (okL ? 'OK' : d.lmstudio?.error || '—') +
+            ' · Claude: ' +
+            (okC ? 'OK' : d.claude?.error || '—') +
+            (dir ? '\nSaída: ' + dir : ''),
+          okO || okL || okC ? 'ok' : 'err',
+        );
+      } catch (e) {
+        setMsg(String(e.message || e), 'err');
+      }
+      document.getElementById('btnAi').disabled = false;
+      updateAiButton();
+    });
+
+    (async function init() {
+      const raw = readPayloadRawFromStorage();
+      if (!raw) {
+        document.getElementById('headLine').textContent = 'Abre esta página a partir do botão «Reporte» no GHOSTCTF.';
+        findings = [];
+        target = '';
+        render();
+        setMsg('Sem dados desta sessão. Abre pelo botão «Reporte» no GHOSTCTF ou clica «Recarregar da base».', 'err');
+        return;
+      }
+      let pack;
+      try {
+        pack = JSON.parse(raw);
+      } catch {
+        setMsg('Pacote JSON inválido.', 'err');
+        return;
+      }
+      target = normalizeTarget(pack.target || '');
+      sessionDesafio = String(pack.desafio || pack.projectName || '').trim().slice(0, 120);
+      findings = await hydrateFindingsFingerprints(
+        (Array.isArray(pack.findings) ? pack.findings : [])
+          .map(normalizeImportedFinding)
+          .filter(Boolean),
+        target,
+      );
+      const packTs = pack.updatedAt || pack.exportedAt || '?';
+      document.getElementById('headLine').textContent = targetUsableForApi(target)
+        ? 'Alvo: ' + target + ' · pacote: ' + packTs
+        : 'Sem alvo válido ainda · pacote: ' + packTs + ' — usa Target ($) no GHOSTCTF para sincronizar SQLite.';
+      try {
+        await loadAiState();
+        await loadServerState();
+        render();
+        setMsg(
+          targetUsableForApi(target)
+            ? 'Marca os achados que validaste manualmente. Gravação imediata na base (fingerprint). À esquerda: Importar JSON.'
+            : 'Sem domínio válido: não há sincronização com a base. No GHOSTCTF, indica um alvo no Target ($) antes de gravar validações; podes importar JSON no painel à esquerda.',
+          targetUsableForApi(target) ? 'ok' : '',
+        );
+      } catch (e) {
+        render();
+        setMsg('Aviso: não foi possível ler a base — ' + (e.message || e), 'err');
+      }
+
+      const bm = document.getElementById('brainModal');
+      bm?.addEventListener('click', (ev) => {
+        if (ev.target === bm) closeBrainModal();
+      });
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Escape') return;
+        const jw = document.getElementById('reportJsonDockWrap');
+        if (jw?.classList.contains('is-open')) {
+          setReportJsonDockOpen(false);
+          ev.preventDefault();
+          return;
+        }
+        if (document.getElementById('brainModal')?.classList.contains('is-open')) {
+          closeBrainModal();
+          ev.preventDefault();
+        }
+      });
+    })();
+
+    document.getElementById('list')?.addEventListener('click', onListClick);
+    wireReportJsonDock();
+  </script>
+</body>
+</html>

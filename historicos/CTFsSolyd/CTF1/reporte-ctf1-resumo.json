@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "target": "3.219.234.210",
+  "desafio": "CTF1_Solyd_2019",
+  "projectName": "CTF1_Solyd_2019",
+  "updatedAt": "2026-04-17T12:00:00.000Z",
+  "source": "historicos/CTFsSolyd/CTF1/Resumo.txt",
+  "notes": "Gerado a partir do write-up CTF 2019 Solyd (FTP → .aviso! → WordPress simply-poll SQLi → SSH → privesc). Importar no Reporte (JSON). Fingerprints SHA-256 são calculados no browser se omitidos. Campo opcional por achado: flags (strings da plataforma onde foram obtidas).",
+  "findings": [
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "Nmap: porta 21/tcp FTP aberta (vsFTPd 3.0.3)",
+      "url": "ftp://3.219.234.210/",
+      "meta": "Enumeração inicial; serviço FTP identificado no alvo."
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "FTP anonymous: login sem senha (230 Login successful)",
+      "url": "ftp://3.219.234.210/",
+      "meta": "Utilizador anonymous; listagem em modo passivo."
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "FTP: diretório Comunicados + ficheiro oculto .aviso!",
+      "url": "ftp://3.219.234.210/Comunicados/.aviso!",
+      "meta": "Dica interna sobre WordPress instalado pela equipa; Flag1 Solyd{c4r3ful_w1th_an0nym0us_ftp}.",
+      "flags": ["Solyd{c4r3ful_w1th_an0nym0us_ftp}"]
+    },
+    {
+      "type": "endpoint",
+      "prio": "medium",
+      "value": "http://3.219.234.210/wordpress",
+      "url": "http://3.219.234.210/wordpress",
+      "meta": "Enumeração web: directório /wordpress."
+    },
+    {
+      "type": "wpscan",
+      "prio": "high",
+      "value": "WordPress plugin simply-poll 1.4.1 (vulnerável — XSS/SQLi)",
+      "url": "http://3.219.234.210/wordpress",
+      "meta": "WPScan / Exploit-DB; vetor admin-ajax.php."
+    },
+    {
+      "type": "sqli",
+      "prio": "high",
+      "value": "SQLi via admin-ajax: action=spAjaxResults&pollid=2",
+      "url": "http://3.219.234.210/wp-admin/admin-ajax.php",
+      "meta": "sqlmap; DB rookie; tabela wp_users; Flag2 Solyd{w34k_plug1ns_3v3rywher3}.",
+      "flags": ["Solyd{w34k_plug1ns_3v3rywher3}"]
+    },
+    {
+      "type": "intel",
+      "prio": "medium",
+      "value": "Utilizador WordPress estagiario (posts como admin) + hash em wp_users",
+      "url": "http://3.219.234.210/wordpress",
+      "meta": "John rockyou → senha tiktok."
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "SSH estagiario@3.219.234.210 (porta 22) — credencial tiktok",
+      "url": "ssh://estagiario@3.219.234.210",
+      "meta": "Flag3 Solyd{f0ll0w_th3_p4ssw0rd_rul3s}; ficheiros Politicas_de_senhas, backup.sh, Trabalho_Estagiario.zip.",
+      "flags": ["Solyd{f0ll0w_th3_p4ssw0rd_rul3s}"]
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "ZIP Trabalho_Estagiario.zip protegido + script backup.sh (cópia /root,/etc para /var/backups)",
+      "url": "file:///home/estagiario/backup.sh",
+      "meta": "Senha ZIP estagiario; chmod estagiario no zip em /var/backups — cadeia para flag4."
+    },
+    {
+      "type": "intel",
+      "prio": "medium",
+      "value": "Escalação / artefactos locais (flag4, SUID, histórico .bash_history)",
+      "url": "ssh://estagiario@3.219.234.210",
+      "meta": "Privesc conforme write-up; directório flag4 inicialmente sem acesso.",
+      "flags": ["Solyd{0wn3d_th3_bug_b0unty_pr0gr4m}"]
+    },
+    {
+      "type": "intel",
+      "prio": "medium",
+      "value": "Reverse engineering: license.bin (ltrace Usage: user key; patch JNE→JE ou strings)",
+      "url": "file:///home/estagiario/license.bin",
+      "meta": "GDB/PEDA/objdump; flag Solyd{3ng3n33r1ng_r3v3rs3d}.",
+      "flags": ["Solyd{3ng3n33r1ng_r3v3rs3d}"]
+    },
+    {
+      "type": "security",
+      "prio": "low",
+      "value": "Resumo CTF1: ficheiro Resumo.txt contém secções adicionais (outros IPs / Sherlock / conflito Git)",
+      "url": "",
+      "meta": "Após linha ~525 há marcadores <<<<<<< HEAD / >>>>>>>; rever manualmente antes de misturar outros alvos no mesmo import."
+    }
+  ]
+}

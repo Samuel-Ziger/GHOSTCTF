@@ -1,6 +1,7 @@
 import dns from 'node:dns/promises';
 import { bodyLooksHtmlish, bodyLooksLikeDirectoryListing, effectiveUrlAfterRedirects } from './http-body.js';
 import { curlWebSingle } from './web-curl-single.js';
+import { ghostctfPositiveIntEnv } from './env-budgets.js';
 
 export function urlDedupKey(href) {
   try {
@@ -237,6 +238,7 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
   const logger = typeof log === 'function' ? log : () => {};
   const dnsCache = new Map();
   const allowedHosts = buildAllowedHostnames(ip, webResponses);
+  const fetchCap = ghostctfPositiveIntEnv('GHOSTCTF_MAX_LINK_CRAWL_FETCHES', maxNewFetches);
 
   const seen = new Set();
   for (const r of webResponses || []) {
@@ -246,7 +248,7 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
   let fetched = 0;
   let frontier = (webResponses || []).filter(responseOkForLinkParsing);
 
-  for (let d = 0; d < maxDepth && fetched < maxNewFetches; d += 1) {
+  for (let d = 0; d < maxDepth && fetched < fetchCap; d += 1) {
     const nextFrontier = [];
     for (const r of frontier) {
       const pageBase =
@@ -260,7 +262,7 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
         dnsCache,
       );
       for (const link of links) {
-        if (fetched >= maxNewFetches) break;
+        if (fetched >= fetchCap) break;
         const k = urlDedupKey(link);
         if (seen.has(k)) continue;
         seen.add(k);
@@ -279,7 +281,7 @@ export async function expandWebResponsesWithLinkCrawl(webResponses, {
           /* ignorar timeouts / falhas de rede */
         }
       }
-      if (fetched >= maxNewFetches) break;
+      if (fetched >= fetchCap) break;
     }
     frontier = nextFrontier;
   }

@@ -1,0 +1,20 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "f5902b3c52954e19ad6ecf56c74bc397c44497442ea0b18b1d0203db1315f3eb",
+  "validated_at": "2026-04-18T04:51:09.371Z",
+  "notes": "",
+  "snapshot": {
+    "type": "sqli",
+    "prio": "high",
+    "value": "SQLi via admin-ajax: action=spAjaxResults&pollid=2",
+    "url": "http://3.219.234.210/wp-admin/admin-ajax.php",
+    "meta": "sqlmap; DB rookie; tabela wp_users; Flag2 Solyd{w34k_plug1ns_3v3rywher3}.",
+    "flags": [
+      "Solyd{w34k_plug1ns_3v3rywher3}"
+    ],
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

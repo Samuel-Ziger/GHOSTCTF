@@ -1,0 +1,17 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "4404a1644d0577a2999dd9cb2f263ffc55fe25035b0a31b4bdafe30ff6f371cf",
+  "validated_at": "2026-04-18T01:05:21.291Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "high",
+    "value": "SSH estagiario@3.219.234.210 (porta 22) — credencial tiktok",
+    "url": "ssh://estagiario@3.219.234.210",
+    "meta": "Flag3 Solyd{f0ll0w_th3_p4ssw0rd_rul3s}; ficheiros Politicas_de_senhas, backup.sh, Trabalho_Estagiario.zip.",
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

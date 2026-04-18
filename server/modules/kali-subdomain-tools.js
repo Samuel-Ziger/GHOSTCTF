@@ -56,7 +56,7 @@ async function enumerateTool(cmd, args, domain, timeoutMs) {
 }
 
 export async function enumerateSubdomainsWithSubfinder(domain, log) {
-  const timeoutMs = Number(process.env.GHOSTCTF_SUBFINDER_TIMEOUT_MS ?? process.env.GHOSTRECON_SUBFINDER_TIMEOUT_MS ?? 180000);
+  const timeoutMs = Number(process.env.GHOSTRECON_SUBFINDER_TIMEOUT_MS || 180000);
   if (typeof log === 'function') log(`subfinder (passivo) em ${domain}...`, 'info');
 
   // subfinder por padrão é passivo (fontes online). `-all` aumenta cobertura (mais lento).
@@ -67,7 +67,7 @@ export async function enumerateSubdomainsWithSubfinder(domain, log) {
 }
 
 export async function enumerateSubdomainsWithAmass(domain, log) {
-  const timeoutMs = Number(process.env.GHOSTCTF_AMASS_TIMEOUT_MS ?? process.env.GHOSTRECON_AMASS_TIMEOUT_MS ?? 240000);
+  const timeoutMs = Number(process.env.GHOSTRECON_AMASS_TIMEOUT_MS || 240000);
   if (typeof log === 'function') log(`amass (passivo) em ${domain}...`, 'info');
 
   // `enum -passive` usa fontes passivas (sem bruteforce).

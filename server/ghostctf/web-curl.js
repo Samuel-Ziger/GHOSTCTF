@@ -5,6 +5,7 @@ import { tmpdir } from 'os';
 import { UA } from '../config.js';
 import { detectTech } from '../modules/tech.js';
 import { decodeBodyBufferToUtf8, effectiveUrlAfterRedirects, stripDefaultPortsFromUrl } from './http-body.js';
+import { getPipelineHttpCookie } from './http-cookie-context.js';
 
 function parseHttpHeadersBlock(raw) {
   const out = new Map();
@@ -65,6 +66,10 @@ async function runCurl({ url: urlIn, timeoutMs = 12000, maxBodyBytes = 250_000 }
     bodyPath,
     url,
   ];
+  const sess = getPipelineHttpCookie();
+  if (sess) {
+    args.splice(args.length - 1, 0, '-b', sess);
+  }
 
   const { spawn } = await import('node:child_process');
   const proc = await new Promise((resolve, reject) => {
@@ -115,6 +120,7 @@ async function runCurl({ url: urlIn, timeoutMs = 12000, maxBodyBytes = 250_000 }
     curlStderr: proc.stderr || '',
   };
 }
+
 
 function isProbablyWebPort(port) {
   const p = Number(port);

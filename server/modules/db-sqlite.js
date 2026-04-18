@@ -2,22 +2,17 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { findingsForRunsTable, fingerprintFinding, knowledgeKeyFromFinding } from './db-common.js';
+import { findingsForRunsTable, fingerprintFinding, knowledgeKeyFromFinding, norm } from './db-common.js';
+import { parseFindingsSnapshotJson } from './finding-serialize.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', '..');
-const DATA_DIR = path.join(ROOT, 'data');
+export const DATA_DIR = path.join(ROOT, 'data');
+/** Raiz local por projeto/escopo — pasta `escopo/` na raiz do repo (ignorada no git). */
+export const SCOPE_DIR = path.join(ROOT, 'escopo');
 const DEFAULT_DB = path.join(DATA_DIR, 'bugbounty.db');
 
-let dbInstance = null;
-
-export function getDb() {
-  if (dbInstance) return dbInstance;
-  const dbPath = process.env.GHOSTCTF_DB ?? process.env.GHOSTRECON_DB ?? DEFAULT_DB;
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  dbInstance = new Database(dbPath);
-  dbInstance.pragma('journal_mode = WAL');
-  dbInstance.exec(`
+const SCHEMA_SQL = `
     CREATE TABLE IF NOT EXISTS runs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       target TEXT NOT NULL,
@@ -66,48 +61,188 @@ export function getDb() {
       last_seen TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_knowledge_type ON ctf_knowledge(type);
-  `);
-  return dbInstance;
-}
 
-function mergeKnowledge(findings) {
-  const d = getDb();
-  const now = new Date().toISOString();
-  const sel = d.prepare('SELECT k, count FROM ctf_knowledge WHERE k = ?');
-  const ins = d.prepare(
-    `INSERT INTO ctf_knowledge (k, type, sample, count, first_seen, last_seen)
-     VALUES (@k, @type, @sample, @count, @first, @last)`,
-  );
-  const upd = d.prepare(
-    `UPDATE ctf_knowledge SET
-       count = count + @inc,
-       last_seen = @last,
-       sample = COALESCE(NULLIF(@sample, ''), sample)
-     WHERE k = @k`,
-  );
+    CREATE TABLE IF NOT EXISTS manual_validations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      target TEXT NOT NULL,
+      fingerprint TEXT NOT NULL,
+      validated_at TEXT NOT NULL,
+      snapshot_json TEXT,
+      notes TEXT,
+      UNIQUE(target, fingerprint)
+    );
+    CREATE INDEX IF NOT EXISTS idx_manual_val_target ON manual_validations(target);
 
-  const seen = new Set();
-  for (const f of findings || []) {
-    if (!f) continue;
-    // ignora ruído óbvio
-    if (f.type === 'domain' || f.type === 'subdomain') continue;
-    const key = knowledgeKeyFromFinding(f);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    const type = String(f.type || '').trim().toLowerCase();
-    const sample = String(f.value || '').slice(0, 280);
-    const cur = sel.get(key);
-    if (cur) {
-      upd.run({ k: key, inc: 1, last: now, sample });
-    } else {
-      ins.run({ k: key, type, sample, count: 1, first: now, last: now });
+    CREATE TABLE IF NOT EXISTS brain_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_brain_cat_title ON brain_categories(title);
+
+    CREATE TABLE IF NOT EXISTS brain_links (
+      category_id INTEGER NOT NULL,
+      target TEXT NOT NULL,
+      fingerprint TEXT NOT NULL,
+      linked_at TEXT NOT NULL,
+      PRIMARY KEY (category_id, target, fingerprint),
+      FOREIGN KEY (category_id) REFERENCES brain_categories(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_brain_links_category ON brain_links(category_id);
+  `;
+
+const BRAIN_CATEGORY_SEED_TITLES = [
+  'XSS',
+  'SQLi',
+  'FTP (anónimo / sem auth)',
+  'SSRF',
+  'IDOR',
+  'RCE',
+  'LFI',
+  'Open Redirect',
+  'XXE',
+  'Information Disclosure',
+  'Outro',
+];
+
+function ensureRunsFindingsJsonColumn(d) {
+  try {
+    const cols = d.prepare(`PRAGMA table_info(runs)`).all();
+    if (!cols.some((c) => c.name === 'findings_json')) {
+      d.exec(`ALTER TABLE runs ADD COLUMN findings_json TEXT`);
     }
+  } catch {
+    /* ignore */
   }
 }
 
-export function mergeIntelForTarget(target, runId, findings) {
+function applySqliteSchema(d) {
+  d.exec(SCHEMA_SQL);
+  ensureRunsFindingsJsonColumn(d);
+  ensureBrainCategoryDescriptionColumn(d);
+  ensureBrainSeedCategories(d);
+  ensureBrainLinksCompositePrimaryKey(d);
+}
+
+/**
+ * Migração: schema antigo tinha PRIMARY KEY (target, fingerprint) — uma ligação por achado.
+ * Novo: PRIMARY KEY (category_id, target, fingerprint) — o mesmo achado pode estar em várias categorias.
+ */
+function ensureBrainLinksCompositePrimaryKey(d) {
   try {
-    const d = getDb();
+    const row = d.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='brain_links'`).get();
+    const s = String(row?.sql || '');
+    if (!s) return;
+    if (s.includes('PRIMARY KEY (category_id, target, fingerprint)')) return;
+    if (!s.includes('PRIMARY KEY (target, fingerprint)')) return;
+    d.exec('PRAGMA foreign_keys = OFF');
+    d.exec('BEGIN IMMEDIATE');
+    d.exec(`
+      CREATE TABLE brain_links__mc (
+        category_id INTEGER NOT NULL,
+        target TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        linked_at TEXT NOT NULL,
+        PRIMARY KEY (category_id, target, fingerprint),
+        FOREIGN KEY (category_id) REFERENCES brain_categories(id) ON DELETE CASCADE
+      );
+    `);
+    d.prepare(
+      `INSERT OR IGNORE INTO brain_links__mc (category_id, target, fingerprint, linked_at)
+       SELECT category_id, target, fingerprint, linked_at FROM brain_links`,
+    ).run();
+    d.exec('DROP TABLE brain_links');
+    d.exec('ALTER TABLE brain_links__mc RENAME TO brain_links');
+    d.exec('CREATE INDEX IF NOT EXISTS idx_brain_links_category ON brain_links(category_id)');
+    d.exec('COMMIT');
+    d.exec('PRAGMA foreign_keys = ON');
+  } catch (e) {
+    try {
+      d.exec('ROLLBACK');
+    } catch (_) {
+      /* */
+    }
+    try {
+      d.exec('PRAGMA foreign_keys = ON');
+    } catch (_) {
+      /* */
+    }
+    console.error('[GHOSTCTF brain_links PK migration]', e?.message || e);
+  }
+}
+
+function ensureBrainCategoryDescriptionColumn(d) {
+  try {
+    const cols = d.prepare(`PRAGMA table_info(brain_categories)`).all();
+    if (!cols.some((c) => c.name === 'description')) {
+      d.exec(`ALTER TABLE brain_categories ADD COLUMN description TEXT NOT NULL DEFAULT ''`);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Título corresponde a uma categoria semente inicial (não apagável). */
+export function isBrainSeedCategoryTitle(titleRaw) {
+  const t = String(titleRaw || '').trim().toLowerCase();
+  return BRAIN_CATEGORY_SEED_TITLES.some((s) => String(s).trim().toLowerCase() === t);
+}
+
+function ensureBrainSeedCategories(d) {
+  try {
+    const n = d.prepare('SELECT COUNT(*) AS c FROM brain_categories').get();
+    if ((n?.c ?? 0) > 0) return;
+    const now = new Date().toISOString();
+    const ins = d.prepare('INSERT INTO brain_categories (title, created_at) VALUES (?, ?)');
+    const tx = d.transaction((titles) => {
+      for (const t of titles) ins.run(t, now);
+    });
+    tx(BRAIN_CATEGORY_SEED_TITLES);
+  } catch (e) {
+    console.error('[GHOSTCTF brain seed]', e?.message || e);
+  }
+}
+
+let dbInstance = null;
+
+/** Segmento seguro para pasta (projeto ou domínio). */
+export function sanitizePathSegment(raw, fallback = 'unnamed') {
+  let s = String(raw || '')
+    .trim()
+    .replace(/\.\./g, '')
+    .replace(/[/\\]+/g, '_')
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 96);
+  if (!s) s = fallback;
+  return s;
+}
+
+/**
+ * `escopo/{projeto}/{alvo}/` na raiz do repositório — alvo = domínio (escopo técnico).
+ * @returns {string|null} caminho absoluto ou null se sem nome de projeto
+ */
+export function resolveLocalProjectDbDir(projectName, domain) {
+  const p = String(projectName || '').trim();
+  if (!p) return null;
+  const safeProject = sanitizePathSegment(p);
+  const safeScope = sanitizePathSegment(domain, 'scope');
+  return path.join(SCOPE_DIR, safeProject, safeScope);
+}
+
+export function getDb() {
+  if (dbInstance) return dbInstance;
+  const dbPath = process.env.GHOSTCTF_DB ?? process.env.GHOSTRECON_DB ?? DEFAULT_DB;
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  dbInstance = new Database(dbPath);
+  dbInstance.pragma('journal_mode = WAL');
+  applySqliteSchema(dbInstance);
+  return dbInstance;
+}
+
+export function mergeIntelForTargetDb(d, target, runId, findings) {
+  try {
     const now = new Date().toISOString();
     let newArtifacts = 0;
     let alreadyKnown = 0;
@@ -168,61 +303,90 @@ export function mergeIntelForTarget(target, runId, findings) {
 
     return { newArtifacts, alreadyKnown, totalKnownForTarget };
   } catch (e) {
-    console.error('[GHOSTCTF DB intel]', e.message);
+    console.error('[GHOSTRECON DB intel]', e.message);
     return { newArtifacts: 0, alreadyKnown: 0, totalKnownForTarget: 0, error: e.message };
   }
 }
 
-export function saveRun({ target, exactMatch, modules, stats, findings, correlation }) {
-  try {
-    const d = getDb();
-    const now = new Date().toISOString();
-    const insRun = d.prepare(
-      `INSERT INTO runs (target, exact_match, modules_json, stats_json, correlation_json, created_at)
-       VALUES (@target, @exact, @modules, @stats, @corr, @created)`,
-    );
-    const insFinding = d.prepare(
-      `INSERT INTO findings (run_id, type, prio, score, value, meta, url)
-       VALUES (@run_id, @type, @prio, @score, @value, @meta, @url)`,
-    );
+export function mergeIntelForTarget(target, runId, findings) {
+  return mergeIntelForTargetDb(getDb(), target, runId, findings);
+}
 
-    const runResult = insRun.run({
-      target,
-      exact: exactMatch ? 1 : 0,
-      modules: JSON.stringify(modules),
-      stats: JSON.stringify(stats),
-      corr: correlation ? JSON.stringify(correlation) : null,
-      created: now,
-    });
-    const runId = Number(runResult.lastInsertRowid);
+function saveRunWithDb(d, { target, exactMatch, modules, stats, findings, correlation, findingsJson = null }) {
+  const now = new Date().toISOString();
+  const insRun = d.prepare(
+    `INSERT INTO runs (target, exact_match, modules_json, stats_json, correlation_json, findings_json, created_at)
+     VALUES (@target, @exact, @modules, @stats, @corr, @findings_json, @created)`,
+  );
+  const insFinding = d.prepare(
+    `INSERT INTO findings (run_id, type, prio, score, value, meta, url)
+     VALUES (@run_id, @type, @prio, @score, @value, @meta, @url)`,
+  );
 
-    const insertAll = d.transaction((rows) => {
-      for (const f of rows) {
-        insFinding.run({
-          run_id: runId,
-          type: f.type,
-          prio: f.prio,
-          score: f.score ?? null,
-          value: f.value,
-          meta: f.meta ?? null,
-          url: f.url ?? null,
-        });
-      }
-    });
-    insertAll(findingsForRunsTable(target, findings));
+  const runResult = insRun.run({
+    target,
+    exact: exactMatch ? 1 : 0,
+    modules: JSON.stringify(modules),
+    stats: JSON.stringify(stats),
+    corr: correlation ? JSON.stringify(correlation) : null,
+    findings_json: findingsJson,
+    created: now,
+  });
+  const runId = Number(runResult.lastInsertRowid);
 
-    const intelMerge = mergeIntelForTarget(target, runId, findings);
-    // biblioteca global (independente do IP)
-    try {
-      mergeKnowledge(findings);
-    } catch (e) {
-      console.error('[GHOSTCTF DB knowledge]', e.message);
+  const insertAll = d.transaction((rows) => {
+    for (const f of rows) {
+      insFinding.run({
+        run_id: runId,
+        type: f.type,
+        prio: f.prio,
+        score: f.score ?? null,
+        value: f.value,
+        meta: f.meta ?? null,
+        url: f.url ?? null,
+      });
     }
+  });
+  insertAll(findingsForRunsTable(target, findings));
 
-    return { runId, intelMerge };
+  const intelMerge = mergeIntelForTargetDb(d, target, runId, findings);
+  try {
+    mergeKnowledgeCtf(d, findings);
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
-    return null;
+    console.error('[GHOSTCTF DB knowledge]', e?.message || e);
+  }
+  return { runId, intelMerge };
+}
+
+function mergeKnowledgeCtf(d, findings) {
+  const now = new Date().toISOString();
+  const sel = d.prepare('SELECT k, count FROM ctf_knowledge WHERE k = ?');
+  const ins = d.prepare(
+    `INSERT INTO ctf_knowledge (k, type, sample, count, first_seen, last_seen)
+     VALUES (@k, @type, @sample, @count, @first, @last)`,
+  );
+  const upd = d.prepare(
+    `UPDATE ctf_knowledge SET
+       count = count + @inc,
+       last_seen = @last,
+       sample = COALESCE(NULLIF(@sample, ''), sample)
+     WHERE k = @k`,
+  );
+  const seen = new Set();
+  for (const f of findings || []) {
+    if (!f) continue;
+    if (f.type === 'domain' || f.type === 'subdomain') continue;
+    const key = knowledgeKeyFromFinding(f);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    const type = String(f.type || '').trim().toLowerCase();
+    const sample = String(f.value || '').slice(0, 280);
+    const cur = sel.get(key);
+    if (cur) {
+      upd.run({ k: key, inc: 1, last: now, sample });
+    } else {
+      ins.run({ k: key, type, sample, count: 1, first: now, last: now });
+    }
   }
 }
 
@@ -239,8 +403,41 @@ export function listKnowledge(limit = 80) {
       )
       .all(lim);
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTCTF DB knowledge list]', e?.message || e);
     return [];
+  }
+}
+
+/**
+ * Grava run + intel num SQLite dedicado (espelho local ou único quando sem cloud).
+ * @returns {{ runId: number, intelMerge: object, dbPath: string } | null}
+ */
+export function saveRunToProjectDir(projectRootDir, payload) {
+  try {
+    fs.mkdirSync(projectRootDir, { recursive: true });
+    const dbPath = path.join(projectRootDir, 'ghostrecon.db');
+    const d = new Database(dbPath);
+    d.pragma('journal_mode = WAL');
+    applySqliteSchema(d);
+    try {
+      const out = saveRunWithDb(d, payload);
+      return { ...out, dbPath };
+    } finally {
+      d.close();
+    }
+  } catch (e) {
+    console.error('[GHOSTRECON DB project dir]', e.message);
+    return null;
+  }
+}
+
+export function saveRun({ target, exactMatch, modules, stats, findings, correlation, findingsJson = null }) {
+  try {
+    const d = getDb();
+    return saveRunWithDb(d, { target, exactMatch, modules, stats, findings, correlation, findingsJson });
+  } catch (e) {
+    console.error('[GHOSTRECON DB]', e.message);
+    return null;
   }
 }
 
@@ -257,7 +454,7 @@ export function listRuns(limit = 50) {
       stats: JSON.parse(r.stats_json),
     }));
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return [];
   }
 }
@@ -267,9 +464,11 @@ export function getRunById(id) {
     const d = getDb();
     const run = d.prepare(`SELECT * FROM runs WHERE id = ?`).get(id);
     if (!run) return null;
-    const findings = d
+    const tableFindings = d
       .prepare(`SELECT type, prio, score, value, meta, url FROM findings WHERE run_id = ? ORDER BY id`)
       .all(id);
+    const snap = run.findings_json ? parseFindingsSnapshotJson(run.findings_json) : null;
+    const findings = snap?.length ? snap : tableFindings;
     return {
       id: run.id,
       target: run.target,
@@ -279,9 +478,10 @@ export function getRunById(id) {
       correlation: run.correlation_json ? JSON.parse(run.correlation_json) : null,
       created_at: run.created_at,
       findings,
+      findingsScopeRows: snap?.length ? tableFindings : undefined,
     };
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return null;
   }
 }
@@ -297,7 +497,7 @@ export function listIntelForTarget(target, limit = 500) {
       )
       .all(t, Math.min(2000, Math.max(1, limit)));
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return [];
   }
 }
@@ -311,4 +511,300 @@ export function intelCountForTarget(target) {
   } catch {
     return 0;
   }
+}
+
+function safeJsonParse(s) {
+  try {
+    return JSON.parse(String(s || 'null'));
+  } catch {
+    return null;
+  }
+}
+
+/** Lista validações manuais persistidas para o alvo (fingerprints iguais aos do pipeline). */
+export function listManualValidationsForTarget(targetRaw) {
+  const d = getDb();
+  const target = norm(targetRaw);
+  const rows = d
+    .prepare(
+      `SELECT mv.fingerprint, mv.validated_at, mv.snapshot_json, mv.notes
+       FROM manual_validations mv
+       WHERE mv.target = ? ORDER BY datetime(mv.validated_at) DESC`,
+    )
+    .all(target);
+  const linkStmt = d.prepare(
+    `SELECT bl.category_id AS id, bc.title AS title
+     FROM brain_links bl
+     JOIN brain_categories bc ON bc.id = bl.category_id
+     WHERE bl.target = ? AND bl.fingerprint = ?
+     ORDER BY lower(trim(bc.title))`,
+  );
+  return rows.map((r) => {
+    const links = linkStmt.all(target, r.fingerprint);
+    const ids = links.map((x) => Number(x.id));
+    const titles = links.map((x) => String(x.title || ''));
+    return {
+      fingerprint: r.fingerprint,
+      validated_at: r.validated_at,
+      notes: r.notes || '',
+      snapshot: r.snapshot_json ? safeJsonParse(r.snapshot_json) : null,
+      brainCategories: links.map((x) => ({ id: Number(x.id), title: String(x.title || '') })),
+      brainCategoryIds: ids,
+      brainCategoryTitles: titles,
+      brainCategoryId: ids.length ? ids[0] : null,
+      brainCategoryTitle: titles.length ? titles.join(' · ') : null,
+    };
+  });
+}
+
+/** Categorias do cérebro ligadas a um achado (target + fingerprint). */
+export function listBrainLinksForFinding(targetRaw, fingerprintRaw) {
+  const d = getDb();
+  const target = norm(targetRaw);
+  const fp = String(fingerprintRaw || '').trim().toLowerCase();
+  if (!target || !/^[a-f0-9]{64}$/.test(fp)) return [];
+  const rows = d
+    .prepare(
+      `SELECT bl.category_id AS id, bc.title AS title, bl.linked_at AS linked_at
+       FROM brain_links bl
+       JOIN brain_categories bc ON bc.id = bl.category_id
+       WHERE bl.target = ? AND bl.fingerprint = ?
+       ORDER BY lower(trim(bc.title))`,
+    )
+    .all(target, fp);
+  return rows.map((r) => ({
+    id: Number(r.id),
+    title: r.title,
+    linked_at: r.linked_at,
+  }));
+}
+
+export function listBrainCategories() {
+  const d = getDb();
+  ensureBrainSeedCategories(d);
+  const rows = d
+    .prepare(
+      `SELECT c.id, c.title, c.description, c.created_at,
+        (SELECT COUNT(*) FROM brain_links bl WHERE bl.category_id = c.id) AS link_count
+       FROM brain_categories c ORDER BY lower(trim(c.title))`,
+    )
+    .all();
+  return rows.map((r) => ({
+    id: Number(r.id),
+    title: r.title,
+    description: r.description || '',
+    created_at: r.created_at,
+    linkCount: Number(r.link_count) || 0,
+    isSeed: isBrainSeedCategoryTitle(r.title),
+  }));
+}
+
+export function getBrainCategoryById(idRaw) {
+  const d = getDb();
+  const cid = Number(idRaw);
+  if (!Number.isFinite(cid) || cid < 1) return null;
+  const r = d.prepare('SELECT id, title, description, created_at FROM brain_categories WHERE id = ?').get(cid);
+  if (!r) return null;
+  return { id: Number(r.id), title: r.title, description: r.description || '', created_at: r.created_at };
+}
+
+export function listBrainLinksForCategory(categoryIdRaw) {
+  const d = getDb();
+  const cid = Number(categoryIdRaw);
+  if (!Number.isFinite(cid) || cid < 1) throw new Error('categoria inválida');
+  const rows = d
+    .prepare(
+      `SELECT bl.target, bl.fingerprint, bl.linked_at, mv.notes, mv.snapshot_json
+       FROM brain_links bl
+       LEFT JOIN manual_validations mv ON mv.target = bl.target AND mv.fingerprint = bl.fingerprint
+       WHERE bl.category_id = ?
+       ORDER BY datetime(bl.linked_at) DESC`,
+    )
+    .all(cid);
+  return rows.map((r) => ({
+    target: r.target,
+    fingerprint: r.fingerprint,
+    linked_at: r.linked_at,
+    notes: r.notes || '',
+    snapshot: r.snapshot_json ? safeJsonParse(r.snapshot_json) : null,
+  }));
+}
+
+export function createBrainCategory(titleRaw, descriptionRaw = '') {
+  const d = getDb();
+  const title = String(titleRaw || '')
+    .trim()
+    .slice(0, 120);
+  const description = String(descriptionRaw || '')
+    .trim()
+    .slice(0, 2000);
+  if (!title) throw new Error('título vazio');
+  ensureBrainSeedCategories(d);
+  const row = d
+    .prepare('SELECT id, title, description FROM brain_categories WHERE lower(trim(title)) = lower(trim(?))')
+    .get(title);
+  if (row) return { id: Number(row.id), title: row.title, description: row.description || '', existing: true };
+  const now = new Date().toISOString();
+  const info = d
+    .prepare('INSERT INTO brain_categories (title, description, created_at) VALUES (?, ?, ?)')
+    .run(title, description, now);
+  return { id: Number(info.lastInsertRowid), title, description, existing: false };
+}
+
+/**
+ * Cria categoria ou actualiza a descrição se já existir o mesmo título (case-insensitive, trim).
+ * Usado pelo sync de limpeza `falhas em ordem` no Cortex (`brain-sync-falhas-historico.js`).
+ * @returns {{ id: number, title: string, updated: boolean }}
+ */
+export function upsertBrainCategoryByTitle(titleRaw, descriptionRaw = '') {
+  const d = getDb();
+  const title = String(titleRaw || '')
+    .trim()
+    .slice(0, 120);
+  const description = String(descriptionRaw || '')
+    .trim()
+    .slice(0, 2000);
+  if (!title) throw new Error('título vazio');
+  ensureBrainSeedCategories(d);
+  const row = d
+    .prepare('SELECT id, title, description FROM brain_categories WHERE lower(trim(title)) = lower(trim(?))')
+    .get(title);
+  if (row) {
+    const id = Number(row.id);
+    const cur = String(row.description ?? '').trim();
+    if (cur !== description) {
+      d.prepare('UPDATE brain_categories SET description = ? WHERE id = ?').run(description, id);
+      return { id, title: row.title, updated: true };
+    }
+    return { id, title: row.title, updated: false };
+  }
+  const now = new Date().toISOString();
+  const info = d
+    .prepare('INSERT INTO brain_categories (title, description, created_at) VALUES (?, ?, ?)')
+    .run(title, description, now);
+  return { id: Number(info.lastInsertRowid), title, updated: true };
+}
+
+/**
+ * Remove uma categoria pelo título (case-insensitive, trim). `brain_links` apaga em cascata.
+ * @returns {{ deleted: boolean, id?: number, title?: string }}
+ */
+export function deleteBrainCategoryByTitle(titleRaw) {
+  const d = getDb();
+  const title = String(titleRaw || '')
+    .trim()
+    .slice(0, 120);
+  if (!title) return { deleted: false };
+  if (isBrainSeedCategoryTitle(title)) return { deleted: false };
+  const row = d
+    .prepare('SELECT id, title FROM brain_categories WHERE lower(trim(title)) = lower(trim(?))')
+    .get(title);
+  if (!row) return { deleted: false };
+  const id = Number(row.id);
+  d.prepare('DELETE FROM brain_categories WHERE id = ?').run(id);
+  return { deleted: true, id, title: row.title };
+}
+
+/**
+ * Remove categoria por id. `brain_links` apaga em cascata.
+ * @returns {{ deleted: boolean, id?: number, title?: string }}
+ */
+export function deleteBrainCategoryById(idRaw) {
+  const d = getDb();
+  const id = Number(idRaw);
+  if (!Number.isFinite(id) || id < 1) return { deleted: false };
+  const row = d.prepare('SELECT id, title FROM brain_categories WHERE id = ?').get(id);
+  if (!row) return { deleted: false };
+  if (isBrainSeedCategoryTitle(row.title)) {
+    throw new Error('Não é permitido apagar categorias semente (XSS, SQLi, …).');
+  }
+  d.prepare('DELETE FROM brain_categories WHERE id = ?').run(id);
+  return { deleted: true, id: Number(row.id), title: row.title };
+}
+
+export function updateBrainCategoryDescription(idRaw, descriptionRaw) {
+  const d = getDb();
+  const cid = Number(idRaw);
+  if (!Number.isFinite(cid) || cid < 1) throw new Error('categoria inválida');
+  const description = String(descriptionRaw || '')
+    .trim()
+    .slice(0, 2000);
+  const info = d.prepare('UPDATE brain_categories SET description = ? WHERE id = ?').run(description, cid);
+  if (!info.changes) throw new Error('categoria não encontrada');
+  const row = d.prepare('SELECT id, title, description, created_at FROM brain_categories WHERE id = ?').get(cid);
+  return {
+    id: Number(row.id),
+    title: row.title,
+    description: row.description || '',
+    created_at: row.created_at,
+  };
+}
+
+export function upsertBrainLink({ target: targetRaw, fingerprint, categoryId }) {
+  const d = getDb();
+  const target = norm(targetRaw);
+  const fp = String(fingerprint || '').trim().toLowerCase();
+  const cid = Number(categoryId);
+  if (!target || !/^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(target)) throw new Error('alvo inválido');
+  if (!/^[a-f0-9]{64}$/.test(fp)) throw new Error('fingerprint inválido');
+  if (!Number.isFinite(cid) || cid < 1) throw new Error('categoria inválida');
+  const cat = d.prepare('SELECT id FROM brain_categories WHERE id = ?').get(cid);
+  if (!cat) throw new Error('categoria não encontrada');
+  const mv = d.prepare('SELECT 1 FROM manual_validations WHERE target = ? AND fingerprint = ?').get(target, fp);
+  if (!mv) throw new Error('valida o achado no Reporte antes de ligar ao cérebro');
+  const now = new Date().toISOString();
+  d.prepare(
+    `INSERT INTO brain_links (category_id, target, fingerprint, linked_at)
+     VALUES (@cid, @target, @fp, @now)
+     ON CONFLICT(category_id, target, fingerprint) DO UPDATE SET
+       linked_at = excluded.linked_at`,
+  ).run({ cid, target, fp, now });
+  return { ok: true, target, fingerprint: fp, categoryId: cid };
+}
+
+/** Remove a ligação a uma categoria (mantém outras categorias e a validação manual). */
+export function deleteBrainLink({ target: targetRaw, fingerprint, categoryId }) {
+  const d = getDb();
+  const target = norm(targetRaw);
+  const fp = String(fingerprint || '').trim().toLowerCase();
+  const cid = Number(categoryId);
+  if (!target || !/^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(target)) throw new Error('alvo inválido');
+  if (!/^[a-f0-9]{64}$/.test(fp)) throw new Error('fingerprint inválido');
+  if (!Number.isFinite(cid) || cid < 1) throw new Error('categoria inválida');
+  const r = d.prepare('DELETE FROM brain_links WHERE target = ? AND fingerprint = ? AND category_id = ?').run(
+    target,
+    fp,
+    cid,
+  );
+  return { ok: true, changes: r.changes };
+}
+
+export function upsertManualValidation({ target: targetRaw, fingerprint, snapshot, notes }) {
+  const d = getDb();
+  const target = norm(targetRaw);
+  const fp = String(fingerprint || '').trim().toLowerCase();
+  if (!target || !/^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(target)) throw new Error('alvo inválido');
+  if (!/^[a-f0-9]{64}$/.test(fp)) throw new Error('fingerprint inválido');
+  const now = new Date().toISOString();
+  const snapJson =
+    snapshot && typeof snapshot === 'object' ? JSON.stringify(snapshot).slice(0, 12000) : null;
+  const n = notes != null ? String(notes).slice(0, 2000) : '';
+  d.prepare(
+    `INSERT INTO manual_validations (target, fingerprint, validated_at, snapshot_json, notes)
+     VALUES (@target, @fp, @now, @snap, @notes)
+     ON CONFLICT(target, fingerprint) DO UPDATE SET
+       validated_at = excluded.validated_at,
+       snapshot_json = COALESCE(excluded.snapshot_json, manual_validations.snapshot_json),
+       notes = excluded.notes`,
+  ).run({ target, fp, now, snap: snapJson, notes: n });
+  return { ok: true };
+}
+
+export function deleteManualValidation(targetRaw, fingerprint) {
+  const d = getDb();
+  const target = norm(targetRaw);
+  const fp = String(fingerprint || '').trim().toLowerCase();
+  d.prepare('DELETE FROM brain_links WHERE target = ? AND fingerprint = ?').run(target, fp);
+  const r = d.prepare('DELETE FROM manual_validations WHERE target = ? AND fingerprint = ?').run(target, fp);
+  return { ok: true, changes: r.changes };
 }

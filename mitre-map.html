@@ -1,0 +1,2911 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GHOSTCTF · Ghostmap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      /* GHOSTCTF — base */
+      --bg:          #050508;
+      --bg2:         #080b12;
+      --bg3:         #0d1220;
+      --panel:       #0a0e1a;
+      --panel2:      #0d1220;
+      --border:      #2a1233;
+      --border-bright: #ff2bd6;
+      --accent:      #ff2bd6;
+      --accent2:     #00ff88;
+      --accent3:     #ff3366;
+      --accent4:     #00d4ff;
+      --text:        #c8d8f0;
+      --text-dim:    #4a6080;
+      --text-bright: #e8f4ff;
+      --mono:        'Share Tech Mono', ui-monospace, monospace;
+      --display:     'Orbitron', system-ui, sans-serif;
+      --sans:        'Rajdhani', system-ui, sans-serif;
+      /* Ghostmap — semântica (compatível com o resto do ficheiro) */
+      --dim:         var(--text-dim);
+      --dim2:        #6a7898;
+      --live:        var(--accent3);
+      --live-dim:    rgba(255, 51, 102, 0.28);
+      --done:        var(--accent2);
+      --done-dim:    rgba(0, 255, 136, 0.14);
+      --mitre:       #ff8ad4;
+      --mitre-dim:   rgba(255, 43, 214, 0.16);
+      --owasp:       var(--accent4);
+      --owasp-dim:   rgba(0, 212, 255, 0.12);
+      --acc:         var(--accent4);
+      --acc-dim:     rgba(0, 212, 255, 0.12);
+      --scan:        repeating-linear-gradient(
+                       0deg,
+                       transparent,
+                       transparent 2px,
+                       rgba(0, 0, 0, 0.15) 2px,
+                       rgba(0, 0, 0, 0.15) 4px
+                     );
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanlines (GHOSTCTF) */
+    body::before {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background: var(--scan);
+      z-index: 9999;
+    }
+
+    /* Grelha magenta suave (GHOSTCTF) */
+    body::after {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 43, 214, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 43, 214, 0.035) 1px, transparent 1px),
+        radial-gradient(ellipse 55% 42% at 12% 0%, rgba(255, 43, 214, 0.07) 0%, transparent 58%),
+        radial-gradient(ellipse 48% 38% at 88% 100%, rgba(0, 212, 255, 0.06) 0%, transparent 55%);
+      background-size: 40px 40px, 40px 40px, auto, auto;
+      z-index: 0;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0 20px;
+      height: 56px;
+      background: linear-gradient(180deg, rgba(6, 9, 16, 0.97) 0%, rgba(5, 5, 8, 0.92) 100%);
+      backdrop-filter: blur(14px) saturate(1.2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent4), var(--accent2), transparent);
+      opacity: 0.35;
+    }
+
+    .logo-ghost {
+      flex-shrink: 0;
+      width: 32px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: ghost-float 2.4s ease-in-out infinite;
+    }
+
+    .logo-ghost svg {
+      display: block;
+      filter: drop-shadow(0 0 10px rgba(255, 43, 214, 0.45)) drop-shadow(0 0 6px rgba(0, 212, 255, 0.25));
+    }
+
+    .logo-ghost .ghost-anim {
+      transform-origin: 24px 26px;
+      animation: ghost-sway 2.4s ease-in-out infinite;
+    }
+
+    @keyframes ghost-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    @keyframes ghost-sway {
+      0%, 100% { transform: rotate(-4deg); }
+      50% { transform: rotate(4deg); }
+    }
+
+    .logo-ghost .ghost-eye {
+      transform-origin: center;
+      transform-box: fill-box;
+      animation: ghost-blink 4.5s ease-in-out infinite;
+    }
+
+    .logo-ghost .ghost-eye-r { animation-delay: 0.05s; }
+
+    @keyframes ghost-blink {
+      0%, 48%, 52%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(0.12); }
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-bright);
+    }
+
+    h1 span { color: var(--accent); }
+
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    .pill {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      color: var(--dim2);
+      background: var(--panel);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .pill.waiting { border-color: #3a3a20; color: #b8a860; background: rgba(58,58,32,.35); }
+    .pill.live {
+      border-color: rgba(255,60,60,.5);
+      color: #ff9090;
+      background: rgba(255,60,60,.08);
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: .55; } }
+    .pill.err { color: #ff7070; border-color: #662222; background: rgba(102,34,34,.25); }
+
+    .target-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent4);
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.28);
+      padding: 3px 10px;
+      border-radius: 2px;
+      letter-spacing: .04em;
+    }
+
+    /* ─── MAIN ─── */
+    main {
+      position: relative;
+      z-index: 1;
+      padding: 18px 20px 100px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--dim2);
+      margin: 0 0 20px;
+      line-height: 1.65;
+      padding: 10px 14px;
+      border-left: 2px solid rgba(255, 43, 214, 0.35);
+      background: rgba(255, 43, 214, 0.04);
+      border-radius: 0 4px 4px 0;
+    }
+
+    .hint strong { color: var(--text-bright); }
+    .hint code {
+      background: rgba(0, 212, 255, 0.1);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--accent4);
+    }
+
+    /* ─── SECTION ─── */
+    section.block { margin-bottom: 24px; }
+
+    section.block > h2 {
+      margin: 0 0 10px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .15em;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    section.block > h2::before {
+      content: '';
+      display: inline-block;
+      width: 14px; height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent4));
+      opacity: .75;
+      border-radius: 1px;
+    }
+
+    section.block > h2::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin-left: 4px;
+    }
+
+    /* ─── PIPELINE ─── */
+    .pipe-milestones-wrap {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 14px 20px;
+      overflow-x: auto;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 4px 24px rgba(0,0,0,.4);
+    }
+
+    .pipe-milestones-wrap::-webkit-scrollbar { height: 4px; }
+    .pipe-milestones-wrap::-webkit-scrollbar-track { background: var(--bg2); }
+    .pipe-milestones-wrap::-webkit-scrollbar-thumb { background: rgba(255, 43, 214, 0.35); border-radius: 2px; }
+
+    .pipe-rail-h {
+      position: absolute;
+      left: 28px; right: 28px;
+      top: 38px;
+      height: 2px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--border) 8%,
+        rgba(0,212,255,.2) 50%,
+        var(--border) 92%,
+        transparent 100%);
+      pointer-events: none;
+    }
+
+    .pipe-milestones-h {
+      display: flex;
+      flex-direction: row;
+      gap: 0;
+      min-width: min-content;
+      padding-top: 4px;
+    }
+
+    .pipe-ms {
+      flex: 0 0 auto;
+      width: 74px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .pipe-ms-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--bg2);
+      border: 2px solid var(--border);
+      margin-bottom: 8px;
+      transition: all .25s ease;
+    }
+
+    .pipe-ms.pending .pipe-ms-dot { background: var(--bg2); border-color: #2a1530; }
+
+    .pipe-ms.active .pipe-ms-dot {
+      background: var(--live);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--live-dim), 0 0 16px rgba(255, 43, 214, 0.45);
+      animation: pulse-dot 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .pipe-ms.done .pipe-ms-dot {
+      background: var(--done-dim);
+      border-color: var(--done);
+      box-shadow: 0 0 8px rgba(0,232,122,.3);
+    }
+
+    .pipe-ms.skip .pipe-ms-dot { background: #1a1a14; border-color: #3a3520; }
+
+    .pipe-ms-name {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--dim2);
+      line-height: 1.2;
+      word-break: break-all;
+      max-width: 68px;
+      transition: color .25s;
+    }
+
+    .pipe-ms.active .pipe-ms-name { color: #ffb8e8; }
+    .pipe-ms.done .pipe-ms-name { color: rgba(0,232,122,.8); }
+
+    .pipe-ms-st {
+      font-size: 9px;
+      color: var(--dim);
+      margin-top: 3px;
+    }
+
+    .pipe-ms.done .pipe-ms-st { color: var(--done); }
+    .pipe-ms.active .pipe-ms-st { color: var(--live); }
+
+    .pipe-hint {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim);
+      margin-top: 10px;
+      padding-left: 2px;
+    }
+
+    /* ─── BRANCHES ─── */
+    .branches-wrap {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .branches-wrap.branches-viewport {
+      padding: 0;
+      max-height: min(340px, 48vh);
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .branches-wrap::-webkit-scrollbar,
+    .branches-viewport::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .branches-wrap::-webkit-scrollbar-track,
+    .branches-viewport::-webkit-scrollbar-track {
+      background: var(--bg2);
+    }
+    .branches-wrap::-webkit-scrollbar-thumb,
+    .branches-viewport::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .h-flow-cards {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      gap: 0;
+      min-width: min-content;
+      position: relative;
+      padding: 10px 2px 6px;
+    }
+
+    .h-flow-cards::after {
+      content: '';
+      position: absolute;
+      left: 10px; right: 10px;
+      top: 50%;
+      height: 2px;
+      margin-top: -1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--border) 5%,
+        rgba(0,212,255,.15) 50%,
+        var(--border) 95%,
+        transparent 100%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .h-seg {
+      position: relative;
+      z-index: 1;
+      flex: 0 0 auto;
+      width: 124px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 176px;
+      padding: 0 6px;
+    }
+
+    .h-seg-up { justify-content: flex-end; padding-bottom: 4px; }
+    .h-seg-down { justify-content: flex-start; padding-top: 4px; }
+
+    .h-mini-card {
+      width: 100%;
+      max-width: 116px;
+      background: rgba(10, 8, 18, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 8px 9px;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text);
+      line-height: 1.4;
+      word-break: break-word;
+      transition: border-color .2s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .h-mini-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,212,255,.25), transparent);
+    }
+
+    .h-mini-card:hover {
+      border-color: rgba(0,212,255,.3);
+      box-shadow: 0 0 14px rgba(0,212,255,.08);
+    }
+
+    .h-mini-card .t {
+      color: var(--owasp);
+      text-transform: uppercase;
+      font-size: 8px;
+      letter-spacing: .05em;
+      opacity: .8;
+    }
+
+    .h-mini-card .v {
+      margin-top: 5px;
+      color: var(--text-bright);
+      max-height: 52px;
+      overflow: hidden;
+    }
+
+    .h-mini-card .pr { margin-top: 5px; font-size: 8px; color: var(--dim); letter-spacing: .05em; }
+    .h-mini-card .lnk {
+      margin-top: 6px;
+      font-size: 8px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .h-mini-card .lnk a {
+      color: var(--acc);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(0,212,255,.35);
+    }
+    .h-mini-card .lnk a:hover {
+      color: #fff;
+      border-bottom-color: rgba(255,255,255,.45);
+    }
+
+    .h-vline {
+      width: 2px;
+      flex: 0 0 24px;
+      min-height: 24px;
+      border-radius: 1px;
+    }
+
+    .h-seg-up .h-vline {
+      background: linear-gradient(180deg, rgba(255,43,214,.2), rgba(0,212,255,.35));
+    }
+
+    .h-seg-down .h-vline {
+      background: linear-gradient(180deg, rgba(0,212,255,.35), rgba(255,43,214,.2));
+    }
+
+    /* ─── MITRE node button ─── */
+    .mitre-node-btn {
+      width: 40px; height: 40px;
+      border-radius: 4px;
+      border: 1.5px solid rgba(255,43,214,.45);
+      background: linear-gradient(145deg, #1a0a18, #0e060e);
+      color: var(--mitre);
+      font-family: var(--mono);
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1.1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: transform .15s, border-color .15s, box-shadow .15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mitre-node-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,43,214,.1), transparent);
+      opacity: 0;
+      transition: opacity .15s;
+    }
+
+    .mitre-node-btn:hover {
+      transform: scale(1.1);
+      border-color: var(--mitre);
+      box-shadow: 0 0 18px rgba(255,43,214,.35), inset 0 0 8px rgba(255,43,214,.08);
+    }
+
+    .mitre-node-btn:hover::after { opacity: 1; }
+
+    .mitre-node-btn.num-only {
+      font-size: 12px;
+      color: var(--dim2);
+      border-color: var(--border);
+      background: var(--panel);
+    }
+
+    .mitre-node-btn.num-only:hover {
+      border-color: var(--acc);
+      box-shadow: 0 0 14px var(--acc-dim);
+      color: var(--acc);
+    }
+
+    /* ─── TACTICS GRID ─── */
+    .tactics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .tactic {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .tactic.live {
+      border-color: rgba(255, 43, 214, 0.45);
+      box-shadow: 0 0 20px rgba(255, 43, 214, 0.12), inset 0 0 24px rgba(0, 212, 255, 0.04);
+    }
+
+    .tactic-h {
+      padding: 8px 12px;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,0,0,.2);
+    }
+
+    .tactic-h strong { color: var(--accent); font-family: var(--mono); font-size: 10px; }
+    .tactic-h span { color: var(--dim2); font-size: 10px; font-family: var(--mono); }
+
+    .tactic-body {
+      padding: 8px 10px 10px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .tactic-body::-webkit-scrollbar { width: 3px; }
+    .tactic-body::-webkit-scrollbar-track { background: transparent; }
+    .tactic-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 1px; }
+
+    .chip {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 2px 6px;
+      margin: 2px 2px 0 0;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      color: var(--dim2);
+      cursor: default;
+      transition: all .15s;
+    }
+
+    .chip:hover { border-color: var(--accent); color: var(--text); }
+
+    .chip.hit {
+      background: rgba(255, 43, 214, 0.12);
+      border-color: rgba(255, 43, 214, 0.45);
+      color: #ffb8e8;
+      cursor: pointer;
+    }
+
+    /* ─── JSON ─── */
+    .json-section {
+      margin-top: 24px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .json-section > summary {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim2);
+      list-style: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: .04em;
+      transition: color .15s;
+    }
+
+    .json-section > summary::-webkit-details-marker { display: none; }
+    .json-section > summary::before {
+      content: '▸';
+      font-size: 9px;
+      opacity: .6;
+      transition: transform .15s;
+    }
+    .json-section[open] > summary::before { transform: rotate(90deg); }
+    .json-section > summary:hover { color: var(--accent); }
+
+    #jsonLive {
+      margin: 0;
+      padding: 14px 16px 18px;
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1.5;
+      color: rgba(0,212,255,.6);
+      background: #030507;
+      border-top: 1px solid var(--border);
+      max-height: 40vh;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    #jsonLive::-webkit-scrollbar { width: 4px; height: 4px; }
+    #jsonLive::-webkit-scrollbar-track { background: transparent; }
+    #jsonLive::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ─── MODAL ─── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 3, 12, 0.82);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+    }
+
+    .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+
+    .modal-panel {
+      width: 100%;
+      max-width: 500px;
+      max-height: min(88vh, 660px);
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(0,212,255,.06);
+      position: relative;
+      padding: 20px 22px 22px;
+      transform: translateY(10px);
+      transition: transform .2s ease;
+    }
+
+    .modal-backdrop.open .modal-panel { transform: translateY(0); }
+
+    .modal-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--mitre), var(--acc), transparent);
+      opacity: .6;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .modal-panel::-webkit-scrollbar { width: 4px; }
+    .modal-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .modal-close {
+      position: absolute;
+      top: 10px; right: 12px;
+      width: 28px; height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--dim2);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+    }
+
+    .modal-close:hover { background: rgba(255, 43, 214, 0.12); color: var(--text); border-color: var(--accent); }
+
+    .modal-panel h3 {
+      margin: 0 40px 12px 0;
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-bright);
+      letter-spacing: .05em;
+    }
+
+    .modal-panel .lead {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim2);
+      margin-bottom: 6px;
+      word-break: break-all;
+    }
+
+    .modal-panel .lead strong { color: var(--accent4); }
+
+    .modal-panel h4 {
+      margin: 16px 0 8px;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--dim2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .modal-panel h4::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .modal-panel ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .modal-panel li {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .modal-panel li strong { color: var(--mitre); font-family: var(--mono); font-size: 11px; }
+
+    .modal-panel a {
+      display: inline-block;
+      color: var(--acc);
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 5px;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(0,212,255,.25);
+      word-break: break-all;
+      transition: color .15s, border-color .15s;
+    }
+
+    .modal-panel a:hover { color: #fff; border-color: rgba(255,255,255,.4); }
+
+    .modal-panel .ex {
+      font-size: 10px;
+      color: var(--dim2);
+      line-height: 1.5;
+      margin: 5px 0 0;
+    }
+
+    .err { color: #ff7070; }
+
+    /* ─── EMPTY STATE ─── */
+    .empty-state {
+      padding: 28px 16px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--dim);
+      font-family: var(--mono);
+    }
+
+    .empty-state::before { content: '// '; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .logo-ghost,
+      .logo-ghost .ghost-anim,
+      .logo-ghost .ghost-eye {
+        animation: none !important;
+      }
+      .pill.live { animation: none; }
+      .pipe-ms.active .pipe-ms-dot { animation: none; }
+      body::before { opacity: 0.12; }
+    }
+
+    /* ─── Legenda: separador à direita + painel deslizante ─── */
+    .ghostmap-legend-wrap {
+      position: fixed;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 55;
+      display: flex;
+      flex-direction: row-reverse;
+      align-items: flex-start;
+      max-height: 85vh;
+    }
+
+    .ghostmap-legend-tab {
+      flex-shrink: 0;
+      width: 38px;
+      min-height: 132px;
+      margin: 0;
+      padding: 12px 0;
+      border: 1px solid var(--border);
+      border-right: none;
+      border-radius: 10px 0 0 10px;
+      background: rgba(10, 8, 18, 0.96);
+      color: var(--accent4);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      cursor: pointer;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: -6px 0 24px rgba(0, 0, 0, 0.45);
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      position: relative;
+      z-index: 2;
+    }
+
+    .ghostmap-legend-tab:hover {
+      background: rgba(18, 10, 24, 0.98);
+      border-color: rgba(255, 43, 214, 0.4);
+      color: var(--text-bright);
+    }
+
+    .ghostmap-legend-wrap.is-open .ghostmap-legend-tab {
+      border-color: rgba(255, 43, 214, 0.35);
+      background: rgba(12, 6, 18, 0.98);
+    }
+
+    .ghostmap-legend-panel {
+      width: min(288px, calc(100vw - 44px));
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 12px 14px 14px;
+      margin: 0;
+      background: rgba(10, 8, 18, 0.97);
+      border: 1px solid var(--border);
+      border-right: none;
+      border-radius: 10px 0 0 10px;
+      font-size: 10px;
+      color: var(--dim2);
+      line-height: 1.45;
+      box-shadow: -10px 0 40px rgba(0, 0, 0, 0.55);
+      transform: translateX(100%);
+      opacity: 0;
+      visibility: hidden;
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, visibility 0.3s;
+      pointer-events: none;
+      position: relative;
+      z-index: 1;
+    }
+
+    .ghostmap-legend-wrap.is-open .ghostmap-legend-panel {
+      transform: translateX(0);
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .ghostmap-legend-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ghostmap-legend-close {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      margin: 0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--dim2);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .ghostmap-legend-close:hover {
+      border-color: var(--acc);
+      color: var(--text);
+    }
+
+    .ghostmap-legend-title {
+      font-family: var(--display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0;
+      padding: 0;
+      border: none;
+    }
+
+    /* ─── JSON import / export: dock fixo à esquerda (espelho da legenda) ─── */
+    .branch-json-dock-wrap {
+      position: fixed;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 55;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      max-height: 85vh;
+    }
+
+    .branch-json-dock-tab {
+      flex-shrink: 0;
+      width: 38px;
+      min-height: 132px;
+      margin: 0;
+      padding: 12px 0;
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+      background: rgba(10, 8, 18, 0.96);
+      color: var(--accent4);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 6px 0 24px rgba(0, 0, 0, 0.45);
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      position: relative;
+      z-index: 2;
+    }
+
+    .branch-json-dock-tab:hover {
+      background: rgba(18, 10, 24, 0.98);
+      border-color: rgba(255, 43, 214, 0.4);
+      color: var(--text-bright);
+    }
+
+    .branch-json-dock-wrap.is-open .branch-json-dock-tab {
+      border-color: rgba(255, 43, 214, 0.32);
+      background: rgba(12, 6, 18, 0.98);
+    }
+
+    .branch-json-dock-panel {
+      width: min(320px, calc(100vw - 48px));
+      max-height: 85vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 12px 14px 14px;
+      margin: 0;
+      background: rgba(10, 8, 18, 0.97);
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+      font-size: 10px;
+      color: var(--dim2);
+      line-height: 1.45;
+      box-shadow: 10px 0 40px rgba(0, 0, 0, 0.55);
+      transform: translateX(-100%);
+      opacity: 0;
+      visibility: hidden;
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, visibility 0.25s;
+      pointer-events: none;
+      position: relative;
+      z-index: 1;
+    }
+
+    .branch-json-dock-wrap.is-open .branch-json-dock-panel {
+      transform: translateX(0);
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .branch-json-dock-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .branch-json-dock-title {
+      font-family: var(--display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0;
+    }
+
+    .branch-json-dock-close {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      margin: 0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--dim2);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .branch-json-dock-close:hover {
+      border-color: var(--acc);
+      color: var(--text);
+    }
+
+    .branch-json-dock-panel .branch-json-toggle-row {
+      margin-bottom: 8px;
+    }
+
+    .branch-json-dock-panel .branch-json-panel-wrap {
+      margin-top: 0;
+    }
+
+    .ghostmap-legend-panel ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .ghostmap-legend-panel li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .ghostmap-legend-panel li:last-child {
+      margin-bottom: 0;
+    }
+    .leg-mitre {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      border: 1.5px solid rgba(255, 157, 77, 0.55);
+      background: linear-gradient(145deg, #1a0a18, #0e060e);
+      margin-top: 1px;
+    }
+    .leg-arrow {
+      font-family: var(--mono);
+      color: var(--mitre);
+      font-weight: 700;
+    }
+    .leg-prio {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .leg-prio.high { background: #ff3355; box-shadow: 0 0 6px rgba(255, 51, 85, 0.45); }
+    .leg-prio.med { background: #e6b800; box-shadow: 0 0 6px rgba(230, 184, 0, 0.35); }
+    .leg-prio.low { background: #2a8f6a; box-shadow: 0 0 6px rgba(42, 143, 106, 0.35); }
+
+    .live-hud {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--dim2);
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: rgba(0, 0, 0, 0.25);
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .live-hud strong { color: var(--accent); }
+
+    /* ─── Mini pipeline (sticky) ─── */
+    .pipe-mini-strip {
+      position: sticky;
+      top: 52px;
+      z-index: 40;
+      margin: -6px 0 14px;
+      padding: 6px 10px;
+      background: rgba(8, 6, 14, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pipe-mini-strip[hidden] { display: none !important; }
+    .pipe-mini-label {
+      font-family: var(--sans);
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--dim);
+      flex-shrink: 0;
+    }
+    .pipe-mini-dots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 4px;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+    .pipe-mini-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      cursor: default;
+    }
+    .pipe-mini-dot.pending { opacity: 0.45; }
+    .pipe-mini-dot.active {
+      background: var(--live);
+      border-color: var(--accent);
+      box-shadow: 0 0 6px rgba(255, 43, 214, 0.35);
+    }
+    .pipe-mini-dot.done {
+      background: var(--done-dim);
+      border-color: var(--done);
+    }
+    .pipe-mini-dot.skip { background: #1a1a14; border-color: #3a3520; }
+
+    .pipe-mini-kali {
+      flex-shrink: 0;
+      font-family: var(--mono);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      line-height: 1.2;
+      max-width: 140px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pipe-mini-kali--on {
+      color: #7effc0;
+      border-color: rgba(0, 255, 136, 0.45);
+      background: rgba(0, 255, 136, 0.08);
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.12);
+    }
+    .pipe-mini-kali--off {
+      color: var(--dim2);
+      border-color: rgba(74, 96, 128, 0.4);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* ─── Ramificações: zoom / pan ─── */
+    .branches-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim2);
+    }
+    .branches-toolbar button {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .branches-toolbar button:hover {
+      border-color: var(--acc);
+      color: var(--acc);
+    }
+    .branches-zoom-readout {
+      margin-left: auto;
+      color: var(--dim);
+      font-size: 9px;
+    }
+    .branches-viewport:focus {
+      outline: 1px solid rgba(0, 212, 255, 0.35);
+      outline-offset: 2px;
+    }
+    .branches-scale-inner {
+      transform-origin: 0 0;
+      display: inline-block;
+      min-width: max-content;
+      padding: 4px 0 8px;
+      transition: transform 0.12s ease-out;
+    }
+    .branches-wrap-inner {
+      border: none;
+      padding: 8px 10px 10px;
+      min-width: min-content;
+    }
+
+    .h-mini-card.prio-high {
+      border-left: 3px solid #ff3355;
+      box-shadow: inset 0 0 0 1px rgba(255, 51, 85, 0.12);
+    }
+    .h-mini-card.prio-med {
+      border-left: 3px solid #e6b800;
+      box-shadow: inset 0 0 0 1px rgba(230, 184, 0, 0.1);
+    }
+    .h-mini-card.prio-low {
+      border-left: 3px solid #2a8f6a;
+      box-shadow: inset 0 0 0 1px rgba(42, 143, 106, 0.1);
+    }
+    .h-mini-card.prio-unk {
+      border-left: 3px solid var(--border);
+    }
+
+    /* ─── Recon subs: separador entre alvos (mantém ramos) ─── */
+    .h-flow-cascade-break {
+      flex: 0 0 auto;
+      width: 38px;
+      min-height: 172px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 0 6px;
+      padding: 8px 5px;
+      background: linear-gradient(180deg, rgba(0, 120, 220, 0.2), rgba(0, 40, 90, 0.45));
+      border-left: 3px solid #00b4ff;
+      border-right: 3px solid #00b4ff;
+      border-radius: 4px;
+      box-shadow: 0 0 22px rgba(0, 180, 255, 0.22);
+      align-self: stretch;
+    }
+    .h-flow-cascade-break-line {
+      flex: 1;
+      width: 3px;
+      min-height: 24px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, transparent, #00d4ff, transparent);
+      box-shadow: 0 0 12px rgba(0, 212, 255, 0.55);
+    }
+    .h-flow-cascade-break-tag {
+      font-family: var(--sans);
+      font-size: 7px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #5ee0ff;
+    }
+    .h-flow-cascade-break-label {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-family: var(--mono);
+      font-size: 9px;
+      line-height: 1.2;
+      color: #b8e8ff;
+      max-height: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-all;
+      text-align: center;
+    }
+
+    /* ─── Toggle JSON (painel no dock fixo à esquerda) ─── */
+    .branch-json-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 0;
+    }
+
+    .branch-json-toggle-row .toggle-label-ghm {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim2);
+      line-height: 1.35;
+    }
+
+    .toggle-ghm {
+      position: relative;
+      width: 36px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .toggle-ghm input {
+      display: none;
+    }
+
+    .toggle-track-ghm {
+      width: 100%;
+      height: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+      position: relative;
+      border-radius: 2px;
+    }
+
+    .toggle-thumb-ghm {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      background: var(--dim);
+      transition: all 0.2s;
+      border-radius: 1px;
+    }
+
+    .toggle-ghm input:checked ~ .toggle-track-ghm {
+      border-color: rgba(0, 212, 255, 0.55);
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.12);
+    }
+
+    .toggle-ghm input:checked ~ .toggle-track-ghm .toggle-thumb-ghm {
+      left: 20px;
+      background: var(--acc);
+      box-shadow: 0 0 8px rgba(0, 212, 255, 0.45);
+    }
+
+    .branch-json-panel-wrap {
+      margin-top: 10px;
+    }
+
+    /* ─── Import JSON → ramificações ─── */
+    .branch-import-bar {
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px dashed rgba(255, 43, 214, 0.35);
+      border-radius: 6px;
+      background: rgba(32, 8, 40, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .branch-import-bar > label {
+      font-size: 10px;
+      color: var(--dim2);
+      line-height: 1.45;
+    }
+    .branch-import-bar textarea {
+      width: 100%;
+      min-height: 76px;
+      resize: vertical;
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1.4;
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--text);
+    }
+    .branch-import-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .branch-import-actions input[type='file'] {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--dim2);
+      max-width: 100%;
+    }
+    .branch-import-actions button {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 5px 12px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .branch-import-actions button:hover {
+      border-color: var(--acc);
+      color: var(--acc);
+    }
+
+    .branch-import-actions .branch-export-json-btn {
+      border-color: rgba(0, 232, 122, 0.35);
+      color: rgba(0, 232, 122, 0.95);
+    }
+
+    .branch-import-actions .branch-export-json-btn:hover {
+      border-color: var(--done);
+      color: #b8ffd8;
+    }
+
+    .branch-import-hint {
+      font-size: 9px;
+      color: var(--dim);
+      margin: 0;
+    }
+
+    /* ─── Filtros matriz ─── */
+    .matrix-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim2);
+    }
+    .matrix-filter-bar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .matrix-filter-bar input[type='checkbox'] {
+      accent-color: var(--acc);
+    }
+    .matrix-filter-bar input[type='search'] {
+      flex: 1;
+      min-width: 140px;
+      max-width: 280px;
+      padding: 5px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+    .matrix-filter-bar .matrix-filter-meta {
+      width: 100%;
+      font-size: 9px;
+      color: var(--dim);
+      margin-top: -4px;
+    }
+    .tactic.hidden-matrix-filter,
+    .chip.hidden-matrix-filter {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-ghost" aria-hidden="true" title="GHOSTCTF">
+      <svg viewBox="0 0 48 52" xmlns="http://www.w3.org/2000/svg" width="28" height="30" focusable="false">
+        <defs>
+          <linearGradient id="logoGhostGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffe8fb" />
+            <stop offset="40%" stop-color="#ff5ee6" />
+            <stop offset="100%" stop-color="#b8149a" />
+          </linearGradient>
+          <linearGradient id="logoGhostSheen" x1="15%" y1="0%" x2="75%" y2="85%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.35)" />
+            <stop offset="45%" stop-color="rgba(255,255,255,0)" />
+            <stop offset="100%" stop-color="rgba(0,212,255,0.15)" />
+          </linearGradient>
+        </defs>
+        <g class="ghost-anim">
+          <path
+            fill="url(#logoGhostGrad)"
+            stroke="rgba(255,43,214,0.55)"
+            stroke-width="0.55"
+            d="M 24 5 C 13 5 5 13.5 5 24.5 V 40 Q 8.5 36.5 12 40 Q 15.5 36.5 19 40 Q 22.5 36.5 26 40 Q 29.5 36.5 33 40 Q 36.5 36.5 40 40 Q 43.5 36.5 43 40 V 24.5 C 43 13.5 35 5 24 5 Z"
+          />
+          <path
+            fill="url(#logoGhostSheen)"
+            d="M 24 8 C 15 8 9 15 9 23.5 V 33 Q 16 28 24 32 Q 32 28 39 33 V 23.5 C 39 15 33 8 24 8 Z"
+            opacity="0.88"
+          />
+          <ellipse class="ghost-eye" cx="17" cy="22" rx="3.2" ry="4.2" fill="#050709" />
+          <ellipse class="ghost-eye ghost-eye-r" cx="31" cy="22" rx="3.2" ry="4.2" fill="#050709" />
+        </g>
+      </svg>
+    </div>
+    <h1>GHOST<span>CTF</span> · GHOSTMAP</h1>
+    <div class="header-right">
+      <span id="liveFindingsCount" class="live-hud" style="display:none" title="Achados recebidos nesta sessão"></span>
+      <span id="liveLastTs" class="live-hud" style="display:none" title="Último evento ao vivo"></span>
+      <span id="targetLine" class="target-badge" style="display:none"></span>
+      <span id="statePill" class="pill waiting">À espera</span>
+    </div>
+  </header>
+
+  <div id="branchJsonDockWrap" class="branch-json-dock-wrap" hidden>
+    <button
+      type="button"
+      id="branchJsonDockTab"
+      class="branch-json-dock-tab"
+      aria-expanded="false"
+      aria-controls="branchJsonDockPanel"
+      title="Mostrar ou ocultar importar / exportar JSON"
+    >
+      JSON
+    </button>
+    <aside
+      id="branchJsonDockPanel"
+      class="branch-json-dock-panel"
+      aria-label="Importar e exportar JSON"
+      aria-hidden="true"
+    >
+      <div class="branch-json-dock-panel-head">
+        <div class="branch-json-dock-title">Importar / exportar</div>
+        <button type="button" class="branch-json-dock-close" id="branchJsonDockClose" aria-label="Fechar painel JSON">×</button>
+      </div>
+      <div class="branch-json-toggle-row">
+        <span class="toggle-label-ghm" title="Mostra ou oculta o campo para colar JSON e reaplicar ramificações (como a fila de alvos na UI principal)">JSON importar / exportar</span>
+        <label class="toggle-ghm">
+          <input type="checkbox" id="branchJsonPanelToggle" />
+          <div class="toggle-track-ghm"><div class="toggle-thumb-ghm"></div></div>
+        </label>
+      </div>
+      <div id="branchJsonPanelWrap" class="branch-json-panel-wrap" style="display: none">
+        <div id="branchImportBar" class="branch-import-bar">
+          <label for="branchImportJson">Importar JSON (export ghostctf / platform ou array de achados) — recria só os ramos, sem recon.</label>
+          <textarea id="branchImportJson" spellcheck="false" autocomplete="off" placeholder='Ex.: { "target": "exemplo.com", "findings": [ { "type":"endpoint", "priority":"high", "value":"https://…", "mitre":[{"id":"T1595"}] } ] }'></textarea>
+          <div class="branch-import-actions">
+            <input type="file" id="branchImportFile" accept=".json,application/json" />
+            <button type="button" id="branchImportApply">Aplicar na timeline</button>
+            <button type="button" class="branch-export-json-btn" id="branchExportJsonBtn">Export JSON</button>
+            <button type="button" id="branchImportClearField">Limpar campo</button>
+          </div>
+          <p class="branch-import-hint">
+            «Export JSON» gera um ficheiro reimportável a partir dos eventos <code>finding</code> na timeline (o buffer do mapa mantém os últimos 200 eventos). Compatível com <code>export JSON</code> da UI (<code>findings[]</code> com <code>priority</code>, <code>mitre[].id</code>). Máx. 600 achados por importação.
+          </p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="ghostmap-legend-wrap" id="ghostmapLegendWrap">
+    <button
+      type="button"
+      id="ghostmapLegendTab"
+      class="ghostmap-legend-tab"
+      aria-expanded="false"
+      aria-controls="ghostmapLegendPanel"
+      title="Mostrar ou ocultar legenda"
+    >
+      Legenda
+    </button>
+    <aside
+      id="ghostmapLegendPanel"
+      class="ghostmap-legend-panel"
+      aria-label="Legenda do mapa"
+      aria-hidden="true"
+    >
+      <div class="ghostmap-legend-panel-head">
+        <div class="ghostmap-legend-title">Legenda</div>
+        <button type="button" class="ghostmap-legend-close" id="ghostmapLegendClose" aria-label="Fechar legenda">×</button>
+      </div>
+      <ul>
+        <li>
+          <span class="leg-mitre" aria-hidden="true"></span>
+          <span><strong style="color: var(--mitre)">Quadrado rosa</strong> — técnica MITRE (<code>Txxxx</code>) ou número do achado; clique para detalhe.</span>
+        </li>
+        <li>
+          <span class="leg-arrow" aria-hidden="true">↑</span>
+          <span>Ramo <strong>acima</strong> da linha / <strong class="leg-arrow">↓</strong> abaixo — alterna a cada achado.</span>
+        </li>
+        <li>
+          <span><span class="leg-prio high"></span><strong style="color: #ff8a9a">HIGH</strong> · <span class="leg-prio med"></span><strong style="color: #f0d060">MED</strong> · <span class="leg-prio low"></span><strong style="color: #5ed4a8">LOW</strong> — borda esquerda do cartão.</span>
+        </li>
+      </ul>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      const legWrap = document.getElementById('ghostmapLegendWrap');
+      const legTab = document.getElementById('ghostmapLegendTab');
+      const legPanel = document.getElementById('ghostmapLegendPanel');
+      const legClose = document.getElementById('ghostmapLegendClose');
+
+      const jsonWrap = document.getElementById('branchJsonDockWrap');
+      const jsonTab = document.getElementById('branchJsonDockTab');
+      const jsonPanel = document.getElementById('branchJsonDockPanel');
+      const jsonClose = document.getElementById('branchJsonDockClose');
+
+      function setLegendOpen(on) {
+        if (!legWrap || !legTab || !legPanel) return;
+        legWrap.classList.toggle('is-open', on);
+        legTab.setAttribute('aria-expanded', on ? 'true' : 'false');
+        legPanel.setAttribute('aria-hidden', on ? 'false' : 'true');
+      }
+
+      function setJsonDockOpen(on) {
+        if (!jsonWrap || !jsonTab || !jsonPanel) return;
+        jsonWrap.classList.toggle('is-open', on);
+        jsonTab.setAttribute('aria-expanded', on ? 'true' : 'false');
+        jsonPanel.setAttribute('aria-hidden', on ? 'false' : 'true');
+      }
+
+      legTab?.addEventListener('click', (e) => {
+        e.preventDefault();
+        setLegendOpen(!legWrap.classList.contains('is-open'));
+      });
+      legClose?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setLegendOpen(false);
+      });
+
+      jsonTab?.addEventListener('click', (e) => {
+        e.preventDefault();
+        setJsonDockOpen(!jsonWrap.classList.contains('is-open'));
+      });
+      jsonClose?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setJsonDockOpen(false);
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (jsonWrap?.classList.contains('is-open')) {
+          setJsonDockOpen(false);
+          e.preventDefault();
+          return;
+        }
+        if (legWrap?.classList.contains('is-open')) {
+          setLegendOpen(false);
+          e.preventDefault();
+        }
+      });
+    })();
+  </script>
+
+  <main>
+    <p class="hint">
+      <strong>Pipeline GhostCTF</strong> (por IP) em fases horizontais. Cada <strong>achado</strong> gera um ramo <strong>↑ cima</strong> / <strong>↓ baixo</strong> em alternância.
+      O <strong>quadrado laranja</strong> mostra a técnica MITRE (<code>T1595</code>) ou nº do achado — clique para ver os links <strong>ATT&amp;CK</strong> e <strong>OWASP</strong>. À <strong>esquerda</strong>, o separador <strong>JSON</strong> abre importar/exportar (interruptor estilo fila + campo + Export JSON). À <strong>direita</strong>, <strong>Legenda</strong> abre o painel de cores e símbolos. O <strong>mini-pipeline</strong> (sticky) mostra <strong>Kali ON / Kali OFF</strong> conforme «Modo Kali» na corrida (ferramentas no servidor). Usa os filtros na matriz.
+    </p>
+
+    <div id="pipeMiniMapStrip" class="pipe-mini-strip" hidden>
+      <span class="pipe-mini-label">Pipeline</span>
+      <span
+        id="pipeMiniKaliBadge"
+        class="pipe-mini-kali pipe-mini-kali--off"
+        hidden
+        title="Modo Kali (ferramentas no PATH do servidor, conforme caixa na UI do ghostctf)"
+        role="status"
+        aria-live="polite"
+      ></span>
+      <div id="pipeMiniDots" class="pipe-mini-dots" aria-hidden="true"></div>
+    </div>
+
+    <section class="block" aria-label="Fases do pipeline">
+      <h2>Pipeline</h2>
+      <div class="pipe-milestones-wrap">
+        <div class="pipe-rail-h" aria-hidden="true"></div>
+        <div id="pipeMilestonesH" class="pipe-milestones-h"></div>
+      </div>
+      <div class="pipe-hint" id="pipeHint"></div>
+    </section>
+
+    <section class="block" aria-label="Ramificações">
+      <h2>Ramificações</h2>
+      <div id="branchesToolbar" class="branches-toolbar" hidden>
+        <span>Ramo / pan: arrasta · zoom:</span>
+        <button type="button" id="branchZoomOut" title="Menos (ou Ctrl+scroll)">−</button>
+        <button type="button" id="branchZoomIn" title="Mais (ou Ctrl+scroll)">+</button>
+        <button type="button" id="branchZoomReset" title="100%">100%</button>
+        <span id="branchZoomReadout" class="branches-zoom-readout"></span>
+      </div>
+      <div class="branches-wrap branches-viewport" id="branchesViewport" tabindex="0" aria-label="Área de ramificações — zoom com Ctrl e roda do rato">
+        <div class="branches-scale-inner" id="branchesScaleInner">
+          <div class="branches-wrap-inner">
+            <div id="feedRoot" class="h-flow-cards">
+              <div class="empty-state">Aguardando achados…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Matriz tácticas</h2>
+      <div id="matrixFilterBar" class="matrix-filter-bar" hidden>
+        <label><input type="checkbox" id="filtTacticsHits" /> Só tácticas com ≥1 achado</label>
+        <label><input type="checkbox" id="filtHighOnly" /> Só técnicas de achados HIGH</label>
+        <input type="search" id="matrixSearch" placeholder="T1595, nome ou texto do achado…" autocomplete="off" />
+        <button type="button" id="matrixFilterReset">Limpar</button>
+        <span id="matrixFilterMeta" class="matrix-filter-meta"></span>
+      </div>
+      <div id="tacticsRoot" class="tactics"></div>
+    </section>
+
+    <details class="json-section" id="jsonDetails" open>
+      <summary>JSON live — <code>ghostctf_mitre_live_state</code></summary>
+      <pre id="jsonLive">{}</pre>
+    </details>
+  </main>
+
+  <div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button type="button" class="modal-close" id="modalClose" aria-label="Fechar">×</button>
+      <h3 id="modalTitle">Detalhe</h3>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    const PHASE_TO_TACTIC = {
+      'initial-access': 'TA0001',
+      'resource-development': 'TA0042',
+      reconnaissance: 'TA0043',
+    };
+    const PIPE_TACTICS = {
+      input: ['TA0043'],
+      subdomains: ['TA0043'],
+      rdap: ['TA0043'],
+      alive: ['TA0043'],
+      surface: ['TA0043', 'TA0001'],
+      urls: ['TA0043', 'TA0001'],
+      params: ['TA0001', 'TA0043'],
+      js: ['TA0001', 'TA0043'],
+      dorks: ['TA0043'],
+      secrets: ['TA0001', 'TA0043'],
+      score: ['TA0043'],
+      sqlmap: ['TA0001'],
+      kali: ['TA0001'],
+      nmap: ['TA0043'],
+      whois: ['TA0043'],
+      ffuf: ['TA0001'],
+      nuclei: ['TA0001'],
+      nuclei_xss: ['TA0001'],
+      nuclei_sqli: ['TA0001'],
+      wpscan: ['TA0001', 'TA0043'],
+      dalfox: ['TA0001'],
+      xss_vibes: ['TA0001'],
+      verify: ['TA0001', 'TA0043'],
+      pentestgpt: ['TA0001', 'TA0043'],
+      assets: ['TA0042', 'TA0043'],
+    };
+    /**
+     * Ordem base do Ghostmap alinhada ao `server/ghostctf/pipeline.js` (corrida por IP).
+     * Marcos extra (nuclei, xss_vibes, dns_enrichment, …) surgem na UI se o servidor os emitir
+     * (ex.: recon por domínio ou futuras extensões com modo Kali no GhostCTF).
+     */
+    const PIPE_ORDER = [
+      'input',
+      'subdomains',
+      'rdap',
+      'alive',
+      'surface',
+      'urls',
+      'params',
+      'js',
+      'dorks',
+      'secrets',
+      'kali',
+      'score',
+    ];
+    function pipeDisplayName(id) {
+      const k = String(id || '');
+      const map = {
+        input: 'Alvo & módulos',
+        subdomains: 'nmap · serviços',
+        dns_enrichment: 'DNS enrich',
+        rdap: 'RDAP / ASN',
+        alive: 'Hosts vivos',
+        surface: 'Superfície HTTP',
+        urls: 'Crawl de URLs',
+        params: 'Web · enum · probes',
+        js: 'JavaScript & bundles',
+        dorks: 'Dorks & superfície',
+        secrets: 'Segredos & leaks',
+        verify: 'verify',
+        sqlmap: 'sqlmap',
+        kali: 'Kali (ferramentas)',
+        nmap: 'nmap',
+        whois: 'whois',
+        ffuf: 'ffuf',
+        nuclei: 'nuclei',
+        nuclei_xss: 'nuclei · XSS',
+        nuclei_sqli: 'nuclei · SQLi',
+        wpscan: 'wpscan',
+        dalfox: 'dalfox',
+        xss_vibes: 'xss_vibes',
+        assets: 'assets',
+        score: 'Score & flags',
+        shannon: 'Shannon',
+        pentestgpt: 'PentestGPT',
+      };
+      return map[k] || k.replace(/_/g, ' ');
+    }
+    const OWASP_TOP10_2025 = {
+      A01:{title:'Broken Access Control',url:'https://owasp.org/Top10/A01_2021-Broken_Access_Control/'},
+      A02:{title:'Security Misconfiguration',url:'https://owasp.org/Top10/A05_2021-Security_Misconfiguration/'},
+      A03:{title:'Software Supply Chain Failures',url:'https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components/'},
+      A04:{title:'Cryptographic Failures',url:'https://owasp.org/Top10/A02_2021-Cryptographic_Failures/'},
+      A05:{title:'Injection',url:'https://owasp.org/Top10/A03_2021-Injection/'},
+      A06:{title:'Insecure Design',url:'https://owasp.org/Top10/A04_2021-Insecure_Design/'},
+      A07:{title:'Authentication Failures',url:'https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/'},
+      A08:{title:'Software or Data Integrity Failures',url:'https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/'},
+      A09:{title:'Security Logging and Alerting Failures',url:'https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/'},
+      A10:{title:'Mishandling of Exceptional Conditions',url:'https://owasp.org/www-project-top-ten/'},
+    };
+
+    function mitreTechniqueUrl(id) {
+      const s = String(id||'');
+      if (!s.startsWith('T')) return 'https://attack.mitre.org/';
+      const p = s.split('.');
+      return p.length===1 ? `https://attack.mitre.org/techniques/${s}/`
+                          : `https://attack.mitre.org/techniques/${p[0]}/${s}/`;
+    }
+
+    function owaspEntry(id) {
+      const k = String(id||'').toUpperCase();
+      return OWASP_TOP10_2025[k] || {title:'OWASP Top 10',url:'https://owasp.org/www-project-top-ten/'};
+    }
+
+    const MITRE_LIVE_SESSION_STORAGE_KEY = 'ghostctf_mitre_live_session_id';
+    const sessionIdFromHash = (location.hash||'').replace(/^#/,'').trim();
+    let sessionIdFromStorage = '';
+    try {
+      sessionIdFromStorage = localStorage.getItem(MITRE_LIVE_SESSION_STORAGE_KEY) || '';
+    } catch (_) {}
+    // Prioriza a sessão mais recente do index.html para evitar ficar preso num hash antigo.
+    let sessionId = sessionIdFromStorage || sessionIdFromHash;
+    if (!sessionId && sessionIdFromHash) sessionId = sessionIdFromHash;
+    if (sessionId && sessionId !== sessionIdFromHash) {
+      try {
+        const nextUrl = new URL(location.href);
+        nextUrl.hash = sessionId;
+        history.replaceState(null, '', nextUrl.toString());
+      } catch (_) {}
+    }
+    const statePill    = document.getElementById('statePill');
+    const targetLine   = document.getElementById('targetLine');
+    const pipeMsH      = document.getElementById('pipeMilestonesH');
+    const feedRoot     = document.getElementById('feedRoot');
+    const tacticsRoot  = document.getElementById('tacticsRoot');
+    const pipeHint     = document.getElementById('pipeHint');
+    const jsonLive     = document.getElementById('jsonLive');
+    const modalBackdrop= document.getElementById('modalBackdrop');
+    const modalBody    = document.getElementById('modalBody');
+    const modalTitle   = document.getElementById('modalTitle');
+    const modalClose   = document.getElementById('modalClose');
+
+    /** Preenche só o DOM da pipeline (pendente), sem estado ao vivo — útil sem sessão ou antes do bundle. */
+    function fillPipelineMilestonesPendingOnly(container) {
+      if (!container) return;
+      container.innerHTML = '';
+      for (const p of PIPE_ORDER) {
+        const el = document.createElement('div');
+        el.className = 'pipe-ms pending';
+        el.dataset.pipe = p;
+        el.innerHTML =
+          '<span class="pipe-ms-dot"></span><span class="pipe-ms-name"></span><span class="pipe-ms-st">—</span>';
+        el.querySelector('.pipe-ms-name').textContent = pipeDisplayName(p);
+        container.appendChild(el);
+      }
+    }
+
+    if (!sessionId) {
+      statePill.textContent = 'Sem sessão';
+      statePill.className = 'pill err';
+      targetLine.style.display = 'none';
+      feedRoot.innerHTML = '<p class="err empty-state">Abre a partir do GHOSTCTF (botão «Ghostmap» na sidebar) ou <code>mitre-map.html#&lt;uuid&gt;</code>.</p>';
+      fillPipelineMilestonesPendingOnly(pipeMsH);
+      if (pipeHint) pipeHint.textContent = 'Sem sessão ao vivo — marcos na ordem do pipeline GhostCTF (servidor `ghostctf/pipeline.js`).';
+    } else {
+      const pipeStates  = new Map();
+      const pipeRowEls  = new Map();
+      const mitreHitSet = new Set();
+      const owaspHitSet = new Set();
+      const chipById    = new Map();
+      const tacticElByTa= new Map();
+      const techMeta    = new Map();
+
+      let liveTarget = '';
+      let lastPipeLabel = '';
+      const events = [];
+      const MAX_EVENTS = 200;
+      const MAX_SEGMENTS = 80;
+      let bundleMeta = {loaded:false};
+      let jsonScheduled = false;
+      let findingSeq = 0;
+      let findingsReceivedCount = 0;
+      let lastMessageAt = 0;
+      /** `true` / `false` quando o index envia `kaliMode`; `null` antes do primeiro evento. */
+      let liveKaliMode = null;
+      const highMitreIds = new Set();
+      const mitreHitSnippet = new Map();
+      const pipeMiniDotsByName = new Map();
+      let matrixFilterWired = false;
+      let branchZoomWired = false;
+      let branchImportWired = false;
+      let branchZoom = 1;
+
+      function updateLiveHud() {
+        const fc = document.getElementById('liveFindingsCount');
+        const ft = document.getElementById('liveLastTs');
+        if (fc) {
+          fc.style.display = '';
+          fc.innerHTML = `<strong>${findingsReceivedCount}</strong> achados`;
+        }
+        if (ft) {
+          if (lastMessageAt) {
+            ft.style.display = '';
+            const t = new Date(lastMessageAt);
+            ft.textContent = `Último: ${t.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+          } else {
+            ft.style.display = 'none';
+          }
+        }
+      }
+
+      function buildMiniStrip() {
+        const host = document.getElementById('pipeMiniDots');
+        if (!host) return;
+        host.innerHTML = '';
+        pipeMiniDotsByName.clear();
+        for (const p of PIPE_ORDER) {
+          const dot = document.createElement('span');
+          dot.className = 'pipe-mini-dot pending';
+          dot.dataset.pipe = p;
+          dot.title = pipeDisplayName(p);
+          host.appendChild(dot);
+          pipeMiniDotsByName.set(p, dot);
+        }
+        refreshPipeMiniStrip();
+      }
+
+      function refreshPipeMiniStrip() {
+        const strip = document.getElementById('pipeMiniMapStrip');
+        if (!strip || strip.hidden) return;
+        for (const p of PIPE_ORDER) {
+          const dot = pipeMiniDotsByName.get(p);
+          if (!dot) continue;
+          const st = pipeStates.get(p) || 'pending';
+          dot.className =
+            `pipe-mini-dot ${st === 'active' ? 'active' : st === 'done' ? 'done' : st === 'skip' ? 'skip' : 'pending'}`;
+        }
+      }
+
+      function updatePipeMiniKaliBadge() {
+        const el = document.getElementById('pipeMiniKaliBadge');
+        if (!el) return;
+        if (liveKaliMode === true) {
+          el.hidden = false;
+          el.textContent = 'Kali ON';
+          el.className = 'pipe-mini-kali pipe-mini-kali--on';
+          el.title =
+            'Modo Kali activo — ferramentas no servidor (nuclei, sqlmap, ffuf, xss_vibes, etc.) conforme a caixa na UI.';
+        } else if (liveKaliMode === false) {
+          el.hidden = false;
+          el.textContent = 'Kali OFF';
+          el.className = 'pipe-mini-kali pipe-mini-kali--off';
+          el.title =
+            'Modo Kali desligado ou indisponível (caixa desmarcada ou servidor sem ferramentas no PATH).';
+        } else {
+          el.hidden = true;
+          el.textContent = '';
+        }
+      }
+
+      function chipMatchesMatrixSearch(tid, q) {
+        if (!q) return true;
+        const meta = techMeta.get(tid);
+        const idLc = String(tid).toLowerCase();
+        if (idLc.includes(q)) return true;
+        if (meta?.name && String(meta.name).toLowerCase().includes(q)) return true;
+        const snips = mitreHitSnippet.get(tid);
+        if (snips) {
+          for (const s of snips) {
+            if (String(s).toLowerCase().includes(q)) return true;
+          }
+        }
+        return false;
+      }
+
+      function applyMatrixFilters() {
+        const root = tacticsRoot;
+        if (!root?.querySelector?.('.tactic')) return;
+        const filtHits = Boolean(document.getElementById('filtTacticsHits')?.checked);
+        const filtHigh = Boolean(document.getElementById('filtHighOnly')?.checked);
+        const q = (document.getElementById('matrixSearch')?.value || '').trim().toLowerCase();
+        const metaEl = document.getElementById('matrixFilterMeta');
+        let visibleTactics = 0;
+        let visibleChips = 0;
+        for (const tac of root.querySelectorAll('.tactic')) {
+          const chips = tac.querySelectorAll('.chip');
+          for (const chip of chips) {
+            const tid = chip.textContent.trim();
+            chip.classList.remove('hidden-matrix-filter');
+            let show = true;
+            if (!chipMatchesMatrixSearch(tid, q)) show = false;
+            if (filtHigh) {
+              if (highMitreIds.size === 0) show = false;
+              else if (!highMitreIds.has(tid)) show = false;
+            }
+            if (!show) chip.classList.add('hidden-matrix-filter');
+          }
+          const vis = [...tac.querySelectorAll('.chip')].filter((c) => !c.classList.contains('hidden-matrix-filter'));
+          let tactShow = vis.length > 0;
+          if (tactShow && filtHits) tactShow = vis.some((c) => c.classList.contains('hit'));
+          tac.classList.toggle('hidden-matrix-filter', !tactShow);
+          if (tactShow) {
+            visibleTactics += 1;
+            visibleChips += vis.length;
+          }
+        }
+        if (metaEl) {
+          metaEl.textContent =
+            filtHigh && highMitreIds.size === 0
+              ? 'Nenhum achado HIGH com técnica MITRE ainda — desliga o filtro ou aguarda achados.'
+              : `Tácticas visíveis: ${visibleTactics} · chips visíveis: ${visibleChips}`;
+        }
+      }
+
+      function wireMatrixFiltersOnce() {
+        if (matrixFilterWired) return;
+        matrixFilterWired = true;
+        const onCh = () => applyMatrixFilters();
+        document.getElementById('filtTacticsHits')?.addEventListener('change', onCh);
+        document.getElementById('filtHighOnly')?.addEventListener('change', onCh);
+        document.getElementById('matrixSearch')?.addEventListener('input', onCh);
+        document.getElementById('matrixFilterReset')?.addEventListener('click', () => {
+          const a = document.getElementById('filtTacticsHits');
+          const b = document.getElementById('filtHighOnly');
+          const s = document.getElementById('matrixSearch');
+          if (a) a.checked = false;
+          if (b) b.checked = false;
+          if (s) s.value = '';
+          applyMatrixFilters();
+        });
+      }
+
+      function wireBranchZoomOnce() {
+        if (branchZoomWired) return;
+        branchZoomWired = true;
+        const inner = document.getElementById('branchesScaleInner');
+        const vp = document.getElementById('branchesViewport');
+        const readout = document.getElementById('branchZoomReadout');
+        function applyBranchZoom() {
+          branchZoom = Math.max(0.45, Math.min(2.25, branchZoom));
+          if (inner) inner.style.transform = `scale(${branchZoom})`;
+          if (readout) readout.textContent = `${Math.round(branchZoom * 100)}% · Ctrl+scroll`;
+        }
+        document.getElementById('branchZoomIn')?.addEventListener('click', () => {
+          branchZoom += 0.12;
+          applyBranchZoom();
+        });
+        document.getElementById('branchZoomOut')?.addEventListener('click', () => {
+          branchZoom -= 0.12;
+          applyBranchZoom();
+        });
+        document.getElementById('branchZoomReset')?.addEventListener('click', () => {
+          branchZoom = 1;
+          applyBranchZoom();
+        });
+        vp?.addEventListener(
+          'wheel',
+          (e) => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            branchZoom += e.deltaY > 0 ? -0.06 : 0.06;
+            applyBranchZoom();
+          },
+          { passive: false },
+        );
+        applyBranchZoom();
+      }
+
+      function setLiveTactics(taList, active) {
+        for (const [,el] of tacticElByTa) el.classList.remove('live');
+        if (!active || !taList?.length) return;
+        for (const ta of taList) {
+          const el = tacticElByTa.get(ta);
+          if (el) el.classList.add('live');
+        }
+      }
+
+      function applyHits() {
+        for (const [id,el] of chipById) {
+          if (mitreHitSet.has(id)) el.classList.add('hit');
+          else el.classList.remove('hit');
+        }
+        applyMatrixFilters();
+      }
+
+      function addMitreHits(ids) {
+        let ch = false;
+        for (const id of ids||[]) {
+          if (typeof id==='string'&&id.startsWith('T')) { if (!mitreHitSet.has(id)) ch=true; mitreHitSet.add(id); }
+        }
+        if (ch) applyHits();
+      }
+
+      function addOwaspHits(rows) {
+        for (const row of rows||[]) {
+          const id = typeof row==='string'?row:row?.id;
+          if (id&&/^A\d{2}$/.test(id)) owaspHitSet.add(id);
+        }
+      }
+
+      function pushEvent(ev) {
+        events.push(ev);
+        while (events.length>MAX_EVENTS) events.shift();
+      }
+
+      function scheduleJsonRefresh() {
+        if (jsonScheduled) return;
+        jsonScheduled = true;
+        requestAnimationFrame(()=>{
+          jsonScheduled = false;
+          jsonLive.textContent = JSON.stringify(buildLiveJson(),null,2);
+        });
+      }
+
+      function buildLiveJson() {
+        const milestones = {};
+        for (const p of PIPE_ORDER) milestones[p] = pipeStates.get(p)||'pending';
+        for (const [k,v] of pipeStates) if (!milestones[k]) milestones[k]=v;
+        const mitreTechniques = [...mitreHitSet].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(id=>{
+          const m = techMeta.get(id);
+          return {id, name:m?.name||null, url:m?.url||mitreTechniqueUrl(id)};
+        });
+        const owasp = [...owaspHitSet].sort().map(id=>({id,...owaspEntry(id)}));
+        return {
+          schemaVersion: 2,
+          kind: 'ghostctf_mitre_live_state',
+          note: 'Estado ao vivo do mapa MITRE/OWASP para integração ou debug.',
+          target: liveTarget || null,
+          kaliMode: typeof liveKaliMode === 'boolean' ? liveKaliMode : null,
+          updatedAt: new Date().toISOString(),
+          bundle: bundleMeta,
+          pipelineMilestones: milestones,
+          mitreTechniquesHit: mitreTechniques,
+          owaspHit: owasp,
+          timelineEvents: events.slice(-120),
+        };
+      }
+
+      function resetForNewTarget(domain) {
+        liveTarget = domain||'';
+        if (liveTarget) {
+          targetLine.textContent = liveTarget;
+          targetLine.style.display = '';
+        } else {
+          targetLine.style.display = 'none';
+        }
+        feedRoot.innerHTML = '<div class="empty-state">Aguardando achados…</div>';
+        events.length = 0;
+        mitreHitSet.clear();
+        owaspHitSet.clear();
+        findingSeq = 0;
+        findingsReceivedCount = 0;
+        highMitreIds.clear();
+        mitreHitSnippet.clear();
+        for (const p of PIPE_ORDER) pipeStates.set(p,'pending');
+        for (const [,el] of pipeRowEls) {
+          el.className='pipe-ms pending';
+          const st=el.querySelector('.pipe-ms-st');
+          if (st) st.textContent='—';
+        }
+        applyHits();
+        refreshPipeMiniStrip();
+        updateLiveHud();
+        scheduleJsonRefresh();
+      }
+
+      function updatePipeRow(name, state) {
+        let el = pipeRowEls.get(name);
+        if (!el) {
+          el = document.createElement('div');
+          el.className='pipe-ms pending';
+          el.dataset.pipe=name;
+          el.innerHTML='<span class="pipe-ms-dot"></span><span class="pipe-ms-name"></span><span class="pipe-ms-st">—</span>';
+          el.querySelector('.pipe-ms-name').textContent = pipeDisplayName(name);
+          pipeMsH.appendChild(el);
+          pipeRowEls.set(name,el);
+          pipeStates.set(name,'pending');
+        }
+        const st = state==='active'?'active':state==='done'?'done':state==='skip'?'skip':'pending';
+        pipeStates.set(name,st);
+        el.className=`pipe-ms ${st}`;
+        const nameLab = el.querySelector('.pipe-ms-name');
+        if (nameLab) nameLab.textContent = pipeDisplayName(name);
+        const lab=el.querySelector('.pipe-ms-st');
+        if (lab) lab.textContent=st==='active'?'●':st==='done'?'✓':st==='skip'?'○':'—';
+        refreshPipeMiniStrip();
+      }
+
+      function buildTimelineSkeleton() {
+        pipeMsH.innerHTML='';
+        pipeRowEls.clear();
+        for (const p of PIPE_ORDER) updatePipeRow(p,'pending');
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      function appendCascadeDivider(domain, meta) {
+        const emp = feedRoot.querySelector('.empty-state');
+        if (emp) emp.remove();
+        const d = String(domain || '').trim() || 'alvo';
+        const tag = escapeHtml(String(meta?.tag || 'SEGUINTE'));
+        const root = meta?.root ? escapeHtml(String(meta.root)) : '';
+        const wrap = document.createElement('div');
+        wrap.className = 'h-flow-cascade-break';
+        wrap.setAttribute('role', 'separator');
+        wrap.setAttribute('aria-label', `Seguinte alvo: ${d}`);
+        wrap.innerHTML = `<span class="h-flow-cascade-break-tag">${tag}${root ? ` · ${root}` : ''}</span><div class="h-flow-cascade-break-line" aria-hidden="true"></div><span class="h-flow-cascade-break-label">${escapeHtml(d)}</span>`;
+        feedRoot.appendChild(wrap);
+        while (feedRoot.children.length > MAX_SEGMENTS) feedRoot.removeChild(feedRoot.firstChild);
+        const vp = document.getElementById('branchesViewport');
+        if (vp) vp.scrollLeft = vp.scrollWidth;
+      }
+
+      function softResetForNewCascadeTarget(domain) {
+        liveTarget = String(domain || '').trim() || '';
+        if (liveTarget) {
+          targetLine.textContent = liveTarget;
+          targetLine.style.display = '';
+        } else {
+          targetLine.style.display = 'none';
+        }
+        mitreHitSet.clear();
+        owaspHitSet.clear();
+        highMitreIds.clear();
+        mitreHitSnippet.clear();
+        findingsReceivedCount = 0;
+        events.length = 0;
+        buildTimelineSkeleton();
+        applyHits();
+        refreshPipeMiniStrip();
+        updateLiveHud();
+        scheduleJsonRefresh();
+      }
+
+      function findingTypeHelp(typeRaw) {
+        const t = String(typeRaw||'').toLowerCase();
+        if (t==='waf') return 'WAF (Web Application Firewall) e um filtro de protecao de aplicacoes web; pode bloquear ou desafiar pedidos suspeitos.';
+        if (t==='param') return 'Parametro potencialmente sensivel. Abre o link para validar contexto, refletir input e testar impacto.';
+        if (t==='endpoint' || t==='url') return 'Endpoint/URL descoberto na corrida; bom ponto para validacao manual e correlacao com autenticacao.';
+        if (t==='xss' || t==='xss_reflection') return 'Possivel superficie de XSS; valida se ha reflexao controlavel e se o contexto permite execucao.';
+        return '';
+      }
+
+      function detectServiceInfo(finding) {
+        const hay = `${finding?.type||''} ${finding?.value||''} ${finding?.meta||''}`.toLowerCase();
+        const catalog = [
+          { re:/cloudflare/, name:'Cloudflare', what:'Plataforma edge/CDN com proxy reverso, mitigacao DDoS e WAF.', doc:'https://developers.cloudflare.com/fundamentals/' },
+          { re:/akamai/, name:'Akamai', what:'Rede de entrega e protecao de aplicacoes com camadas de WAF e bot defense.', doc:'https://techdocs.akamai.com/' },
+          { re:/(aws waf|amazon waf)/, name:'AWS WAF', what:'Firewall de aplicacao web da AWS para regras em ALB, API Gateway e CloudFront.', doc:'https://docs.aws.amazon.com/waf/' },
+          { re:/(f5|big-ip)/, name:'F5 BIG-IP', what:'Plataforma de ADC/WAF usada para balanceamento, protecao e politica de trafego.', doc:'https://clouddocs.f5.com/' },
+          { re:/imperva/, name:'Imperva', what:'Suite de seguranca para aplicacoes e APIs, com WAF e protecao DDoS.', doc:'https://docs.imperva.com/' },
+          { re:/sucuri/, name:'Sucuri', what:'Camada de protecao web com firewall cloud e monitoracao de integridade.', doc:'https://docs.sucuri.net/' },
+          { re:/nginx/, name:'Nginx', what:'Servidor web/proxy reverso usado para publicar apps e distribuir trafego.', doc:'https://nginx.org/en/docs/' },
+          { re:/(apache|httpd)/, name:'Apache HTTP Server', what:'Servidor web tradicional muito comum em stacks LAMP e hospedagens compartilhadas.', doc:'https://httpd.apache.org/docs/' },
+          { re:/(iis|microsoft-iis)/, name:'Microsoft IIS', what:'Servidor web da Microsoft integrado ao ecossistema Windows/ASP.NET.', doc:'https://learn.microsoft.com/iis/' },
+          { re:/wordpress/, name:'WordPress', what:'CMS popular em PHP; a superficie inclui plugins, temas, XML-RPC e REST API.', doc:'https://wordpress.org/documentation/' },
+          { re:/jenkins/, name:'Jenkins', what:'Servidor de CI/CD; exposicao indevida pode abrir risco de execucao remota e vazamento.', doc:'https://www.jenkins.io/doc/' },
+          { re:/grafana/, name:'Grafana', what:'Plataforma de dashboards; paineis e plugins expostos podem revelar informacao sensivel.', doc:'https://grafana.com/docs/' },
+        ];
+        for (const item of catalog) if (item.re.test(hay)) return item;
+        if (/\bwaf\b/.test(hay)) {
+          return { name:'WAF (generico)', what:'Camada de firewall para HTTP/HTTPS que filtra padroes de ataque antes da aplicacao.', doc:'https://owasp.org/www-community/Web_Application_Firewall' };
+        }
+        return null;
+      }
+
+      function extractUrls(text) {
+        const s = String(text||'');
+        const out = [];
+        const re = /\bhttps?:\/\/[^\s<>"'`]+/gi;
+        let m;
+        while ((m = re.exec(s)) !== null) {
+          const clean = m[0].replace(/[),.;]+$/g,'');
+          if (clean) out.push(clean);
+        }
+        return out;
+      }
+
+      function findFindingLinks(finding) {
+        const candidates = [];
+        for (const k of ['url','link','endpoint','value','meta']) {
+          const v = finding?.[k];
+          if (typeof v==='string' && v.trim()) candidates.push(...extractUrls(v));
+        }
+        const uniq = [];
+        const seen = new Set();
+        for (const u of candidates) {
+          if (seen.has(u)) continue;
+          seen.add(u);
+          uniq.push(u);
+        }
+        return uniq.slice(0, 4);
+      }
+
+      function openModal(payload) {
+        const {seq,badgeLabel,finding,mitreHints,owaspHints}=payload;
+        modalTitle.textContent=`Achado #${seq} · ${finding?.type||'?'}`;
+        const mitreList=(mitreHints||[]).filter(x=>typeof x==='string'&&x.startsWith('T'));
+        const owList=Array.isArray(owaspHints)?owaspHints:[];
+        const findingLinks = findFindingLinks(finding);
+        const typeHelp = findingTypeHelp(finding?.type);
+        const serviceInfo = detectServiceInfo(finding);
+
+        let mitreHtml='';
+        if (mitreList.length) {
+          mitreHtml='<h4>MITRE ATT&amp;CK</h4><ul>';
+          for (const tid of mitreList) {
+            const meta=techMeta.get(tid);
+            const name=meta?.name||'Técnica no bundle MITRE';
+            const url=meta?.url||mitreTechniqueUrl(tid);
+            mitreHtml+=`<li><strong>${escapeHtml(tid)}</strong> — ${escapeHtml(name)}<p class="ex">Indício automático a partir do tipo de achado do ghostctf; confirmação manual recomendada.</p><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">attack.mitre.org ↗</a></li>`;
+          }
+          mitreHtml+='</ul>';
+        } else {
+          mitreHtml='<h4>MITRE ATT&amp;CK</h4><p class="ex" style="padding:8px 10px;background:rgba(0,0,0,.3);border:1px solid #1a2535;border-radius:4px;color:#4a5d72">Sem técnica MITRE heurística. Consulta a matriz abaixo ou o bundle.</p>';
+        }
+
+        let owHtml='';
+        if (owList.length) {
+          owHtml='<h4>OWASP Top 10 (2025)</h4><ul>';
+          for (const o of owList) {
+            const id=o&&typeof o==='object'?o.id:o;
+            if (!id||!/^A\d{2}$/.test(String(id))) continue;
+            const ent=owaspEntry(id);
+            const title=(o&&o.title)||ent.title;
+            owHtml+=`<li><strong style="color:var(--owasp)">${escapeHtml(id)}</strong> — ${escapeHtml(title)}<p class="ex">Etiqueta heurística (OWASP Top 10 2025). Não equivale a auditoria completa.</p><a href="${escapeHtml(ent.url)}" target="_blank" rel="noopener noreferrer">owasp.org ↗</a></li>`;
+          }
+          owHtml+='</ul>';
+        } else {
+          owHtml='<h4>OWASP</h4><p class="ex" style="padding:8px 10px;background:rgba(0,0,0,.3);border:1px solid #1a2535;border-radius:4px;color:#4a5d72">Sem etiqueta OWASP heurística neste achado.</p>';
+        }
+
+        const findingLinksHtml = findingLinks.length
+          ? `<h4>Links do achado</h4><ul>${findingLinks.map((u)=>`<li><strong style="color:var(--acc)">URL</strong><a href="${escapeHtml(u)}" target="_blank" rel="noopener noreferrer">${escapeHtml(u)}</a></li>`).join('')}</ul>`
+          : '<h4>Links do achado</h4><p class="ex" style="padding:8px 10px;background:rgba(0,0,0,.3);border:1px solid #1a2535;border-radius:4px;color:#4a5d72">Sem URL direta neste item.</p>';
+        const serviceHtml = serviceInfo
+          ? `<h4>Servico identificado</h4><ul><li><strong style="color:var(--acc)">${escapeHtml(serviceInfo.name)}</strong> — ${escapeHtml(serviceInfo.what)}${serviceInfo.doc?`<a href="${escapeHtml(serviceInfo.doc)}" target="_blank" rel="noopener noreferrer">documentacao ↗</a>`:''}</li></ul>`
+          : '';
+
+        modalBody.innerHTML=`
+          <p class="lead">Badge: <strong>${escapeHtml(badgeLabel)}</strong></p>
+          ${typeHelp?`<p class="ex" style="padding:8px 10px;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-radius:4px"><strong style="color:var(--acc)">${escapeHtml(String(finding?.type||'achado').toUpperCase())}</strong>: ${escapeHtml(typeHelp)}</p>`:''}
+          <p class="lead">Valor: <strong>${escapeHtml(String(finding?.value||'—'))}</strong></p>
+          ${finding?.meta?`<p class="lead">Meta: <strong>${escapeHtml(String(finding.meta))}</strong></p>`:''}
+          ${serviceHtml}
+          ${findingLinksHtml}
+          ${mitreHtml}${owHtml}`;
+        modalBackdrop.classList.add('open');
+        modalBackdrop.setAttribute('aria-hidden','false');
+      }
+
+      function closeModal() {
+        modalBackdrop.classList.remove('open');
+        modalBackdrop.setAttribute('aria-hidden','true');
+      }
+
+      modalClose.addEventListener('click',closeModal);
+      modalBackdrop.addEventListener('click',e=>{ if(e.target===modalBackdrop) closeModal(); });
+      document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&modalBackdrop.classList.contains('open')) closeModal(); });
+
+      function appendFindingBranch(payload) {
+        // clear empty state
+        const emp = feedRoot.querySelector('.empty-state');
+        if (emp) emp.remove();
+
+        findingSeq+=1;
+        findingsReceivedCount += 1;
+        updateLiveHud();
+        const seq=findingSeq;
+        const {finding,mitreHints,owaspHints,ts}=payload;
+        const up=seq%2===1;
+        const mitreList=(mitreHints||[]).filter(x=>typeof x==='string'&&x.startsWith('T'));
+        const primaryT=mitreList[0]||null;
+        const badgeLabel=primaryT||`#${seq}`;
+        const btnClass=primaryT?'mitre-node-btn':'mitre-node-btn num-only';
+
+        const t=ts?new Date(ts):new Date();
+        const timeStr=t.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const pr=String(finding?.prio||'').toLowerCase();
+        const prioClass =
+          pr === 'high' ? 'prio-high' : pr === 'med' ? 'prio-med' : pr === 'low' ? 'prio-low' : 'prio-unk';
+        if (pr === 'high') {
+          for (const tid of mitreList) highMitreIds.add(tid);
+        }
+        for (const tid of mitreList) {
+          if (!mitreHitSnippet.has(tid)) mitreHitSnippet.set(tid, []);
+          const arr = mitreHitSnippet.get(tid);
+          arr.push(String(finding?.value || '').slice(0, 160), String(finding?.type || ''));
+        }
+        const findingLinks = findFindingLinks(finding);
+        const quickLink = findingLinks[0] || '';
+
+        const seg=document.createElement('div');
+        seg.className='h-seg '+(up?'h-seg-up':'h-seg-down');
+
+        const card=document.createElement('div');
+        card.className = `h-mini-card ${prioClass}`;
+        card.innerHTML=`
+          <div class="t">${escapeHtml(String(finding?.type||'?'))} · ${escapeHtml(timeStr)}</div>
+          <div class="v">${escapeHtml(String(finding?.value||'').slice(0,200))}</div>
+          <div class="pr">${escapeHtml(String(pr).toUpperCase()||'—')}</div>
+          ${quickLink ? `<div class="lnk"><a href="${escapeHtml(quickLink)}" target="_blank" rel="noopener noreferrer">abrir alvo ↗</a></div>` : ''}`;
+
+        const vline=document.createElement('div');
+        vline.className='h-vline';
+        vline.setAttribute('aria-hidden','true');
+
+        const btn=document.createElement('button');
+        btn.type='button';
+        btn.className=btnClass;
+        if (primaryT) {
+          const short=primaryT.length>7?`${primaryT.slice(0,6)}…`:primaryT;
+          btn.textContent=short;
+          btn.title=`${primaryT} — clique para detalhe`;
+        } else {
+          btn.textContent=`#${seq}`;
+          btn.title=`Achado #${seq}`;
+        }
+
+        const mPayload={seq,badgeLabel,finding,mitreHints:mitreList,owaspHints:owaspHints||[]};
+        btn.addEventListener('click',()=>openModal(mPayload));
+
+        if (up) { seg.appendChild(card); seg.appendChild(vline); seg.appendChild(btn); }
+        else    { seg.appendChild(btn);  seg.appendChild(vline); seg.appendChild(card); }
+
+        feedRoot.appendChild(seg);
+        while (feedRoot.children.length>MAX_SEGMENTS) feedRoot.removeChild(feedRoot.firstChild);
+        const vp = document.getElementById('branchesViewport');
+        if (vp) vp.scrollLeft = vp.scrollWidth;
+        else feedRoot.scrollLeft = feedRoot.scrollWidth;
+        applyMatrixFilters();
+      }
+
+      function extractFindingsArrayFromImport(raw) {
+        if (!raw || typeof raw !== 'object') return [];
+        if (Array.isArray(raw)) return raw;
+        if (Array.isArray(raw.findings)) return raw.findings;
+        if (typeof raw.findings_json === 'string') {
+          try {
+            const inner = JSON.parse(raw.findings_json);
+            if (Array.isArray(inner)) return inner;
+            if (inner && Array.isArray(inner.findings)) return inner.findings;
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      }
+
+      function rowToFindingImportPayload(row, idx) {
+        const prio = String(row.priority ?? row.prio ?? '').toLowerCase();
+        const type = row.type != null ? String(row.type) : 'achado';
+        const value = String(row.value ?? '').slice(0, 220);
+        const meta = String(row.meta ?? '').slice(0, 160);
+        const url = row.url != null ? String(row.url).trim() : '';
+        const finding = { type, prio, value, meta };
+        if (url) finding.url = url.slice(0, 220);
+        const mitreHints = [];
+        if (Array.isArray(row.mitre)) {
+          for (const x of row.mitre) {
+            if (typeof x === 'string' && x.startsWith('T')) mitreHints.push(x);
+            else if (x && typeof x === 'object' && typeof x.id === 'string' && x.id.startsWith('T')) mitreHints.push(x.id);
+          }
+        }
+        const owaspHints = [];
+        if (Array.isArray(row.owasp)) {
+          for (const x of row.owasp) {
+            if (typeof x === 'string' && /^A\d{2}$/i.test(x)) {
+              owaspHints.push({ id: String(x).toUpperCase(), title: '', label: '' });
+            } else if (x && x.id && /^A\d{2}$/i.test(String(x.id))) {
+              owaspHints.push({
+                id: String(x.id).toUpperCase(),
+                title: x.title || '',
+                label: x.label || '',
+              });
+            }
+          }
+        }
+        return { ts: Date.now() + idx, finding, mitreHints, owaspHints };
+      }
+
+      function runBranchJsonImport(text) {
+        let obj;
+        try {
+          obj = JSON.parse(text);
+        } catch {
+          statePill.textContent = 'JSON inválido';
+          statePill.className = 'pill err';
+          return;
+        }
+        const list = extractFindingsArrayFromImport(obj);
+        if (!list.length) {
+          statePill.textContent = 'Sem findings no JSON';
+          statePill.className = 'pill err';
+          return;
+        }
+        const cap = 600;
+        const slice = list.slice(0, cap);
+        const emp = feedRoot.querySelector('.empty-state');
+        if (emp) emp.remove();
+        for (let i = 0; i < slice.length; i++) {
+          const m = rowToFindingImportPayload(slice[i], i);
+          appendFindingBranch(m);
+          addMitreHits(m.mitreHints);
+          addOwaspHits(m.owaspHints);
+          pushEvent({
+            t: m.ts || Date.now(),
+            kind: 'finding',
+            finding: m.finding,
+            mitreHints: m.mitreHints,
+            owaspHints: m.owaspHints || [],
+          });
+        }
+        applyHits();
+        const tname = obj.target != null ? String(obj.target).trim() : '';
+        if (tname) {
+          liveTarget = tname;
+          targetLine.textContent = tname;
+          targetLine.style.display = '';
+        }
+        pushEvent({ t: Date.now(), kind: 'import_json', count: slice.length });
+        scheduleJsonRefresh();
+        statePill.textContent = `Importados ${slice.length} achado(s)`;
+        statePill.className = 'pill';
+      }
+
+      function syncBranchJsonPanelVisibility() {
+        const on = Boolean(document.getElementById('branchJsonPanelToggle')?.checked);
+        const w = document.getElementById('branchJsonPanelWrap');
+        if (w) w.style.display = on ? 'block' : 'none';
+      }
+
+      function buildGhostmapFindingsExport() {
+        const findings = [];
+        for (const ev of events) {
+          if (ev.kind !== 'finding' || !ev.finding) continue;
+          const f = ev.finding;
+          const row = {
+            type: f.type,
+            priority: f.prio || f.priority || '',
+            value: f.value,
+            meta: f.meta || '',
+          };
+          if (f.url) row.url = f.url;
+          if (Array.isArray(ev.mitreHints) && ev.mitreHints.length) {
+            row.mitre = ev.mitreHints
+              .filter((id) => typeof id === 'string' && id.startsWith('T'))
+              .map((id) => ({ id }));
+          }
+          if (Array.isArray(ev.owaspHints) && ev.owaspHints.length) {
+            row.owasp = ev.owaspHints
+              .map((x) => {
+                if (typeof x === 'string' && /^A\d{2}$/i.test(x)) return { id: String(x).toUpperCase() };
+                if (x && x.id && /^A\d{2}$/i.test(String(x.id))) {
+                  return { id: String(x.id).toUpperCase(), title: x.title || '', label: x.label || '' };
+                }
+                return null;
+              })
+              .filter(Boolean);
+            if (!row.owasp.length) delete row.owasp;
+          }
+          findings.push(row);
+        }
+        return {
+          schemaVersion: 1,
+          source: 'ghostctf-ghostmap-export',
+          exportedAt: new Date().toISOString(),
+          target: liveTarget || null,
+          findings,
+        };
+      }
+
+      function downloadBranchExportJson() {
+        const o = buildGhostmapFindingsExport();
+        const safe = (liveTarget || 'export').replace(/[^\w.-]+/g, '_').slice(0, 80);
+        const name = `ghostmap_${safe}_${Date.now()}.json`;
+        const blob = new Blob([JSON.stringify(o, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.rel = 'noopener';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        statePill.textContent = o.findings.length
+          ? `Export JSON: ${o.findings.length} achado(s)`
+          : 'Export JSON: ficheiro vazio (0 achados)';
+        statePill.className = 'pill';
+      }
+
+      function wireBranchImportOnce() {
+        if (branchImportWired) return;
+        branchImportWired = true;
+        document.getElementById('branchJsonPanelToggle')?.addEventListener('change', syncBranchJsonPanelVisibility);
+        syncBranchJsonPanelVisibility();
+        document.getElementById('branchExportJsonBtn')?.addEventListener('click', downloadBranchExportJson);
+        document.getElementById('branchImportApply')?.addEventListener('click', () => {
+          const ta = document.getElementById('branchImportJson');
+          runBranchJsonImport((ta?.value || '').trim());
+        });
+        document.getElementById('branchImportClearField')?.addEventListener('click', () => {
+          const ta = document.getElementById('branchImportJson');
+          if (ta) ta.value = '';
+          const fi = document.getElementById('branchImportFile');
+          if (fi) fi.value = '';
+        });
+        document.getElementById('branchImportFile')?.addEventListener('change', (ev) => {
+          const f = ev.target?.files?.[0];
+          if (!f) return;
+          const r = new FileReader();
+          r.onload = () => {
+            const ta = document.getElementById('branchImportJson');
+            if (ta) ta.value = String(r.result || '');
+          };
+          r.readAsText(f);
+        });
+      }
+
+      function renderTacticGrid(bundle) {
+        const tactics=bundle.tactics||[];
+        const techniques=bundle.techniques||[];
+        const byTa=new Map();
+        for (const t of tactics) byTa.set(t.id,[]);
+        techMeta.clear();
+        for (const tech of techniques) {
+          techMeta.set(tech.id,{name:tech.name,url:tech.url});
+          for (const ph of tech.phases||[]) {
+            const ta=PHASE_TO_TACTIC[ph];
+            if (ta&&byTa.has(ta)) { byTa.get(ta).push(tech); break; }
+          }
+        }
+        tacticsRoot.innerHTML='';
+        chipById.clear();
+        tacticElByTa.clear();
+        for (const tac of tactics) {
+          const list=(byTa.get(tac.id)||[]).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
+          const wrap=document.createElement('div');
+          wrap.className='tactic';
+          wrap.dataset.ta=tac.id;
+          tacticElByTa.set(tac.id,wrap);
+          const h=document.createElement('div');
+          h.className='tactic-h';
+          h.innerHTML=`<strong>${tac.id}</strong><span>${escapeHtml(tac.name||'')}</span>`;
+          wrap.appendChild(h);
+          const body=document.createElement('div');
+          body.className='tactic-body';
+          for (const tech of list) {
+            const sp=document.createElement('span');
+            sp.className='chip';
+            sp.textContent=tech.id;
+            sp.title=tech.name||'';
+            if (tech.url) { sp.style.cursor='pointer'; sp.onclick = () => window.open(tech.url,'_blank','noopener,noreferrer'); }
+            chipById.set(tech.id,sp);
+            body.appendChild(sp);
+          }
+          wrap.appendChild(body);
+          tacticsRoot.appendChild(wrap);
+        }
+        bundleMeta={loaded:true,scope:bundle.scope,phases:bundle.phases,tacticCount:tactics.length,techniqueCount:techniques.length,generatedAt:bundle.generatedAt||null};
+        applyHits();
+      }
+
+      function onMessage(ev) {
+        const m=ev.data||{};
+        lastMessageAt = Date.now();
+        updateLiveHud();
+        if (m.type==='target') {
+          if (typeof m.kaliMode === 'boolean') {
+            liveKaliMode = m.kaliMode;
+            updatePipeMiniKaliBadge();
+          }
+          if (m.cascadeContinue) {
+            appendCascadeDivider(m.domain, { tag: m.cascadeTag || 'SEGUINTE', root: m.cascadeRoot });
+            softResetForNewCascadeTarget(m.domain);
+          } else {
+            buildTimelineSkeleton();
+            resetForNewTarget(m.domain);
+          }
+          // O servidor emite input active→done em milissegundos; o BC não tem replay — após o reset o marco input ficava «pending» se esses eventos se perdessem.
+          updatePipeRow('input', 'done');
+          pushEvent({ t: Date.now(), kind: 'target', domain: m.domain, cascadeContinue: Boolean(m.cascadeContinue) });
+          scheduleJsonRefresh();
+          return;
+        }
+        if (m.type==='pipe') {
+          if (typeof m.kaliMode === 'boolean') {
+            liveKaliMode = m.kaliMode;
+            updatePipeMiniKaliBadge();
+          }
+          const name=String(m.name||''); const st=String(m.state||'');
+          lastPipeLabel=`${name} · ${st}`;
+          pipeHint.textContent=`Último pipeline: ${lastPipeLabel}`;
+          updatePipeRow(name,st);
+          pushEvent({t:Date.now(),kind:'pipe',name,state:st,target:m.target});
+          if (st==='active') { setLiveTactics(PIPE_TACTICS[name]||['TA0043'],true); statePill.textContent='Pipeline em curso'; statePill.className='pill live'; }
+          else setLiveTactics([],false);
+          scheduleJsonRefresh(); return;
+        }
+        if (m.type==='finding_card') {
+          appendFindingBranch(m);
+          addMitreHits(m.mitreHints);
+          addOwaspHits(m.owaspHints);
+          pushEvent({
+            t: m.ts || Date.now(),
+            kind: 'finding',
+            finding: m.finding,
+            mitreHints: m.mitreHints,
+            owaspHints: m.owaspHints || [],
+          });
+          scheduleJsonRefresh();
+          return;
+        }
+        if (m.type==='mitre_hints') { addMitreHits(m.ids); scheduleJsonRefresh(); return; }
+        if (m.type==='findings_rescore') {
+          addMitreHits(m.mitreIds);
+          if (Array.isArray(m.owaspIds)) addOwaspHits(m.owaspIds);
+          if (Array.isArray(m.owaspDetails)) addOwaspHits(m.owaspDetails);
+          pushEvent({t:Date.now(),kind:'findings_rescore',mitreIds:m.mitreIds,owaspIds:m.owaspIds});
+          scheduleJsonRefresh(); return;
+        }
+        if (m.type==='run_end') {
+          statePill.textContent='Stream terminado'; statePill.className='pill';
+          setLiveTactics([],false);
+          pushEvent({t:Date.now(),kind:'run_end',lastPipe:lastPipeLabel});
+          scheduleJsonRefresh();
+        }
+      }
+
+      (async()=>{
+        const miniStrip = document.getElementById('pipeMiniMapStrip');
+        const bTool = document.getElementById('branchesToolbar');
+        const mBar = document.getElementById('matrixFilterBar');
+        const jsonDock = document.getElementById('branchJsonDockWrap');
+        if (miniStrip) miniStrip.hidden = false;
+        if (bTool) bTool.hidden = false;
+        if (mBar) mBar.hidden = false;
+        if (jsonDock) jsonDock.hidden = false;
+        buildTimelineSkeleton();
+        buildMiniStrip();
+        updatePipeMiniKaliBadge();
+        resetForNewTarget('');
+        wireBranchZoomOnce();
+        let bundleOk = false;
+        try {
+          const res=await fetch('mitre-attack/recon-bundle.json',{cache:'no-store'});
+          if (!res.ok) throw new Error('recon-bundle.json HTTP '+res.status);
+          const bundle=await res.json();
+          renderTacticGrid(bundle);
+          bundleOk = true;
+        } catch(e) {
+          tacticsRoot.innerHTML=`<p class="err" style="padding:12px">${escapeHtml(String(e.message||e))}</p>`;
+        }
+        if (typeof BroadcastChannel==='undefined') {
+          statePill.textContent='Sem BroadcastChannel'; statePill.className='pill err'; return;
+        }
+        wireMatrixFiltersOnce();
+        wireBranchImportOnce();
+        applyMatrixFilters();
+        let liveBcBoundId = sessionId;
+        let liveCh = new BroadcastChannel('ghostctf-mitre-' + liveBcBoundId);
+        liveCh.addEventListener('message', onMessage);
+        window.addEventListener('storage', (e) => {
+          if (e.key !== MITRE_LIVE_SESSION_STORAGE_KEY || !e.newValue || e.newValue === liveBcBoundId) return;
+          try {
+            liveCh.removeEventListener('message', onMessage);
+            liveCh.close();
+          } catch (_) {}
+          liveBcBoundId = e.newValue;
+          liveCh = new BroadcastChannel('ghostctf-mitre-' + liveBcBoundId);
+          liveCh.addEventListener('message', onMessage);
+          try {
+            const nextUrl = new URL(location.href);
+            nextUrl.hash = liveBcBoundId;
+            history.replaceState(null, '', nextUrl.toString());
+          } catch (_) {}
+          statePill.textContent = 'Sessão ao vivo actualizada';
+          statePill.className = 'pill live';
+        });
+        statePill.textContent = bundleOk ? 'Ligado' : 'Ligado · sem matriz';
+        statePill.className = 'pill waiting';
+        updateLiveHud();
+        jsonLive.textContent=JSON.stringify(buildLiveJson(),null,2);
+      })();
+    }
+  </script>
+</body>
+</html>

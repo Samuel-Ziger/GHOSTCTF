@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { fingerprintFinding, findingsForRunsTable, norm } from './db-common.js';
+import { serializeFindingsForRunSnapshot, parseFindingsSnapshotJson } from './finding-serialize.js';
 
 let client = null;
 
@@ -130,26 +131,40 @@ export async function mergeIntelForTarget(target, runId, findings) {
 
     return { newArtifacts, alreadyKnown, totalKnownForTarget: count ?? 0 };
   } catch (e) {
-    console.error('[GHOSTCTF DB intel]', e.message);
+    console.error('[GHOSTRECON DB intel]', e.message);
     return { newArtifacts: 0, alreadyKnown: 0, totalKnownForTarget: 0, error: e.message };
   }
 }
 
-export async function saveRun({ target, exactMatch, modules, stats, findings, correlation }) {
+function snapshotPayloadForSupabase(findingsJson, findings) {
+  const raw = findingsJson ?? serializeFindingsForRunSnapshot(findings);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveRun({ target, exactMatch, modules, stats, findings, correlation, findingsJson = null }) {
   try {
     const sb = getSupabase();
     const t = norm(target);
-    const { data: runRow, error: runErr } = await sb
-      .from('runs')
-      .insert({
-        target: t,
-        exact_match: Boolean(exactMatch),
-        modules_json: modules,
-        stats_json: stats,
-        correlation_json: correlation ?? null,
-      })
-      .select('id')
-      .single();
+    const snapObj = snapshotPayloadForSupabase(findingsJson, findings);
+    const baseRow = {
+      target: t,
+      exact_match: Boolean(exactMatch),
+      modules_json: modules,
+      stats_json: stats,
+      correlation_json: correlation ?? null,
+    };
+    let rowPayload = snapObj ? { ...baseRow, findings_json: snapObj } : baseRow;
+    let { data: runRow, error: runErr } = await sb.from('runs').insert(rowPayload).select('id').single();
+    const errStr = `${String(runErr?.message || '')} ${JSON.stringify(runErr || {})}`;
+    if (runErr && snapObj && /findings_json|schema cache.*runs|column.*runs/i.test(errStr)) {
+      console.warn('[GHOSTRECON DB] Supabase: coluna findings_json ausente — grava sem snapshot.');
+      ({ data: runRow, error: runErr } = await sb.from('runs').insert(baseRow).select('id').single());
+    }
     if (runErr) throw runErr;
     const runId = Number(runRow.id);
 
@@ -173,7 +188,7 @@ export async function saveRun({ target, exactMatch, modules, stats, findings, co
 
     return { runId, intelMerge };
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return null;
   }
 }
@@ -195,7 +210,7 @@ export async function listRuns(limit = 50) {
       stats: parseJsonField(r.stats_json),
     }));
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return [];
   }
 }
@@ -206,12 +221,26 @@ export async function getRunById(id) {
     const { data: run, error: rErr } = await sb.from('runs').select('*').eq('id', id).maybeSingle();
     if (rErr) throw rErr;
     if (!run) return null;
-    const { data: findings, error: fErr } = await sb
+    const { data: tableFindings, error: fErr } = await sb
       .from('findings')
       .select('type, prio, score, value, meta, url')
       .eq('run_id', id)
       .order('id', { ascending: true });
     if (fErr) throw fErr;
+    const fj = run.findings_json;
+    let snap = null;
+    if (fj != null) {
+      if (typeof fj === 'string') snap = parseFindingsSnapshotJson(fj);
+      else if (Array.isArray(fj.findings)) snap = fj.findings;
+      else if (Array.isArray(fj)) snap = fj;
+      else
+        try {
+          snap = parseFindingsSnapshotJson(JSON.stringify(fj));
+        } catch {
+          snap = null;
+        }
+    }
+    const findings = snap?.length ? snap : tableFindings || [];
     return {
       id: run.id,
       target: run.target,
@@ -220,10 +249,11 @@ export async function getRunById(id) {
       stats: parseJsonField(run.stats_json),
       correlation: run.correlation_json != null ? parseJsonField(run.correlation_json) : null,
       created_at: run.created_at,
-      findings: findings || [],
+      findings,
+      findingsScopeRows: snap?.length ? tableFindings : undefined,
     };
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return null;
   }
 }
@@ -242,7 +272,7 @@ export async function listIntelForTarget(target, limit = 500) {
     if (error) throw error;
     return data || [];
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return [];
   }
 }

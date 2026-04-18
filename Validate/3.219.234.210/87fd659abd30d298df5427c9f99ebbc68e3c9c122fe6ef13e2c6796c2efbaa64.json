@@ -1,0 +1,17 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "87fd659abd30d298df5427c9f99ebbc68e3c9c122fe6ef13e2c6796c2efbaa64",
+  "validated_at": "2026-04-18T01:04:20.069Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "high",
+    "value": "FTP anonymous: login sem senha (230 Login successful)",
+    "url": "ftp://3.219.234.210/",
+    "meta": "Utilizador anonymous; listagem em modo passivo.",
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

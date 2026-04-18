@@ -1,0 +1,2781 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GHOSTCTF · Cortex</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #050508;
+      --bg2: #080b12;
+      --bg3: #0d1220;
+      --bg4: #12182a;
+      --rail: #06060a;
+      --panel: #0a0e1a;
+      --border: #2a1233;
+      --border2: #3d1a4a;
+      --text: #c8d8f0;
+      --text-bright: #e8f4ff;
+      --text2: #6a7898;
+      --dim: #4a6080;
+      --accent: #ff2bd6;
+      --accent-hi: #ff8ad4;
+      --accent-lo: rgba(255, 43, 214, 0.15);
+      --accent4: #00d4ff;
+      --green: #00ff88;
+      --green-lo: rgba(0, 255, 136, 0.12);
+      --red: #ff3366;
+      --yellow: #fbbf24;
+      --mono: 'Share Tech Mono', ui-monospace, monospace;
+      --sans: 'Rajdhani', system-ui, sans-serif;
+      --display: 'Orbitron', system-ui, sans-serif;
+      --radius: 6px;
+      --glow-accent: 0 0 20px rgba(255, 43, 214, 0.35), 0 0 60px rgba(255, 43, 214, 0.12);
+      --glow-green: 0 0 16px rgba(0, 255, 136, 0.45), 0 0 50px rgba(0, 255, 136, 0.12);
+      --scan: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.15) 2px,
+        rgba(0, 0, 0, 0.15) 4px
+      );
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      display: grid;
+      grid-template-columns: 42px minmax(200px, 260px) 1fr;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+      height: 100vh;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background: var(--scan);
+      z-index: 9999;
+    }
+    body::after {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 43, 214, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 43, 214, 0.035) 1px, transparent 1px),
+        radial-gradient(ellipse 55% 42% at 12% 0%, rgba(255, 43, 214, 0.07) 0%, transparent 58%),
+        radial-gradient(ellipse 48% 38% at 88% 100%, rgba(0, 212, 255, 0.06) 0%, transparent 55%);
+      background-size: 40px 40px, 40px 40px, auto, auto;
+      z-index: 0;
+    }
+
+    /* ─── DEMO BANNER ─── */
+    #demoBanner {
+      position: relative;
+      z-index: 1;
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+    .demo-banner {
+      display: none;
+      padding: 7px 18px;
+      background: linear-gradient(90deg, rgba(255, 43, 214, 0.18), rgba(0, 255, 136, 0.1));
+      border-bottom: 1px solid rgba(255, 43, 214, 0.28);
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text2);
+      letter-spacing: 0.03em;
+    }
+    .demo-banner strong { color: var(--green); font-weight: 500; }
+    .demo-banner code { color: var(--accent4); background: var(--accent-lo); padding: 1px 5px; border-radius: 3px; }
+
+    /* ─── RIBBON (ícones verticais, como Obsidian) ─── */
+    .ribbon {
+      position: relative;
+      z-index: 1;
+      grid-column: 1;
+      grid-row: 2;
+      background: var(--rail);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 0;
+      gap: 4px;
+    }
+    .ribbon-logo {
+      width: 26px;
+      height: 26px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ribbon-logo svg { width: 20px; height: 20px; }
+    .ribbon-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .ribbon-btn:hover { color: var(--accent-hi); background: var(--accent-lo); }
+    .ribbon-btn.active { color: var(--green); background: var(--green-lo); }
+    .ribbon-btn svg { width: 16px; height: 16px; }
+    .ribbon-spacer { flex: 1; }
+
+    /* ─── FILE TREE SIDEBAR ─── */
+    .rail {
+      position: relative;
+      z-index: 1;
+      grid-column: 2;
+      grid-row: 2;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .rail-head {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rail-brand {
+      font-family: var(--display);
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--text-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .rail-brand-acc {
+      color: var(--accent);
+    }
+    .rail-sub {
+      font-size: 9px;
+      color: var(--dim);
+      margin-top: 4px;
+      letter-spacing: 0.04em;
+    }
+    .rail-search {
+      margin: 8px 10px 0;
+      position: relative;
+    }
+    .rail-search input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 5px 8px 5px 26px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .rail-search input:focus {
+      border-color: var(--accent4);
+      box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.12);
+    }
+    .rail-search input::placeholder { color: var(--dim); }
+    .rail-search svg {
+      position: absolute;
+      left: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      color: var(--dim);
+      pointer-events: none;
+    }
+
+    .rail-section {
+      padding: 10px 14px 4px;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .rail-section-badge {
+      font-size: 9px;
+      color: var(--accent-hi);
+      background: var(--accent-lo);
+      border-radius: 3px;
+      padding: 0 5px;
+    }
+
+    .rail-fake {
+      padding: 6px 10px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rail-fake-btn {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px dashed rgba(255,43,214,0.35);
+      border-radius: var(--radius);
+      background: rgba(255,43,214,0.05);
+      color: var(--accent-hi);
+      font-family: var(--mono);
+      font-size: 9px;
+      cursor: pointer;
+      line-height: 1.4;
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .rail-fake-btn::before { content: '⚡ '; }
+    .rail-fake-btn:hover:not(:disabled) { background: rgba(255,43,214,0.12); border-color: rgba(255,43,214,0.6); }
+    .rail-fake-btn:disabled { opacity: 0.5; cursor: wait; }
+
+    .rail-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0 20px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .rail-list::-webkit-scrollbar { width: 4px; }
+    .rail-list::-webkit-scrollbar-track { background: transparent; }
+    .rail-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    .nav-folder {
+      padding: 5px 14px 3px;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--dim);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .nav-folder svg { width: 10px; height: 10px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      text-align: left;
+      padding: 6px 14px 6px 22px;
+      border: none;
+      border-left: 2px solid transparent;
+      background: transparent;
+      color: var(--text2);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: color 0.12s, background 0.12s, border-color 0.12s;
+      position: relative;
+    }
+    .nav-item::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+      flex-shrink: 0;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .nav-item:hover::before { background: var(--accent-hi); }
+    .nav-item.is-active {
+      border-left-color: var(--green);
+      background: var(--green-lo);
+      color: var(--green);
+    }
+    .nav-item.is-active::before { background: var(--green); box-shadow: var(--glow-green); }
+    .nav-item-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav-count {
+      font-size: 9px;
+      opacity: 0.6;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      padding: 0 5px;
+      flex-shrink: 0;
+    }
+    .nav-item.is-active .nav-count { background: rgba(0,255,136,0.15); color: var(--green); opacity: 1; }
+
+    /* ─── MAIN CANVAS ─── */
+    main.cortex-main {
+      grid-column: 3;
+      grid-row: 2;
+      min-width: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 10%, rgba(120, 20, 90, 0.14), transparent 55%),
+        radial-gradient(ellipse 40% 30% at 85% 8%, rgba(0, 80, 100, 0.08), transparent 50%),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    .canvas-head {
+      padding: 11px 20px 9px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(6, 9, 16, 0.92) 0%, rgba(5, 5, 8, 0.88) 100%);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .canvas-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--dim);
+    }
+    .canvas-breadcrumb span { color: var(--text); }
+    .canvas-breadcrumb .crumb-root {
+      color: var(--accent4);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .canvas-title {
+      font-family: var(--display);
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: 0.06em;
+      flex: 1;
+    }
+    .canvas-title-gh {
+      color: var(--text-bright);
+    }
+    .canvas-title-accent {
+      color: var(--accent);
+    }
+    .canvas-title-cat {
+      color: var(--text-bright);
+      font-weight: 700;
+    }
+    .canvas-hint {
+      font-size: 9px;
+      color: var(--dim);
+      width: 100%;
+      padding-top: 1px;
+    }
+
+    .canvas-head-main {
+      flex: 1;
+      min-width: 0;
+      position: relative;
+    }
+    .canvas-ghost-bg {
+      position: absolute;
+      left: -4%;
+      top: 42%;
+      transform: translateY(-50%);
+      width: min(200px, 34vw);
+      max-height: 120px;
+      opacity: 0.12;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .canvas-ghost-bg svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 0 16px rgba(255, 43, 214, 0.45)) drop-shadow(0 0 8px rgba(0, 212, 255, 0.2));
+    }
+    .canvas-head-front {
+      position: relative;
+      z-index: 1;
+    }
+
+    .category-teach {
+      margin-top: 10px;
+      padding: 10px 12px 10px 14px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 43, 214, 0.28);
+      background: rgba(255, 43, 214, 0.07);
+      max-width: min(56em, 100%);
+    }
+    .category-teach[hidden] {
+      display: none !important;
+    }
+    .category-teach-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .category-teach-head strong {
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-hi);
+      letter-spacing: 0.02em;
+    }
+    .category-teach-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .category-teach-edit-btn {
+      flex-shrink: 0;
+      min-width: 28px;
+      height: 26px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg3);
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .category-teach-edit-btn:hover:not(:disabled) {
+      border-color: var(--accent-hi);
+      color: var(--accent-hi);
+    }
+    .category-teach-edit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .category-teach-delete-btn {
+      flex-shrink: 0;
+      min-width: 28px;
+      height: 26px;
+      padding: 0 8px;
+      border: 1px solid rgba(255, 80, 80, 0.35);
+      border-radius: 4px;
+      background: var(--bg3);
+      color: var(--accent3);
+      cursor: pointer;
+      font-size: 10px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .category-teach-delete-btn:hover:not(:disabled) {
+      border-color: var(--accent3);
+      color: #ff9e9e;
+    }
+    .category-teach-delete-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .category-teach-para {
+      margin: 0;
+      font-size: 10px;
+      color: var(--text2);
+      line-height: 1.55;
+    }
+    .category-teach-edit {
+      margin-top: 8px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .category-teach-edit.is-open { display: flex; }
+    .category-teach-input {
+      width: 100%;
+      min-height: 84px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg3);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1.5;
+      padding: 8px;
+    }
+    .category-teach-edit-actions { display: flex; gap: 8px; }
+    .category-teach-btn {
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text2);
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+    }
+    .category-teach-btn:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+    .category-teach-btn:disabled { opacity: 0.6; cursor: wait; }
+    .category-desc {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      background: rgba(0, 255, 136, 0.07);
+      max-width: min(56em, 100%);
+    }
+    .category-desc[hidden] { display: none !important; }
+    .category-desc-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .category-desc-head strong {
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 0.02em;
+    }
+    .category-desc-text {
+      margin: 0;
+      font-size: 10px;
+      color: var(--text);
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .category-desc-actions { display: flex; gap: 8px; }
+    .category-desc-btn {
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text2);
+      padding: 5px 8px;
+      font-size: 9px;
+      font-family: var(--mono);
+      cursor: pointer;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .category-desc-btn:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+    .category-desc-edit {
+      margin-top: 8px;
+      display: none;
+      gap: 8px;
+      flex-direction: column;
+    }
+    .category-desc-edit.is-open { display: flex; }
+    .category-desc-input {
+      width: 100%;
+      min-height: 78px;
+      resize: vertical;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 8px;
+    }
+    .category-desc-hint { font-size: 9px; color: var(--dim); }
+
+    .drawer-brain-ul {
+      list-style: none;
+      margin: 0 0 10px;
+      padding: 0;
+      font-size: 10px;
+    }
+    .drawer-brain-li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .drawer-brain-li:last-child { border-bottom: none; }
+    .drawer-brain-li-title { color: var(--text); flex: 1; min-width: 0; }
+    .drawer-brain-remove {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--accent3);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .drawer-brain-remove:hover { border-color: var(--accent3); }
+    .drawer-brain-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 4px;
+    }
+    .drawer-brain-select {
+      flex: 1;
+      min-width: 140px;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 6px 8px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .drawer-brain-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    .drawer-brain-btn {
+      font-size: 9px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg3);
+      color: var(--text);
+      cursor: pointer;
+      font-family: var(--sans, system-ui, sans-serif);
+    }
+    .drawer-brain-btn:hover:not(:disabled) {
+      border-color: rgba(255, 43, 214, 0.45);
+      color: var(--accent2);
+    }
+    .drawer-brain-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .drawer-brain-btn--danger {
+      border-color: rgba(255, 80, 80, 0.35);
+      color: var(--accent3);
+    }
+    .drawer-brain-btn--danger:hover:not(:disabled) {
+      border-color: var(--accent3);
+    }
+    .drawer-brain-btn--accent {
+      border-color: rgba(0, 255, 136, 0.35);
+      color: var(--green);
+    }
+    .drawer-brain-expand {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .drawer-brain-expand[hidden] {
+      display: none !important;
+    }
+    .drawer-brain-field-label {
+      display: block;
+      font-size: 9px;
+      color: var(--dim);
+      margin: 6px 0 4px;
+    }
+    .drawer-brain-input,
+    .drawer-brain-textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 6px 8px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .drawer-brain-textarea {
+      min-height: 52px;
+      resize: vertical;
+    }
+    .drawer-brain-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 9px;
+      color: var(--dim);
+      margin-top: 8px;
+      cursor: pointer;
+    }
+    .drawer-brain-expand-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .canvas-ghost-bg .ghost-anim-cortex {
+      transform-origin: 24px 26px;
+      animation: cortex-ghost-sway 3s ease-in-out infinite;
+    }
+    .canvas-ghost-bg .ghost-eye-cortex {
+      transform-origin: center;
+      transform-box: fill-box;
+      animation: cortex-ghost-blink 5s ease-in-out infinite;
+    }
+    .canvas-ghost-bg .ghost-eye-cortex-r {
+      animation-delay: 0.06s;
+    }
+    @keyframes cortex-ghost-sway {
+      0%,
+      100% {
+        transform: rotate(-3deg);
+      }
+      50% {
+        transform: rotate(3deg);
+      }
+    }
+    @keyframes cortex-ghost-blink {
+      0%,
+      47%,
+      53%,
+      100% {
+        transform: scaleY(1);
+      }
+      50% {
+        transform: scaleY(0.12);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .canvas-ghost-bg .ghost-anim-cortex,
+      .canvas-ghost-bg .ghost-eye-cortex {
+        animation: none !important;
+      }
+    }
+
+    .canvas-head-tools {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 9px;
+      color: var(--dim);
+      user-select: none;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--bg3);
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .toggle-pill:hover {
+      border-color: rgba(255, 43, 214, 0.45);
+      color: var(--accent4);
+    }
+    .toggle-pill input { display: none; }
+    .toggle-pill-dot {
+      width: 14px;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--border2);
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-pill-dot::after {
+      content: '';
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+      transition: transform 0.2s, background 0.2s;
+    }
+    #toggleObsidianGraph:checked ~ .toggle-pill .toggle-pill-dot { background: rgba(255,43,214,0.4); }
+    #toggleObsidianGraph:checked ~ .toggle-pill .toggle-pill-dot::after { transform: translateX(6px); background: var(--accent-hi); }
+
+    .canvas-stats {
+      display: flex;
+      gap: 12px;
+    }
+    .stat-pill {
+      font-size: 9px;
+      color: var(--dim);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .stat-pill strong { color: var(--text); font-weight: 500; }
+
+    .canvas-body {
+      flex: 1;
+      overflow: auto;
+      padding: 20px 22px 80px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+      position: relative;
+    }
+    .canvas-body::-webkit-scrollbar { width: 5px; }
+    .canvas-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    .canvas-body--graph {
+      overflow: hidden;
+      padding: 0;
+    }
+
+    /* ─── EMPTY STATE ─── */
+    .empty-canvas {
+      margin-top: 12vh;
+      max-width: 38em;
+      font-size: 11px;
+      color: var(--dim);
+      line-height: 1.7;
+    }
+    .empty-canvas h2 {
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-bright);
+      margin-bottom: 10px;
+      letter-spacing: 0.04em;
+    }
+    .empty-canvas code {
+      color: var(--accent-hi);
+      background: var(--accent-lo);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+    .empty-canvas .kbd {
+      display: inline-block;
+      font-size: 9px;
+      color: var(--text);
+      background: var(--bg4);
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      padding: 1px 6px;
+    }
+    .empty-shortcut-row { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ─── GRAPH / NODE GRID ─── */
+    .graph-wrap {
+      position: relative;
+      min-height: 200px;
+    }
+    .graph-lines {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(255,43,214,0.18) 1px, transparent 0);
+      background-size: 24px 24px;
+      opacity: 0.5;
+    }
+    .nodes {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .node {
+      width: min(100%, 210px);
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg3);
+      cursor: pointer;
+      transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+    .node::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.18s;
+    }
+    .node:hover { border-color: rgba(255,43,214,0.5); box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,43,214,0.1); transform: translateY(-1px); }
+    .node:hover::before { opacity: 1; }
+    .node-target {
+      font-size: 10px;
+      color: var(--green);
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    .node-type-badge {
+      display: inline-block;
+      font-size: 8px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: var(--accent-lo);
+      color: var(--accent-hi);
+      margin-bottom: 6px;
+    }
+    .node-snippet { font-size: 10px; color: var(--text2); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .node-meta { margin-top: 7px; font-size: 9px; color: var(--dim); display: flex; justify-content: space-between; }
+
+    /* Cartão Cortex: falha (categoria) + desafio + descrição + URL */
+    .node-cortex-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: left;
+      width: 100%;
+      min-width: 0;
+    }
+    .node-cortex-falha {
+      font-family: var(--display);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent-hi);
+      line-height: 1.25;
+      max-height: 2.6em;
+      overflow: hidden;
+    }
+    .node-cortex-desafio {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--accent4);
+      line-height: 1.25;
+    }
+    .node-cortex-desc {
+      font-size: 8px;
+      color: var(--dim);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .node-cortex-url {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--text2);
+      margin-top: 2px;
+      word-break: break-all;
+      line-height: 1.3;
+    }
+    .node-cortex-url .node-url-float-host {
+      color: var(--text);
+      margin-right: 4px;
+    }
+    .node--float-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      text-align: left;
+      width: 100%;
+      min-width: 0;
+    }
+    .node--float .node-dot {
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    /* ─── OBSIDIAN GRAPH MODE ─── */
+    @keyframes hub-float {
+      0%,100% { transform: translate(-50%,-50%) translateY(0); box-shadow: var(--glow-accent), 0 0 0 1px rgba(255,43,214,0.5); }
+      50% { transform: translate(-50%,-50%) translateY(-5px); box-shadow: var(--glow-accent), 0 0 0 1px rgba(255,43,214,0.7), 0 0 80px rgba(255,43,214,0.15); }
+    }
+    @keyframes node-drift {
+      0%,100% { transform: translate(-50%,-50%) translate(0,0); }
+      33% { transform: translate(-50%,-50%) translate(1.5px,-2.5px); }
+      66% { transform: translate(-50%,-50%) translate(-1.5px,2px); }
+    }
+    @keyframes dot-drift {
+      0% { background-position: 0 0; }
+      100% { background-position: 48px 40px; }
+    }
+    @keyframes line-pulse {
+      0%,100% { stroke-opacity: 0.15; }
+      50% { stroke-opacity: 0.38; }
+    }
+    @keyframes ring-spin {
+      from { transform: translate(-50%,-50%) rotate(0deg); }
+      to { transform: translate(-50%,-50%) rotate(360deg); }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .obsidian-hub, .node--float, .obsidian-graph .graph-lines, .obsidian-radials line, .hub-ring { animation: none !important; }
+    }
+
+    .obsidian-graph {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 48%, rgba(110, 18, 80, 0.22), transparent 60%),
+        radial-gradient(ellipse 45% 35% at 75% 25%, rgba(0, 100, 120, 0.12), transparent 50%),
+        var(--bg);
+      overflow: hidden;
+      animation: fade-in 0.3s ease;
+    }
+    .obsidian-graph .graph-lines {
+      opacity: 0.25;
+      background-size: 22px 22px;
+      animation: dot-drift 56s linear infinite;
+    }
+
+    .obsidian-radials {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .obsidian-radials line {
+      stroke: rgba(255,43,214,0.5);
+      stroke-width: 0.6;
+      vector-effect: non-scaling-stroke;
+      animation: line-pulse 5s ease-in-out infinite;
+    }
+    .obsidian-radials line.line-green {
+      stroke: rgba(0,255,136,0.35);
+    }
+
+    .obsidian-hub {
+      position: absolute;
+      z-index: 3;
+      padding: 14px 22px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,43,214,0.5);
+      background: rgba(10, 8, 18, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-hi);
+      text-align: center;
+      letter-spacing: 0.04em;
+      animation: hub-float 6.5s ease-in-out infinite;
+      box-shadow: var(--glow-accent);
+      white-space: nowrap;
+      cursor: grab;
+      pointer-events: auto;
+      user-select: none;
+      touch-action: none;
+      transform: translate(-50%, -50%);
+    }
+    .obsidian-hub.is-hub-dragging {
+      cursor: grabbing;
+      animation: none;
+      box-shadow: var(--glow-accent), 0 20px 60px rgba(0,0,0,0.7);
+      border-color: rgba(255,43,214,0.9);
+      transform: translate(-50%, -50%) scale(1.06);
+    }
+    .hub-ring {
+      position: absolute;
+      z-index: 2;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 1px dashed rgba(255,43,214,0.2);
+      pointer-events: none;
+      animation: ring-spin 30s linear infinite;
+      transform: translate(-50%, -50%);
+    }
+
+    .obsidian-orbit-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+    }
+    .node--float {
+      position: absolute;
+      pointer-events: auto;
+      width: auto;
+      max-width: min(46vw, 400px);
+      min-width: 0;
+      margin: 0;
+      padding: 10px 12px 10px 11px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,43,214,0.2);
+      background: rgba(10, 8, 18, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset;
+      transform: translate(-50%,-50%);
+      text-align: left;
+      cursor: grab;
+      transition: border-color 0.18s, box-shadow 0.18s;
+      user-select: none;
+      touch-action: none;
+    }
+    .node--float.is-drifting {
+      animation: node-drift 10s ease-in-out infinite;
+    }
+    .node--float.is-dragging {
+      cursor: grabbing;
+      border-color: rgba(255,43,214,0.7) !important;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.7), var(--glow-accent) !important;
+      z-index: 20 !important;
+      animation: none !important;
+    }
+    .node--float:hover:not(.is-dragging) {
+      border-color: rgba(0,255,136,0.5);
+      box-shadow: 0 14px 40px rgba(0,0,0,0.6), var(--glow-green);
+      z-index: 10;
+    }
+    .node-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(0,255,136,0.6);
+      margin-right: 6px;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    .node-url-float {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--green);
+      line-height: 1.45;
+      word-break: break-all;
+      max-width: min(42vw, 330px);
+    }
+    .node-url-float-host { color: var(--text); opacity: 0.85; }
+
+    /* ─── DRAWER ─── */
+    .drawer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(6, 3, 12, 0.78);
+      backdrop-filter: blur(8px);
+    }
+    .drawer-backdrop.is-open { display: block; }
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(100%, 400px);
+      height: 100%;
+      z-index: 50;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      box-shadow: -16px 0 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(0, 212, 255, 0.04);
+      transform: translateX(100%);
+      transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+      display: flex;
+      flex-direction: column;
+    }
+    .drawer.is-open { transform: translateX(0); }
+    .drawer-head {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(180deg, rgba(12, 8, 20, 0.98) 0%, var(--bg3) 100%);
+    }
+    .drawer-title-wrap { display: flex; align-items: center; gap: 8px; }
+    .drawer-icon {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent-hi);
+      box-shadow: var(--glow-accent);
+      flex-shrink: 0;
+    }
+    .drawer-title {
+      font-family: var(--display);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-bright);
+      letter-spacing: 0.06em;
+    }
+    .drawer-close {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text2);
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .drawer-close:hover { border-color: var(--accent); color: var(--accent4); background: rgba(255, 43, 214, 0.08); }
+    .drawer-body {
+      flex: 1;
+      overflow: auto;
+      padding: 14px 16px 24px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .drawer-section { margin-bottom: 14px; }
+    .drawer-label {
+      font-size: 8px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .drawer-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .drawer-pre {
+      margin: 0;
+      padding: 9px 11px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow: auto;
+      font-size: 10px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .drawer-notes-edit {
+      margin: 0;
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+    .drawer-note-tools {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .drawer-note-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--text2);
+      user-select: none;
+    }
+    .drawer-note-check input { accent-color: var(--green); }
+    .drawer-note-save {
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text2);
+      padding: 6px 9px;
+      font-family: var(--mono);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .drawer-note-save:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+    .drawer-note-save:disabled { opacity: 0.6; cursor: wait; }
+    .drawer-note-status { font-size: 9px; color: var(--dim); min-height: 1em; }
+    .drawer-note-status.ok { color: var(--green); }
+    .drawer-note-status.err { color: var(--red); }
+    .drawer-tag {
+      display: inline-block;
+      margin: 2px;
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 3px;
+    }
+    .drawer-tag-prio-high { background: rgba(255, 51, 102, 0.14); color: var(--red); }
+    .drawer-tag-prio-medium { background: rgba(251,191,36,0.12); color: var(--yellow); }
+    .drawer-tag-type { background: var(--accent-lo); color: var(--accent-hi); }
+
+    /* ─── ERROR BANNER ─── */
+    .err-banner {
+      margin: 10px 14px;
+      padding: 9px 12px;
+      border: 1px solid rgba(255, 51, 102, 0.35);
+      border-radius: var(--radius);
+      background: rgba(60, 12, 28, 0.25);
+      color: var(--red);
+      font-size: 10px;
+      display: none;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 760px) {
+      body { grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr; height: auto; overflow: auto; }
+      .ribbon { grid-column: 1; grid-row: 2; flex-direction: row; height: 40px; padding: 0 10px; gap: 4px; border-right: none; border-bottom: 1px solid var(--border); }
+      .ribbon-logo { margin-bottom: 0; margin-right: 4px; }
+      .ribbon-spacer { display: none; }
+      .rail { grid-column: 1; grid-row: 3; max-height: 180px; border-right: none; border-bottom: 1px solid var(--border); }
+      main.cortex-main { grid-column: 1; grid-row: 4; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="demoBanner" class="demo-banner" role="status"></div>
+
+<!-- RIBBON -->
+<aside class="ribbon">
+  <div class="ribbon-logo">
+    <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="10" cy="10" r="9" stroke="rgba(255,43,214,0.6)" stroke-width="1"/>
+      <circle cx="10" cy="10" r="5" stroke="var(--accent-hi)" stroke-width="1"/>
+      <circle cx="10" cy="10" r="2" fill="var(--green)"/>
+    </svg>
+  </div>
+  <button type="button" class="ribbon-btn active" title="Grafo (activo)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+      <line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/>
+    </svg>
+  </button>
+  <button type="button" class="ribbon-btn" title="Pesquisa">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  </button>
+  <button type="button" class="ribbon-btn" title="Tags">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+      <line x1="7" y1="7" x2="7.01" y2="7"/>
+    </svg>
+  </button>
+  <div class="ribbon-spacer"></div>
+  <button type="button" class="ribbon-btn" title="Configurações">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+</aside>
+
+<!-- SIDEBAR -->
+<aside class="rail">
+  <div class="rail-head">
+    <div class="rail-brand">GHOST<span class="rail-brand-acc">CTF</span> · Cortex</div>
+    <div class="rail-sub" id="railSub">Tipos do cérebro · checklist manual (SQLite local)</div>
+  </div>
+
+  <div class="rail-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="search" placeholder="Pesquisar notas…" id="railSearchInput" autocomplete="off" />
+  </div>
+
+  <div class="rail-fake" style="margin-top:8px;">
+    <button type="button" class="rail-fake-btn" id="btnFakeBrain">
+      Simular GET /api/brain/categories
+    </button>
+  </div>
+
+  <div class="rail-section">
+    Vulnerabilidades
+    <span class="rail-section-badge" id="catCount">0</span>
+  </div>
+
+  <div class="rail-list" id="railList"></div>
+</aside>
+
+<!-- MAIN CANVAS -->
+<main class="cortex-main" id="cortexMain">
+  <div class="err-banner" id="errBanner"></div>
+  <header class="canvas-head">
+    <div class="canvas-head-main">
+      <div class="canvas-ghost-bg" aria-hidden="true">
+        <svg viewBox="0 0 48 52" xmlns="http://www.w3.org/2000/svg" width="120" height="130" focusable="false">
+          <defs>
+            <linearGradient id="cortexBgGhostGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffe8fb" />
+              <stop offset="40%" stop-color="#ff5ee6" />
+              <stop offset="100%" stop-color="#b8149a" />
+            </linearGradient>
+            <linearGradient id="cortexBgGhostSheen" x1="15%" y1="0%" x2="75%" y2="85%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.35)" />
+              <stop offset="45%" stop-color="rgba(255,255,255,0)" />
+              <stop offset="100%" stop-color="rgba(0,212,255,0.15)" />
+            </linearGradient>
+          </defs>
+          <g class="ghost-anim-cortex">
+            <path
+              fill="url(#cortexBgGhostGrad)"
+              stroke="rgba(255,43,214,0.4)"
+              stroke-width="0.55"
+              d="M 24 5 C 13 5 5 13.5 5 24.5 V 40 Q 8.5 36.5 12 40 Q 15.5 36.5 19 40 Q 22.5 36.5 26 40 Q 29.5 36.5 33 40 Q 36.5 36.5 40 40 Q 43.5 36.5 43 40 V 24.5 C 43 13.5 35 5 24 5 Z"
+            />
+            <path
+              fill="url(#cortexBgGhostSheen)"
+              d="M 24 8 C 15 8 9 15 9 23.5 V 33 Q 16 28 24 32 Q 32 28 39 33 V 23.5 C 39 15 33 8 24 8 Z"
+              opacity="0.88"
+            />
+            <ellipse class="ghost-eye-cortex" cx="17" cy="22" rx="3.2" ry="4.2" fill="#0c0a12" />
+            <ellipse class="ghost-eye-cortex ghost-eye-cortex-r" cx="31" cy="22" rx="3.2" ry="4.2" fill="#0c0a12" />
+          </g>
+        </svg>
+      </div>
+      <div class="canvas-head-front">
+        <div class="canvas-breadcrumb">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
+          <span class="crumb-root">GHOSTCTF</span> / <span id="breadcrumbCat">—</span>
+        </div>
+        <h1 class="canvas-title" id="canvasTitle">
+          <span class="canvas-title-gh">GHOST</span><span class="canvas-title-accent">CTF</span> · Cortex — Cérebro
+        </h1>
+        <p class="canvas-hint" id="canvasHint">Selecciona uma vulnerabilidade à esquerda para ver os alvos confirmados.</p>
+        <div id="categoryTeach" class="category-teach" hidden>
+          <div class="category-teach-head">
+            <strong id="categoryTeachHead"></strong>
+            <div class="category-teach-actions">
+              <button type="button" class="category-teach-edit-btn" id="categoryTeachEditBtn" aria-label="Editar descrição" title="Editar descrição">✎</button>
+              <button type="button" class="category-teach-delete-btn" id="categoryTeachDeleteBtn" aria-label="Apagar categoria" title="Apagar categoria">Apagar</button>
+            </div>
+          </div>
+          <p id="categoryTeachPara" class="category-teach-para"></p>
+          <div id="categoryTeachEditWrap" class="category-teach-edit">
+            <textarea id="categoryTeachInput" class="category-teach-input" maxlength="2000" placeholder="Descreve esta categoria..."></textarea>
+            <div class="category-teach-edit-actions">
+              <button type="button" class="category-teach-btn" id="categoryTeachSaveBtn">Guardar</button>
+              <button type="button" class="category-teach-btn" id="categoryTeachCancelBtn">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="canvas-head-tools">
+      <div class="canvas-stats" id="canvasStats" style="display:none;">
+        <div class="stat-pill"><strong id="statNodes">0</strong>&nbsp;nós</div>
+        <div class="stat-pill" style="color:var(--border2)">|</div>
+        <div class="stat-pill"><strong id="statType">—</strong>&nbsp;tipo</div>
+      </div>
+      <input type="checkbox" id="toggleObsidianGraph" checked style="display:none"/>
+      <label for="toggleObsidianGraph" class="toggle-pill">
+        <span class="toggle-pill-dot"></span>
+        Mapa local
+      </label>
+    </div>
+  </header>
+
+  <div class="canvas-body" id="canvasBody"></div>
+</main>
+
+<!-- DRAWER -->
+<div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div class="drawer-title-wrap">
+      <div class="drawer-icon"></div>
+      <h2 class="drawer-title" id="drawerTitle">Detalhe</h2>
+    </div>
+    <button type="button" class="drawer-close" id="drawerClose" aria-label="Fechar">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<script>
+  // ── utils ──
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const escA = s => esc(s).replace(/'/g,'&#39;');
+
+  function apiBase() { return new URL('.', window.location.href).origin; }
+  function apiUrl(p) { return apiBase() + (p.startsWith('/') ? p : '/' + p); }
+
+  let categories = [], activeId = null, activeLinks = [], activeCategoryTitle = '', activeCategoryDescription = '', demoMode = false;
+
+  /** Semente = flag `isSeed` vinda do servidor (lista única em `db-sqlite.js`). */
+  function isActiveCategorySeed() {
+    const c = categories.find((x) => Number(x.id) === Number(activeId));
+    return Boolean(c && c.isSeed);
+  }
+  let csrf = '';
+  let drawerLinkRef = null;
+
+  // ── demo data ──
+  const DEMO_FP = {
+    xssA:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    xssB:'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    sqli:'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+    ftp1:'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+    ftp2:'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+    idor:'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  };
+  const CORTEX_DEMO_CATEGORIES = [
+    {id:9001,title:'XSS',description:'Validações de Cross-Site Scripting confirmadas manualmente no fluxo do reporte.',linkCount:2,created_at:'2026-01-01T12:00:00.000Z'},
+    {id:9002,title:'SQL Injection',description:'Achados de SQLi com evidência de erro SQL ou alteração de comportamento na query.',linkCount:1,created_at:'2026-01-01T12:00:00.000Z'},
+    {id:9003,title:'FTP Anonymous',description:'Serviços FTP com acesso anónimo, listagem aberta ou upload sem autenticação forte.',linkCount:2,created_at:'2026-01-01T12:00:00.000Z'},
+    {id:9004,title:'IDOR',description:'Referências diretas inseguras a objetos (IDs/UUIDs) sem controlo de autorização por recurso.',linkCount:1,created_at:'2026-01-01T12:00:00.000Z'},
+  ];
+  const CORTEX_DEMO_LINKS = {
+    9001:[
+      {target:'bounty-alvo.invalid',fingerprint:DEMO_FP.xssA,linked_at:'2026-04-10T14:22:00.000Z',notes:'Reflected na página de pesquisa; confirmado com payload manual.',snapshot:{type:'xss',prio:'high',value:'https://bounty-alvo.invalid/search?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E',url:'https://bounty-alvo.invalid/search',meta:'Parâmetro q sem escape',desafio:'CTF demo (hub)',projectName:'CTF demo (hub)'}},
+      {target:'cliente-demo.example',fingerprint:DEMO_FP.xssB,linked_at:'2026-04-12T09:05:00.000Z',notes:'DOM XSS via fragment; CSP fraco.',snapshot:{type:'xss',prio:'medium',value:'https://cliente-demo.example/app#/callback=…',url:'https://cliente-demo.example/app',meta:'Router client-side',desafio:'Box interno',projectName:'Box interno'}},
+    ],
+    9002:[
+      {target:'legacy-api.test',fingerprint:DEMO_FP.sqli,linked_at:'2026-04-08T18:40:00.000Z',notes:"Boolean-based; id param.",snapshot:{type:'sqli',prio:'high',value:"GET /v1/users?id=1' OR '1'='1",url:'https://legacy-api.test/v1/users',meta:'SQLite backend'}},
+    ],
+    9003:[
+      {target:'ftp-old.corp',fingerprint:DEMO_FP.ftp1,linked_at:'2026-03-28T11:00:00.000Z',notes:'Anonymous upload permitido; banner vsftpd 3.0.3.',snapshot:{type:'ftp',prio:'high',value:'ftp://ftp-old.corp/',url:'ftp://ftp-old.corp/',meta:'Porta 21 aberta'}},
+      {target:'backup-zone.internal',fingerprint:DEMO_FP.ftp2,linked_at:'2026-04-01T16:30:00.000Z',notes:'Mesmo padrão; credenciais vazias aceites.',snapshot:{type:'ftp',prio:'high',value:'ftp://backup-zone.internal/pub/',url:'ftp://backup-zone.internal/pub/',meta:'Read-only mas listável'}},
+    ],
+    9004:[
+      {target:'saas-app.io',fingerprint:DEMO_FP.idor,linked_at:'2026-04-15T10:10:00.000Z',notes:'UUID sequencial em /api/invoices/{id}.',snapshot:{type:'idor',prio:'medium',value:'https://saas-app.io/api/invoices/10042',url:'https://saas-app.io/api/invoices/10042',meta:'Acesso a fatura de outro tenant'}},
+    ],
+  };
+
+  function isCortexDemoMode() {
+    try {
+      const q = new URLSearchParams(location.search||'').get('demo');
+      if(q==='1'||q==='true'||q==='yes') return true;
+      const h=(location.hash||'').replace(/^#/,'').trim().toLowerCase();
+      return h==='demo';
+    } catch(_){ return false; }
+  }
+
+  function applyDemoChrome() {
+    demoMode = true;
+    const bar = $('demoBanner'), sub = $('railSub');
+    if(bar){ bar.style.display='block'; bar.innerHTML='<strong>Modo demonstração</strong> — dados fictícios. Remove <code>?demo=1</code> ou o hash <code>#demo</code> para o Cortex real.'; }
+    if(sub) sub.textContent='Vista fictícia · no GHOSTCTF principal ligas achados validados ao cérebro (SQLite)';
+  }
+
+  async function fakeFetchBrainCategories(ms=420){
+    await new Promise(r=>setTimeout(r,ms));
+    return CORTEX_DEMO_CATEGORIES.map(c=>({...c}));
+  }
+
+  function isObsidianMode(){ return Boolean($('toggleObsidianGraph')?.checked); }
+
+  function persistToggle(){
+    try{ localStorage.setItem('cortex_obsidian_graph', isObsidianMode()?'1':'0'); }catch(_){}
+  }
+  function restoreToggle(){
+    try{ const v=localStorage.getItem('cortex_obsidian_graph'),el=$('toggleObsidianGraph'); if(el&&v!==null) el.checked=v==='1'; }catch(_){}
+  }
+
+  function linkDisplayUrl(link){
+    const snap=link.snapshot&&typeof link.snapshot==='object'?link.snapshot:null;
+    let u=(link.url!=null&&String(link.url).trim())||(snap&&snap.url!=null&&String(snap.url).trim())||'';
+    if(!u&&snap&&snap.value!=null){ const v=String(snap.value).trim(); if(/^(https?|ftp):\/\//i.test(v)) u=v.split(/\s/)[0].slice(0,400); }
+    if(!u&&link.target) u=String(link.target);
+    return u||'(sem URL)';
+  }
+
+  function snippetFromLink(link){
+    const snap=link.snapshot;
+    if(snap&&typeof snap==='object'){
+      const v=snap.value!=null?String(snap.value):'';
+      const t=snap.type!=null?String(snap.type):'';
+      const owasp = Array.isArray(snap.owasp) ? snap.owasp.map((x)=>String((x&&x.id)||x||'').trim()).filter(Boolean) : [];
+      const mitre = Array.isArray(snap.mitre) ? snap.mitre.map((x)=>String((x&&x.id)||x||'').trim()).filter(Boolean) : [];
+      const tax = [...owasp.slice(0,2), ...mitre.slice(0,2)].join(', ');
+      const line=[t,v].filter(Boolean).join(' — ');
+      if(line) return (tax ? `${line} · ${tax}` : line).slice(0,250);
+    }
+    return link.notes?String(link.notes).slice(0,180):'(sem resumo)';
+  }
+
+  function desafioFromLink(link) {
+    const snap = link.snapshot && typeof link.snapshot === 'object' ? link.snapshot : {};
+    const d = String(snap.desafio || snap.projectName || '').trim();
+    return d || '—';
+  }
+
+  function categoryDescExcerpt(text, maxLen) {
+    const max = maxLen || 200;
+    const s = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!s) return '';
+    if (s.length <= max) return s;
+    return s.slice(0, Math.max(1, max - 1)) + '…';
+  }
+
+  /** Cartão: falha (categoria) + desafio + descrição da categoria + URL (HTML escapado). */
+  function cortexNodeStackHtml(link, falhaLabel, categoryDesc) {
+    const des = desafioFromLink(link);
+    const desc = categoryDescExcerpt(categoryDesc || '', 280);
+    const fullUrl = linkDisplayUrl(link);
+    let host = '';
+    let path = fullUrl;
+    try {
+      const u = new URL(fullUrl);
+      host = u.host;
+      path = u.pathname + (u.search || '');
+    } catch (_) {}
+    const shortPath = path.length > 52 ? path.slice(0, 50) + '…' : path;
+    const descHtml = desc ? `<div class="node-cortex-desc">${esc(desc)}</div>` : '';
+    const hostHtml = host ? `<span class="node-url-float-host">${esc(host)}</span>` : '';
+    return `<div class="node-cortex-stack">
+      <div class="node-cortex-falha">${esc(String(falhaLabel || 'Categoria'))}</div>
+      <div class="node-cortex-desafio">Desafio · ${esc(des)}</div>
+      ${descHtml}
+      <div class="node-cortex-url">${hostHtml}${esc(shortPath || fullUrl)}</div>
+    </div>`;
+  }
+
+  /** Texto curto educativo por tipo de vulnerabilidade (título da categoria). */
+  function getCategoryTeach(title) {
+    const t = String(title || '').toLowerCase();
+    if (/xss/.test(t)) {
+      return {
+        headline: 'O que é XSS?',
+        text: 'Cross-Site Scripting: código (normalmente JavaScript) injectado numa página que outra pessoa vê no browser. Pode ser reflected (payload na resposta), stored (persistido na base) ou DOM-based (lógica client-side insegura). Risco típico: roubar sessão, alterar conteúdo ou redireccionar a vítima.',
+      };
+    }
+    if (/sql|inje(c|ç)/.test(t)) {
+      return {
+        headline: 'O que é SQL Injection?',
+        text: 'Parte da entrada do utilizador é concatenada a uma query SQL sem saneamento, permitindo ao atacante alterar a lógica da query (filtros, UNION, escrita). Pode levar a leitura ou destruição de dados. Defesa: consultas parametrizadas, ORM com cuidado e princípio do menor privilégio na base.',
+      };
+    }
+    if (/ftp/.test(t)) {
+      return {
+        headline: 'O que é FTP inseguro?',
+        text: 'Serviços FTP mal configurados (anónimo, sem TLS, credenciais fracas ou directórios graváveis) expõem ficheiros ou permitem upload abusivo. Em bug bounty costuma ser prioridade média a alta conforme exposição e dados acessíveis.',
+      };
+    }
+    if (/idor/.test(t)) {
+      return {
+        headline: 'O que é IDOR?',
+        text: 'Insecure Direct Object Reference: o servidor expõe objectos (IDs, ficheiros, APIs) sem verificar se o utilizador autenticado tem permissão para esse objecto específico. Muitas vezes basta alterar um ID na URL ou no corpo do pedido para aceder a dados de outro utilizador.',
+      };
+    }
+    if (/ssrf/.test(t)) {
+      return {
+        headline: 'O que é SSRF?',
+        text: 'Server-Side Request Forgery: o servidor faz pedidos HTTP (ou outros) a destinos escolhidos pelo atacante. Pode servir para ler metadata em clouds, varrer portas internas ou encadear com outros bugs.',
+      };
+    }
+    if (/lfi|path traversal|traversal|file include/.test(t)) {
+      return {
+        headline: 'O que é LFI / path traversal?',
+        text: 'Inclusão ou leitura de ficheiros fora do directório previsto (../, wrappers, etc.), por vezes levando a exposição de credenciais ou código. Validação estrita de caminhos e listas brancas reduzem o risco.',
+      };
+    }
+    if (/rce|remote code|command inj|exec/.test(t)) {
+      return {
+        headline: 'O que é RCE / injecção de comandos?',
+        text: 'Execução de código ou comandos no servidor (ou no cliente, em casos limitados) controlada pelo atacante. É das classes mais graves: pode implicar compromisso total do host.',
+      };
+    }
+    if (/csrf/.test(t)) {
+      return {
+        headline: 'O que é CSRF?',
+        text: 'Cross-Site Request Forgery: enganar o browser da vítima a enviar pedidos autenticados a um site onde ela já tem sessão. Mitigação: tokens anti-CSRF, SameSite em cookies e verificação de origem.',
+      };
+    }
+    if (/xxe/.test(t)) {
+      return {
+        headline: 'O que é XXE?',
+        text: 'XML External Entity: parsers XML mal configurados processam entidades externas e podem vazar ficheiros locais ou fazer SSRF. Desactivar entidades externas ou usar formatos mais seguros ajuda.',
+      };
+    }
+    return {
+      headline: 'Sobre esta categoria',
+      text: 'Esta pasta do Cérebro agrupa achados que ligaste manualmente a este tipo a partir da checklist no GHOSTCTF. Usa o mapa ou a grelha para ver alvos; clica num nó para notas, fingerprint e snapshot completos.',
+    };
+  }
+
+  function applyCategoryTeach(labelForTeach) {
+    const box = $('categoryTeach');
+    if (!box) return;
+    if (!activeId) {
+      box.hidden = true;
+      return;
+    }
+    const label = String(labelForTeach || '').trim();
+    if (!label) {
+      box.hidden = true;
+      return;
+    }
+    const custom = String(activeCategoryDescription || '').trim();
+    const { headline, text } = custom
+      ? { headline: 'Sobre esta categoria', text: custom }
+      : getCategoryTeach(label);
+    $('categoryTeachHead').textContent = headline;
+    $('categoryTeachPara').textContent = text;
+    const editBtn = $('categoryTeachEditBtn');
+    if (editBtn) {
+      editBtn.disabled = demoMode;
+      editBtn.title = demoMode ? 'Edição indisponível no modo demo' : 'Editar descrição';
+    }
+    const delBtn = $('categoryTeachDeleteBtn');
+    if (delBtn) {
+      const seed = isActiveCategorySeed();
+      delBtn.disabled = demoMode || !activeId || seed;
+      delBtn.title = demoMode
+        ? 'Indisponível no modo demo'
+        : seed
+          ? 'Esta categoria é semente inicial (XSS, SQLi, …) e não pode ser apagada.'
+          : 'Apaga esta pasta no cérebro (ligações a achados perdem-se; validações no reporte mantêm-se).';
+    }
+    box.hidden = false;
+  }
+
+  function setErr(msg){
+    const el=$('errBanner');
+    el.style.display=msg?'block':'none';
+    el.textContent=msg||'';
+  }
+
+  async function fetchCsrf() {
+    const r = await fetch(apiUrl('/api/csrf-token'));
+    const d = await r.json().catch(() => ({}));
+    csrf = String(d.token || '');
+    if (!csrf) throw new Error('CSRF vazio');
+  }
+
+  async function refreshBrainCategoriesFromApi() {
+    if (demoMode) return;
+    try {
+      const r = await fetch(apiUrl('/api/brain/categories'), { cache: 'no-store' });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && Array.isArray(d.items)) categories = d.items;
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  /** @param {'add'|'create'|null} which */
+  function setDrawerBrainPanels(which) {
+    const addW = $('drawerBrainCatPickerWrap');
+    const crW = $('drawerBrainCreateWrap');
+    if (!addW || !crW) return;
+    if (which === 'add') {
+      crW.hidden = true;
+      addW.hidden = false;
+    } else if (which === 'create') {
+      addW.hidden = true;
+      crW.hidden = false;
+    } else {
+      addW.hidden = true;
+      crW.hidden = true;
+    }
+  }
+
+  // ── search filter ──
+  $('railSearchInput').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      const label = btn.querySelector('.nav-item-label');
+      btn.style.display = !q || (label && label.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  });
+
+  function renderRail(){
+    const host=$('railList');
+    host.innerHTML='';
+    $('catCount').textContent=categories.length;
+    if(!categories.length){
+      host.innerHTML='<p style="padding:14px 16px;font-size:10px;color:var(--dim);line-height:1.6;">Sem categorias.<br>No GHOSTCTF principal usa checklist + cérebro (SQLite), ou clica em <em>Simular</em> acima.</p>';
+      return;
+    }
+    // folder header
+    const folderEl=document.createElement('div');
+    folderEl.className='nav-folder';
+    folderEl.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>findings`;
+    host.appendChild(folderEl);
+    for(const c of categories){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='nav-item'+(activeId===c.id?' is-active':'');
+      b.innerHTML=`<span class="nav-item-label">${esc(c.title)}</span><span class="nav-count">${Number(c.linkCount)||0}</span>`;
+      b.addEventListener('click', ()=>{ void selectCategory(c.id); });
+      host.appendChild(b);
+    }
+  }
+
+  // ── Obsidian Graph — spring physics ──
+  const SPRING_STIFFNESS = 0.065; // força da mola (menor = mais lag)
+  const SPRING_DAMPING   = 0.74;  // amortecimento (menor = oscila mais)
+  const SETTLE_THRESHOLD = 0.08;  // velocidade mínima antes de parar o loop
+
+  let graphState = null;
+  let dragState  = null;
+
+  function destroyGraphIfAny() {
+    if (!graphState) {
+      dragState = null;
+      return;
+    }
+    try {
+      if (graphState.resizeObserver) graphState.resizeObserver.disconnect();
+    } catch (_) {}
+    if (graphState.physicsRaf != null) {
+      cancelAnimationFrame(graphState.physicsRaf);
+    }
+    graphState = null;
+    dragState = null;
+  }
+
+  function buildObsidianGraph(title, links) {
+    const container = document.getElementById('canvasBody');
+    container.classList.add('canvas-body--graph');
+
+    const falhaNome = String(title || activeCategoryTitle || '').trim() || 'Categoria';
+    const catDesc = String(activeCategoryDescription || '');
+
+    const W  = container.clientWidth  || 800;
+    const H  = container.clientHeight || 600;
+    const cx = W / 2, cy = H / 2;
+    const rx = Math.min(W * 0.37, 320);
+    const ry = Math.min(H * 0.36, 230);
+    const n  = Math.max(links.length, 1);
+
+    const nodes = links.map((link, i) => {
+      const ang = (i / n) * 2 * Math.PI - Math.PI / 2;
+      const x   = cx + Math.cos(ang) * rx;
+      const y   = cy + Math.sin(ang) * ry;
+      return {
+        link,
+        x, y,               // rendered position
+        targetX: x,         // spring target
+        targetY: y,
+        vx: 0, vy: 0,       // velocity
+        offsetX: x - cx,    // offset relative to hub
+        offsetY: y - cy,
+        el: null,
+      };
+    });
+
+    // ── DOM ──
+    const graph = document.createElement('div');
+    graph.className = 'obsidian-graph';
+
+    const dotsBg = document.createElement('div');
+    dotsBg.className = 'graph-lines';
+    dotsBg.setAttribute('aria-hidden', 'true');
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'obsidian-radials');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const hubRing = document.createElement('div');
+    hubRing.className = 'hub-ring';
+    hubRing.style.left = cx + 'px';
+    hubRing.style.top  = cy + 'px';
+
+    const hub = document.createElement('div');
+    hub.className = 'obsidian-hub';
+    hub.textContent = title;
+    hub.style.left = cx + 'px';
+    hub.style.top  = cy + 'px';
+
+    const orbit = document.createElement('div');
+    orbit.className = 'obsidian-orbit-layer';
+
+    nodes.forEach((nd, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'node node--float is-drifting';
+      btn.style.left = nd.x + 'px';
+      btn.style.top  = nd.y + 'px';
+      btn.style.animationDelay = (idx * 0.62).toFixed(2) + 's';
+
+      const fullUrl = linkDisplayUrl(nd.link);
+      btn.innerHTML = `<span class="node--float-inner"><span class="node-dot" aria-hidden="true"></span>${cortexNodeStackHtml(nd.link, falhaNome, catDesc)}</span>`;
+      btn.title = `${falhaNome} · ${desafioFromLink(nd.link)} · ${fullUrl}`;
+      btn.dataset.idx = idx;
+      orbit.appendChild(btn);
+      nd.el = btn;
+    });
+
+    graph.appendChild(dotsBg);
+    graph.appendChild(svg);
+    graph.appendChild(hubRing);
+    graph.appendChild(hub);
+    graph.appendChild(orbit);
+
+    container.innerHTML = '';
+    container.appendChild(graph);
+
+    graphState = {
+      nodes, hubX: cx, hubY: cy,
+      hubEl: hub, hubRingEl: hubRing,
+      container, svgEl: svg, orbitEl: orbit,
+      physicsRaf: null,
+      resizeObserver: null,
+    };
+
+    drawLines();
+    attachDrag(container, orbit, hub, graph);
+  }
+
+  function drawLines() {
+    if (!graphState) return;
+    const { nodes, hubX, hubY, svgEl, container } = graphState;
+    const W = container.clientWidth  || 800;
+    const H = container.clientHeight || 600;
+
+    svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svgEl.style.width  = W + 'px';
+    svgEl.style.height = H + 'px';
+    svgEl.innerHTML = '';
+
+    nodes.forEach((nd, i) => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', hubX);
+      line.setAttribute('y1', hubY);
+      line.setAttribute('x2', nd.x);
+      line.setAttribute('y2', nd.y);
+      line.style.animationDelay = (i * 0.4).toFixed(2) + 's';
+      if (i % 3 === 0) line.classList.add('line-green');
+      svgEl.appendChild(line);
+    });
+  }
+
+  function startPhysicsLoop() {
+    if (!graphState || graphState.physicsRaf) return;
+
+    function tick() {
+      if (!graphState) return;
+      let active = false;
+
+      graphState.nodes.forEach(nd => {
+        if (nd._dragging) return; // directly dragged — skip physics
+
+        const dx = nd.targetX - nd.x;
+        const dy = nd.targetY - nd.y;
+
+        nd.vx = (nd.vx + dx * SPRING_STIFFNESS) * SPRING_DAMPING;
+        nd.vy = (nd.vy + dy * SPRING_STIFFNESS) * SPRING_DAMPING;
+
+        const moving = Math.abs(nd.vx) > SETTLE_THRESHOLD ||
+                       Math.abs(nd.vy) > SETTLE_THRESHOLD ||
+                       Math.abs(dx)    > SETTLE_THRESHOLD ||
+                       Math.abs(dy)    > SETTLE_THRESHOLD;
+
+        if (moving) {
+          nd.x += nd.vx;
+          nd.y += nd.vy;
+          nd.el.style.left = nd.x + 'px';
+          nd.el.style.top  = nd.y + 'px';
+          active = true;
+        } else {
+          // snap to target and kill velocity
+          nd.x = nd.targetX; nd.y = nd.targetY;
+          nd.vx = 0; nd.vy = 0;
+          nd.el.style.left = nd.x + 'px';
+          nd.el.style.top  = nd.y + 'px';
+          // restore drift animation once settled
+          if (!nd.el.classList.contains('is-drifting')) {
+            nd.el.classList.add('is-drifting');
+          }
+        }
+      });
+
+      if (active) {
+        drawLines();
+        graphState.physicsRaf = requestAnimationFrame(tick);
+      } else {
+        graphState.physicsRaf = null;
+      }
+    }
+
+    graphState.physicsRaf = requestAnimationFrame(tick);
+  }
+
+  function attachDrag(container, orbit, hub, graph) {
+    // ── Hub drag: moves hub instantly, nodes follow with spring lag ──
+    hub.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      hub.setPointerCapture(e.pointerId);
+      hub.classList.add('is-hub-dragging');
+
+      // snapshot offsets at drag start so nodes maintain relative positions as targets
+      graphState.nodes.forEach(nd => {
+        nd.offsetX = nd.x - graphState.hubX;
+        nd.offsetY = nd.y - graphState.hubY;
+        // strip drift animation so physics has clean control
+        nd.el.classList.remove('is-drifting');
+        // give initial velocity that "stays behind" (opposite of drag direction) for effect
+        nd.vx *= 0.3;
+        nd.vy *= 0.3;
+      });
+
+      dragState = {
+        type: 'hub',
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startHubX: graphState.hubX,
+        startHubY: graphState.hubY,
+      };
+    });
+
+    hub.addEventListener('pointermove', e => {
+      if (!dragState || dragState.type !== 'hub') return;
+      e.preventDefault();
+
+      const dx = e.clientX - dragState.startMouseX;
+      const dy = e.clientY - dragState.startMouseY;
+
+      graphState.hubX = dragState.startHubX + dx;
+      graphState.hubY = dragState.startHubY + dy;
+
+      // hub moves instantly
+      graphState.hubEl.style.left    = graphState.hubX + 'px';
+      graphState.hubEl.style.top     = graphState.hubY + 'px';
+      graphState.hubRingEl.style.left = graphState.hubX + 'px';
+      graphState.hubRingEl.style.top  = graphState.hubY + 'px';
+
+      // update spring targets — nodes lag behind chasing these
+      graphState.nodes.forEach(nd => {
+        nd.targetX = graphState.hubX + nd.offsetX;
+        nd.targetY = graphState.hubY + nd.offsetY;
+      });
+
+      // ensure physics loop is running
+      if (!graphState.physicsRaf) startPhysicsLoop();
+
+      // redraw lines from hub immediately (nodes will catch up via physics)
+      drawLines();
+    });
+
+    const endHubDrag = () => {
+      if (!dragState || dragState.type !== 'hub') return;
+      hub.classList.remove('is-hub-dragging');
+      dragState = null;
+      // physics loop continues until nodes settle
+      if (!graphState.physicsRaf) startPhysicsLoop();
+    };
+    hub.addEventListener('pointerup',     endHubDrag);
+    hub.addEventListener('pointercancel', endHubDrag);
+
+    // ── Individual node drag: direct control, no spring ──
+    orbit.addEventListener('pointerdown', e => {
+      const btn = e.target.closest('.node--float');
+      if (!btn) return;
+      const idx = Number(btn.dataset.idx);
+      if (!Number.isFinite(idx)) return;
+
+      e.preventDefault();
+      btn.setPointerCapture(e.pointerId);
+
+      const nd = graphState.nodes[idx];
+      nd._dragging = true;
+      btn.classList.remove('is-drifting');
+      btn.classList.add('is-dragging');
+
+      dragState = {
+        type: 'node',
+        nodeIdx: idx,
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startNodeX: nd.x,
+        startNodeY: nd.y,
+      };
+    });
+
+    orbit.addEventListener('pointermove', e => {
+      if (!dragState || dragState.type !== 'node') return;
+      e.preventDefault();
+      const { nodeIdx, startMouseX, startMouseY, startNodeX, startNodeY } = dragState;
+      const nd = graphState.nodes[nodeIdx];
+      nd.x = startNodeX + (e.clientX - startMouseX);
+      nd.y = startNodeY + (e.clientY - startMouseY);
+      nd.targetX = nd.x;
+      nd.targetY = nd.y;
+      nd.vx = 0; nd.vy = 0;
+      nd.el.style.left = nd.x + 'px';
+      nd.el.style.top  = nd.y + 'px';
+      drawLines();
+    });
+
+    const endNodeDrag = () => {
+      if (!dragState || dragState.type !== 'node') return;
+      const nd = graphState.nodes[dragState.nodeIdx];
+      nd._dragging = false;
+      // update relative offset so hub drag keeps this new position
+      nd.offsetX = nd.x - graphState.hubX;
+      nd.offsetY = nd.y - graphState.hubY;
+      nd.el.classList.remove('is-dragging');
+      nd.el.classList.add('is-drifting');
+      dragState = null;
+    };
+    orbit.addEventListener('pointerup',     endNodeDrag);
+    orbit.addEventListener('pointercancel', endNodeDrag);
+
+    // click vs drag: drawer only on tap with no movement
+    orbit.addEventListener('click', e => {
+      if (dragState) return;
+      const btn = e.target.closest('.node--float');
+      if (!btn || !graphState) return;
+      const idx = Number(btn.dataset.idx);
+      if (!Number.isFinite(idx)) return;
+      openDrawer(graphState.nodes[idx].link, activeCategoryTitle, activeCategoryDescription);
+    });
+
+    // redraw lines on container resize
+    let resizeRaf;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(drawLines);
+    });
+    ro.observe(container);
+    graphState.resizeObserver = ro;
+  }
+
+
+  function renderCanvas(categoryTitle){
+    const titleEl=$('canvasTitle'), hintEl=$('canvasHint'), body=$('canvasBody');
+    const statsEl=$('canvasStats');
+    $('breadcrumbCat').textContent=categoryTitle||'—';
+
+    destroyGraphIfAny();
+    body.classList.remove('canvas-body--graph');
+
+    if(!activeId){
+      const teachBox = $('categoryTeach');
+      if (teachBox) teachBox.hidden = true;
+      titleEl.innerHTML='<span class="canvas-title-gh">GHOST</span><span class="canvas-title-accent">CTF</span> · Cortex — Cérebro';
+      hintEl.textContent='Selecciona uma vulnerabilidade à esquerda para ver os alvos confirmados.';
+      statsEl.style.display='none';
+      body.innerHTML=`<div class="empty-canvas">
+        <h2>Bem-vindo ao Cortex</h2>
+        <p>Cada achado que ligares ao cérebro a partir da checklist no GHOSTCTF aparece aqui como um nó. Clica num nó para ver notas e snapshot no painel lateral.</p>
+        <p style="margin-top:10px;">Com o <strong>Mapa local</strong> activado, o tipo fica no centro e os alvos orbitam à volta — igual ao grafo local do Obsidian. Podes <strong>arrastar</strong> cada nó livremente.</p>
+        ${demoMode?'':'<p style="margin-top:10px;">Para pré-visualização fictícia clica em <strong>Simular GET…</strong> na barra lateral, ou usa <code>?demo=1</code> / <code>#demo</code> na URL.</p>'}
+        <div class="empty-shortcut-row">
+          <span class="kbd">Ctrl+K</span><span style="color:var(--dim);font-size:10px"> pesquisar notas</span>
+          <span style="color:var(--dim);font-size:10px;margin-left:8px">Esc</span><span style="color:var(--dim);font-size:10px"> fechar painel</span>
+        </div>
+      </div>`;
+      return;
+    }
+
+    titleEl.innerHTML=`<span class="canvas-title-gh">GHOST</span><span class="canvas-title-accent">CTF</span> · <span class="canvas-title-cat">${esc(categoryTitle)}</span>`;
+    statsEl.style.display='flex';
+    $('statNodes').textContent=activeLinks.length;
+    $('statType').textContent=activeLinks[0]?.snapshot?.type||'—';
+
+    applyCategoryTeach(String(categoryTitle || activeCategoryTitle || '').trim());
+
+    if(!activeLinks.length){
+      hintEl.textContent='Sem alvos ligados a este tipo — valida na checklist no GHOSTCTF e adiciona ao cérebro.';
+      body.innerHTML='<p class="empty-canvas">Sem nós nesta categoria. Liga achados na checklist (app principal) ao cérebro.</p>';
+      return;
+    }
+
+    hintEl.textContent=isObsidianMode()
+      ? `${activeLinks.length} nó(s) · Arrasta o centro para mover tudo · arrasta um nó individualmente · clica para detalhes`
+      : `${activeLinks.length} confirmação(ões) · clica num cartão para abrir o painel lateral`;
+
+    if(isObsidianMode()){
+      // defer to let the DOM settle so clientWidth/Height are correct
+      body.innerHTML = '';
+      requestAnimationFrame(() => buildObsidianGraph(categoryTitle||activeCategoryTitle||'Tipo', activeLinks));
+      return;
+    }
+
+    const falhaGrid = String(activeCategoryTitle || categoryTitle || '').trim() || 'Categoria';
+    const descGrid = String(activeCategoryDescription || '');
+    const nodes=activeLinks.map((link,idx)=>{
+      const snap=link.snapshot||{};
+      const type=snap.type||'';
+      return `<button type="button" class="node" data-idx="${idx}">
+        ${type?`<span class="node-type-badge">${esc(type)}</span>`:''}
+        ${cortexNodeStackHtml(link, falhaGrid, descGrid)}
+        <div class="node-meta">
+          <span>${esc(String(link.fingerprint||'').slice(0,12))}…</span>
+          <span>${esc(String(link.linked_at||'').slice(0,10))}</span>
+        </div>
+      </button>`;
+    }).join('');
+
+    body.innerHTML=`<div class="graph-wrap"><div class="graph-lines" aria-hidden="true"></div><div class="nodes">${nodes}</div></div>`;
+  }
+
+  function openDrawer(link, categoryTitle, categoryDescription){
+    const drawer=$('drawer'), backdrop=$('drawerBackdrop');
+    drawerLinkRef = link;
+    const snapObj = link.snapshot && typeof link.snapshot === 'object' ? link.snapshot : {};
+    const marked = Boolean(snapObj.cortex_marked === true);
+    const catT = categoryTitle || activeCategoryTitle || 'Detalhe';
+    const catD = String(categoryDescription != null ? categoryDescription : activeCategoryDescription || '');
+    $('drawerTitle').textContent = catT;
+    const snap=link.snapshot||{};
+    const owasp = Array.isArray(snap.owasp) ? snap.owasp : [];
+    const mitre = Array.isArray(snap.mitre) ? snap.mitre : [];
+    const owaspHtml = owasp.length
+      ? `<div class="drawer-section"><div class="drawer-label">OWASP</div><pre class="drawer-pre">${esc(owasp.map((x)=>String((x&&x.id)||x||'')).filter(Boolean).join(', '))}</pre></div>`
+      : '';
+    const mitreHtml = mitre.length
+      ? `<div class="drawer-section"><div class="drawer-label">MITRE ATT&CK</div><pre class="drawer-pre">${esc(mitre.map((x)=>String((x&&x.id)||x||'')).filter(Boolean).join(', '))}</pre></div>`
+      : '';
+    const prio=snap.prio||'';
+    const type=snap.type||'';
+    const prioClass=prio==='high'?'drawer-tag-prio-high':prio==='medium'?'drawer-tag-prio-medium':'';
+    const desafioLine = desafioFromLink(link);
+    const catDescBlock = catD
+      ? `<div class="drawer-section"><div class="drawer-label">Descrição (categoria)</div><pre class="drawer-pre">${esc(categoryDescExcerpt(catD, 1900))}</pre></div>`
+      : '';
+    $('drawerBody').innerHTML=`
+      ${type?`<div style="margin-bottom:12px;"><span class="drawer-tag drawer-tag-type">${esc(type)}</span>${prioClass?`<span class="drawer-tag ${prioClass}">${esc(prio)}</span>`:''}</div>`:''}
+      <div class="drawer-section"><div class="drawer-label">Falha (categoria)</div><pre class="drawer-pre">${esc(catT)}</pre></div>
+      <div class="drawer-section"><div class="drawer-label">Desafio</div><pre class="drawer-pre">${esc(desafioLine)}</pre></div>
+      ${catDescBlock}
+      <div class="drawer-section"><div class="drawer-label">Alvo</div><pre class="drawer-pre">${esc(link.target)}</pre></div>
+      <div class="drawer-section"><div class="drawer-label">URL</div><pre class="drawer-pre">${esc(linkDisplayUrl(link))}</pre></div>
+      <div class="drawer-section"><div class="drawer-label">Fingerprint</div><pre class="drawer-pre">${esc(link.fingerprint)}</pre></div>
+      ${owaspHtml}
+      ${mitreHtml}
+      <div class="drawer-section">
+        <div class="drawer-label">Notas</div>
+        <textarea id="drawerNotesInput" class="drawer-notes-edit" placeholder="Escreve notas deste alvo...">${esc(link.notes||'')}</textarea>
+        <div class="drawer-note-tools">
+          <label class="drawer-note-check"><input type="checkbox" id="drawerMarkedCheck" ${marked?'checked':''}/> Marcar alvo</label>
+          <button type="button" class="drawer-note-save" id="drawerNotesSaveBtn">Guardar notas</button>
+          <span id="drawerNoteStatus" class="drawer-note-status"></span>
+        </div>
+      </div>
+      <div class="drawer-section" id="drawerBrainSection" hidden>
+        <div class="drawer-label">Cérebro — categorias deste achado</div>
+        <p class="drawer-brain-hint" style="font-size:9px;color:var(--dim);margin:0 0 8px;line-height:1.45">Um achado pode estar em várias pastas. Em baixo: retirar só da vista actual, criar categoria nova, ou abrir o selector para ligar a outra existente.</p>
+        <ul id="drawerBrainLinkedUl" class="drawer-brain-ul"></ul>
+        <div class="drawer-brain-toolbar">
+          <button type="button" class="drawer-brain-btn drawer-brain-btn--danger" id="drawerBrainRemoveCurrentBtn" disabled>Retirar desta categoria</button>
+          <button type="button" class="drawer-brain-btn" id="drawerBrainToggleCreateBtn">Nova categoria</button>
+          <button type="button" class="drawer-brain-btn drawer-brain-btn--accent" id="drawerBrainToggleAddBtn">Adicionar categoria…</button>
+        </div>
+        <div id="drawerBrainCreateWrap" class="drawer-brain-expand" hidden>
+          <label class="drawer-brain-field-label" for="drawerBrainNewCatTitle">Título</label>
+          <input type="text" id="drawerBrainNewCatTitle" class="drawer-brain-input" maxlength="120" placeholder="Ex.: SSRF em upload" autocomplete="off" />
+          <label class="drawer-brain-field-label" for="drawerBrainNewCatDesc">Descrição (opcional)</label>
+          <textarea id="drawerBrainNewCatDesc" class="drawer-brain-textarea" maxlength="2000" rows="2" placeholder="Notas da categoria…"></textarea>
+          <label class="drawer-brain-check"><input type="checkbox" id="drawerBrainLinkAfterCreate" checked /> Ligar este achado à categoria nova</label>
+          <div class="drawer-brain-expand-actions">
+            <button type="button" class="drawer-note-save" id="drawerBrainCreateSaveBtn">Criar</button>
+            <button type="button" class="drawer-brain-btn" id="drawerBrainCreateCancelBtn">Cancelar</button>
+          </div>
+        </div>
+        <div id="drawerBrainCatPickerWrap" class="drawer-brain-expand" hidden>
+          <div class="drawer-brain-row">
+            <select id="drawerBrainCatSelect" class="drawer-brain-select" aria-label="Categoria a adicionar"></select>
+            <button type="button" class="drawer-note-save" id="drawerBrainAddBtn">Adicionar</button>
+          </div>
+        </div>
+        <span id="drawerBrainStatus" class="drawer-note-status" style="display:block;margin-top:8px"></span>
+      </div>
+      <div class="drawer-section"><div class="drawer-label">Snapshot</div><pre class="drawer-pre">${esc(JSON.stringify(link.snapshot||{},null,2))}</pre></div>
+    `;
+    $('drawerNotesSaveBtn')?.addEventListener('click', () => { void saveDrawerNotes(); });
+    drawer.classList.add('is-open'); drawer.setAttribute('aria-hidden','false');
+    backdrop.classList.add('is-open'); backdrop.setAttribute('aria-hidden','false');
+    void populateDrawerBrainExtras();
+  }
+
+  async function populateDrawerBrainExtras() {
+    const sec = $('drawerBrainSection');
+    if (!sec) return;
+    if (demoMode || !drawerLinkRef) {
+      sec.hidden = true;
+      return;
+    }
+    sec.hidden = false;
+    setDrawerBrainPanels(null);
+    const st = $('drawerBrainStatus');
+    if (st) {
+      st.textContent = '';
+      st.className = 'drawer-note-status';
+    }
+    const ul = $('drawerBrainLinkedUl');
+    const sel = $('drawerBrainCatSelect');
+    const addBtn = $('drawerBrainAddBtn');
+    if (!ul || !sel || !addBtn) return;
+    ul.innerHTML = '<li style="font-size:9px;color:var(--dim)">A carregar…</li>';
+    sel.innerHTML = '';
+    addBtn.onclick = null;
+    try {
+      const r = await fetch(
+        apiUrl(
+          '/api/brain/finding-links?target=' +
+            encodeURIComponent(drawerLinkRef.target) +
+            '&fingerprint=' +
+            encodeURIComponent(drawerLinkRef.fingerprint),
+        ),
+        { cache: 'no-store' },
+      );
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || String(r.status));
+      const links = Array.isArray(d.links) ? d.links : [];
+      ul.innerHTML = '';
+      if (!links.length) {
+        ul.innerHTML =
+          '<li style="font-size:9px;color:var(--dim)">Sem ligações ao cérebro — usa <strong>Adicionar categoria…</strong> ou <strong>Nova categoria</strong>.</li>';
+      } else {
+        for (const L of links) {
+          const cid = Number(L.id);
+          const li = document.createElement('li');
+          li.className = 'drawer-brain-li';
+          li.innerHTML = `<span class="drawer-brain-li-title">${esc(String(L.title || ''))}</span><button type="button" class="drawer-brain-remove" data-cat-id="${cid}" aria-label="Retirar só desta pasta">×</button>`;
+          li.querySelector('.drawer-brain-remove')?.addEventListener('click', async () => {
+            await onDrawerBrainUnlink(cid);
+          });
+          ul.appendChild(li);
+        }
+      }
+      const linkedIds = new Set(links.map((x) => Number(x.id)));
+      const opts = categories.filter((c) => c && !linkedIds.has(Number(c.id)));
+      for (const c of opts) {
+        const o = document.createElement('option');
+        o.value = String(c.id);
+        o.textContent = c.title;
+        sel.appendChild(o);
+      }
+      if (!opts.length) {
+        const o = document.createElement('option');
+        o.value = '';
+        o.textContent = '(já ligado a todas as categorias)';
+        o.disabled = true;
+        sel.appendChild(o);
+      }
+      addBtn.onclick = async () => {
+        const id = Number(sel.value);
+        if (!id) return;
+        await onDrawerBrainAdd(id);
+      };
+
+      const rmCur = $('drawerBrainRemoveCurrentBtn');
+      if (rmCur) {
+        const inCurrent = Boolean(activeId && linkedIds.has(Number(activeId)));
+        rmCur.disabled = !inCurrent;
+        rmCur.title = inCurrent
+          ? 'Remove este achado da categoria que estás a ver na barra lateral.'
+          : 'Abre o achado a partir de uma categoria onde ele esteja ligado.';
+        rmCur.onclick = async () => {
+          if (!activeId) return;
+          await onDrawerBrainUnlink(Number(activeId));
+        };
+      }
+      const tAdd = $('drawerBrainToggleAddBtn');
+      if (tAdd) {
+        tAdd.onclick = () => {
+          const w = $('drawerBrainCatPickerWrap');
+          if (!w) return;
+          const opening = Boolean(w.hidden);
+          setDrawerBrainPanels(opening ? 'add' : null);
+        };
+      }
+      const tCr = $('drawerBrainToggleCreateBtn');
+      if (tCr) {
+        tCr.onclick = () => {
+          const w = $('drawerBrainCreateWrap');
+          if (!w) return;
+          const opening = Boolean(w.hidden);
+          setDrawerBrainPanels(opening ? 'create' : null);
+        };
+      }
+      const cCancel = $('drawerBrainCreateCancelBtn');
+      if (cCancel) {
+        cCancel.onclick = () => {
+          const ti = $('drawerBrainNewCatTitle');
+          const de = $('drawerBrainNewCatDesc');
+          if (ti) ti.value = '';
+          if (de) de.value = '';
+          setDrawerBrainPanels(null);
+        };
+      }
+      const cSave = $('drawerBrainCreateSaveBtn');
+      if (cSave) {
+        cSave.onclick = () => {
+          void onDrawerBrainCreateSave();
+        };
+      }
+    } catch (e) {
+      ul.innerHTML = `<li style="color:var(--accent3);font-size:9px">${esc(String(e.message || e))}</li>`;
+    }
+  }
+
+  async function onDrawerBrainCreateSave() {
+    if (!drawerLinkRef || demoMode) return;
+    const st = $('drawerBrainStatus');
+    const titleIn = $('drawerBrainNewCatTitle');
+    const descIn = $('drawerBrainNewCatDesc');
+    const linkChk = $('drawerBrainLinkAfterCreate');
+    if (!titleIn) return;
+    const title = String(titleIn.value || '').trim();
+    const description = String(descIn?.value || '').trim().slice(0, 2000);
+    if (!title) {
+      if (st) {
+        st.textContent = 'Indica um título.';
+        st.className = 'drawer-note-status err';
+      }
+      return;
+    }
+    const btn = $('drawerBrainCreateSaveBtn');
+    if (btn) btn.disabled = true;
+    try {
+      await fetchCsrf();
+      const r = await fetch(apiUrl('/api/brain/categories'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify({ title, description }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || String(r.status));
+      await refreshBrainCategoriesFromApi();
+      renderRail();
+      const newId = Number(d.id);
+      const doLink = linkChk?.checked !== false && Number.isFinite(newId) && newId > 0;
+      if (doLink) {
+        await onDrawerBrainAdd(newId);
+      } else {
+        if (st) {
+          st.textContent = d.existing ? 'Categoria já existia; lista actualizada.' : 'Categoria criada.';
+          st.className = 'drawer-note-status ok';
+        }
+        await populateDrawerBrainExtras();
+      }
+      titleIn.value = '';
+      if (descIn) descIn.value = '';
+      setDrawerBrainPanels(null);
+    } catch (e) {
+      if (st) {
+        st.textContent = String(e.message || e);
+        st.className = 'drawer-note-status err';
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function onDrawerBrainUnlink(categoryId) {
+    if (!drawerLinkRef || demoMode) return;
+    const st = $('drawerBrainStatus');
+    try {
+      await fetchCsrf();
+      const r = await fetch(apiUrl('/api/brain/unlink'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify({
+          target: drawerLinkRef.target,
+          fingerprint: drawerLinkRef.fingerprint,
+          categoryId,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || String(r.status));
+      if (st) {
+        st.textContent = 'Ligação removida.';
+        st.className = 'drawer-note-status ok';
+      }
+      const removedFromActive = Boolean(activeId && Number(activeId) === Number(categoryId));
+      await populateDrawerBrainExtras();
+      if (activeId) await selectCategory(activeId);
+      renderRail();
+      if (removedFromActive) closeDrawer();
+    } catch (e) {
+      if (st) {
+        st.textContent = String(e.message || e);
+        st.className = 'drawer-note-status err';
+      }
+    }
+  }
+
+  async function onDrawerBrainAdd(categoryId) {
+    if (!drawerLinkRef || demoMode) return;
+    const st = $('drawerBrainStatus');
+    try {
+      await fetchCsrf();
+      const r = await fetch(apiUrl('/api/brain/link'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify({
+          target: drawerLinkRef.target,
+          fingerprint: drawerLinkRef.fingerprint,
+          categoryId,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || String(r.status));
+      if (st) {
+        st.textContent = 'Categoria adicionada.';
+        st.className = 'drawer-note-status ok';
+      }
+      setDrawerBrainPanels(null);
+      await populateDrawerBrainExtras();
+      if (activeId && Number(activeId) === Number(categoryId)) await selectCategory(activeId);
+      renderRail();
+    } catch (e) {
+      if (st) {
+        st.textContent = String(e.message || e);
+        st.className = 'drawer-note-status err';
+      }
+    }
+  }
+
+  function closeDrawer(){
+    drawerLinkRef = null;
+    const bs = $('drawerBrainSection');
+    if (bs) bs.hidden = true;
+    $('drawer').classList.remove('is-open'); $('drawer').setAttribute('aria-hidden','true');
+    const b=$('drawerBackdrop'); b.classList.remove('is-open'); b.setAttribute('aria-hidden','true');
+  }
+
+  async function saveDrawerNotes() {
+    if (!drawerLinkRef || demoMode) return;
+    const btn = $('drawerNotesSaveBtn');
+    const ta = $('drawerNotesInput');
+    const ck = $('drawerMarkedCheck');
+    const st = $('drawerNoteStatus');
+    if (!btn || !ta || !ck || !st) return;
+    const notes = String(ta.value || '').slice(0, 2000);
+    const marked = Boolean(ck.checked);
+    btn.disabled = true;
+    st.className = 'drawer-note-status';
+    st.textContent = 'A guardar…';
+    try {
+      await fetchCsrf();
+      const snapshot = drawerLinkRef.snapshot && typeof drawerLinkRef.snapshot === 'object'
+        ? { ...drawerLinkRef.snapshot }
+        : {};
+      if (marked) snapshot.cortex_marked = true;
+      else delete snapshot.cortex_marked;
+      const r = await fetch(apiUrl('/api/manual-validations'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify({
+          target: drawerLinkRef.target,
+          fingerprint: drawerLinkRef.fingerprint,
+          validated: true,
+          snapshot,
+          notes,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || String(r.status));
+      drawerLinkRef.notes = notes;
+      drawerLinkRef.snapshot = snapshot;
+      st.className = 'drawer-note-status ok';
+      st.textContent = 'Notas guardadas.';
+    } catch (e) {
+      st.className = 'drawer-note-status err';
+      st.textContent = 'Falha: ' + (e.message || e);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function selectCategory(id){
+    activeId=id; setErr(''); renderRail();
+    if(demoMode&&CORTEX_DEMO_LINKS[id]){
+      activeLinks=CORTEX_DEMO_LINKS[id].map(x=>({...x}));
+      const cat=CORTEX_DEMO_CATEGORIES.find(c=>c.id===id);
+      activeCategoryTitle=cat?cat.title:'Categoria';
+      activeCategoryDescription=cat&&cat.description?String(cat.description):'';
+      try{ const u=new URL(location.href); u.hash=String(id); history.replaceState(null,'',u.toString()); }catch(_){}
+      renderCanvas(activeCategoryTitle); return;
+    }
+    try{
+      const r=await fetch(apiUrl('/api/brain/category/'+encodeURIComponent(String(id))),{cache:'no-store'});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(d.error||String(r.status));
+      activeLinks=Array.isArray(d.links)?d.links:[];
+      activeCategoryTitle=d.category?.title||'Categoria';
+      activeCategoryDescription=d.category?.description ? String(d.category.description) : '';
+      try{ const u=new URL(location.href); u.hash=String(id); history.replaceState(null,'',u.toString()); }catch(_){}
+      renderCanvas(activeCategoryTitle);
+    } catch(e){
+      activeLinks=[];activeCategoryTitle=''; activeCategoryDescription='';
+      setErr(String(e.message||e)); renderCanvas('');
+    }
+  }
+
+  async function boot(){
+    demoMode=isCortexDemoMode();
+    if(demoMode){
+      applyDemoChrome();
+      categories=CORTEX_DEMO_CATEGORIES.map(c=>({...c}));
+      setErr('');
+    } else {
+      try{
+        const r=await fetch(apiUrl('/api/brain/categories'),{cache:'no-store'});
+        const d=await r.json().catch(()=>({}));
+        categories=Array.isArray(d.items)?d.items:[];
+      } catch(e){
+        setErr('Não foi possível carregar categorias: '+(e.message||e));
+        categories=[];
+      }
+    }
+    restoreToggle();
+    renderRail();
+    const h=(location.hash||'').replace(/^#/,'').trim().toLowerCase();
+    const n=h==='demo'?NaN:Number(h);
+    if(Number.isFinite(n)&&n>0&&categories.some(c=>c.id===n)) await selectCategory(n);
+    else { activeId=null;activeLinks=[];activeCategoryTitle='';activeCategoryDescription='';renderCanvas(''); }
+  }
+
+  // ── events ──
+  $('categoryTeachEditBtn')?.addEventListener('click', () => {
+    if (!activeId || demoMode) return;
+    const wrap = $('categoryTeachEditWrap');
+    const input = $('categoryTeachInput');
+    if (!wrap || !input) return;
+    const fallback = getCategoryTeach(String(activeCategoryTitle || '')).text || '';
+    input.value = String(activeCategoryDescription || fallback);
+    wrap.classList.add('is-open');
+    input.focus();
+    input.select();
+  });
+
+  $('categoryTeachCancelBtn')?.addEventListener('click', () => {
+    $('categoryTeachEditWrap')?.classList.remove('is-open');
+  });
+
+  $('categoryTeachSaveBtn')?.addEventListener('click', async () => {
+    if (!activeId || demoMode) return;
+    const btn = $('categoryTeachSaveBtn');
+    const input = $('categoryTeachInput');
+    const wrap = $('categoryTeachEditWrap');
+    if (!btn || !input || !wrap) return;
+    const description = String(input.value || '').trim().slice(0, 2000);
+    btn.disabled = true;
+    setErr('');
+    try {
+      await fetchCsrf();
+      const r = await fetch(apiUrl('/api/brain/categories/' + encodeURIComponent(String(activeId)) + '/description'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify({ description }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || String(r.status));
+      activeCategoryDescription = d.category?.description ? String(d.category.description) : description;
+      categories = categories.map((c) =>
+        Number(c.id) === Number(activeId) ? { ...c, description: activeCategoryDescription } : c,
+      );
+      applyCategoryTeach(String(activeCategoryTitle || '').trim());
+      wrap.classList.remove('is-open');
+    } catch (e) {
+      setErr('Não foi possível guardar descrição: ' + (e.message || e));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('categoryTeachDeleteBtn')?.addEventListener('click', async () => {
+    if (!activeId || demoMode || isActiveCategorySeed()) return;
+    const t = String(activeCategoryTitle || '').trim() || 'esta categoria';
+    if (
+      !confirm(
+        `Apagar a categoria «${t}»?\n\nAs ligações no cérebro a achados serão removidas (as validações na checklist no GHOSTCTF mantêm-se).`,
+      )
+    )
+      return;
+    const delBtn = $('categoryTeachDeleteBtn');
+    if (delBtn) delBtn.disabled = true;
+    setErr('');
+    try {
+      await fetchCsrf();
+      const r = await fetch(apiUrl('/api/brain/categories/' + encodeURIComponent(String(activeId)) + '/delete'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: '{}',
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || String(r.status));
+      closeDrawer();
+      categories = categories.filter((c) => Number(c.id) !== Number(activeId));
+      activeId = null;
+      activeLinks = [];
+      activeCategoryTitle = '';
+      activeCategoryDescription = '';
+      try {
+        const u = new URL(location.href);
+        u.hash = '';
+        history.replaceState(null, '', u.toString());
+      } catch (_) {}
+      renderRail();
+      renderCanvas('');
+    } catch (e) {
+      setErr(String(e.message || e));
+      applyCategoryTeach(String(activeCategoryTitle || '').trim());
+    } finally {
+      const b = $('categoryTeachDeleteBtn');
+      if (b) b.disabled = demoMode || !activeId || isActiveCategorySeed();
+    }
+  });
+
+  $('drawerClose').addEventListener('click', closeDrawer);
+  $('drawerBackdrop').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDrawer();
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      $('railSearchInput')?.focus();
+      $('railSearchInput')?.select();
+    }
+  });
+
+  // grid-mode node clicks (graph-mode nodes handle clicks internally via attachDrag)
+  $('canvasBody').addEventListener('click', ev=>{
+    if (graphState) return; // graph mode handles its own clicks
+    const n=ev.target.closest('.node');
+    if(!n||!$('canvasBody').contains(n)) return;
+    const idx=Number(n.dataset.idx);
+    if(!Number.isFinite(idx)||!activeLinks[idx]) return;
+    openDrawer(activeLinks[idx], activeCategoryTitle, activeCategoryDescription);
+  });
+
+  $('toggleObsidianGraph').addEventListener('change', ()=>{
+    persistToggle();
+    if(activeId&&activeLinks.length) renderCanvas(activeCategoryTitle);
+  });
+
+  $('btnFakeBrain').addEventListener('click', async ()=>{
+    const btn=$('btnFakeBrain'), sub=$('railSub');
+    setErr(''); btn.disabled=true;
+    if(sub) sub.textContent='A simular…';
+    try{
+      categories=await fakeFetchBrainCategories(420);
+      demoMode=true; applyDemoChrome();
+      activeId=null;activeLinks=[];
+      renderRail(); renderCanvas('');
+      if(categories.length) await selectCategory(categories[0].id);
+    } catch(e){
+      setErr('Prévia fictícia falhou: '+(e.message||e));
+      if(sub) sub.textContent='Tipos do cérebro · checklist manual (SQLite local)';
+    } finally{ btn.disabled=false; }
+  });
+
+  void boot();
+</script>
+</body>
+</html>

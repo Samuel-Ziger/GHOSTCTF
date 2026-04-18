@@ -1,0 +1,20 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "7aa0eb9d20c075175a5bb7b7a52c3189732e3c15ad5098b3d47c6375a53ea44e",
+  "validated_at": "2026-04-18T04:52:24.634Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "medium",
+    "value": "Escalação / artefactos locais (flag4, SUID, histórico .bash_history)",
+    "url": "ssh://estagiario@3.219.234.210",
+    "meta": "Privesc conforme write-up; directório flag4 inicialmente sem acesso.",
+    "flags": [
+      "Solyd{0wn3d_th3_bug_b0unty_pr0gr4m}"
+    ],
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

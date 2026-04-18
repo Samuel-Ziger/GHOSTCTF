@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { curlWebSingle } from './web-curl-single.js';
 import { ftpPortsFromNmap, probeFtpCredentials } from './ftp-anonymous-probe.js';
+import { ghostctfPositiveIntEnv } from './env-budgets.js';
 
 const DISCLOSURE_PATHS = [
   '/backup.txt',
@@ -103,9 +104,10 @@ function extractCredentialsFromText(text) {
   return dedup.slice(0, 20);
 }
 
-export async function runDisclosureHunt(webResponses, { ip, log, timeoutMs = 10000 } = {}) {
+export async function runDisclosureHunt(webResponses, { ip, log, timeoutMs = 10000, maxOrigins = 12 } = {}) {
   const logger = typeof log === 'function' ? log : () => {};
   const origins = collectOrigins(webResponses, ip);
+  const maxO = ghostctfPositiveIntEnv('GHOSTCTF_MAX_DISCLOSURE_ORIGINS', maxOrigins);
   const seen = new Set((webResponses || []).map((r) => String(r?.url || '')).filter(Boolean));
   const comments = [];
   const credentials = [];
@@ -119,7 +121,7 @@ export async function runDisclosureHunt(webResponses, { ip, log, timeoutMs = 100
     for (const cred of extractWpConfigCredentials(bt, r.url)) credentials.push(cred);
   }
 
-  for (const origin of origins.slice(0, 12)) {
+  for (const origin of origins.slice(0, maxO)) {
     const base = String(origin).replace(/\/$/, '');
     for (const p of DISCLOSURE_PATHS) {
       const u = `${base}${p}`;

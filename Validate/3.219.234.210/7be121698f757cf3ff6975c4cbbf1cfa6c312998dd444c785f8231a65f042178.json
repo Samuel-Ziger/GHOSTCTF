@@ -1,0 +1,17 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "7be121698f757cf3ff6975c4cbbf1cfa6c312998dd444c785f8231a65f042178",
+  "validated_at": "2026-04-18T01:04:59.341Z",
+  "notes": "",
+  "snapshot": {
+    "type": "endpoint",
+    "prio": "medium",
+    "value": "http://3.219.234.210/wordpress",
+    "url": "http://3.219.234.210/wordpress",
+    "meta": "Enumeração web: directório /wordpress.",
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

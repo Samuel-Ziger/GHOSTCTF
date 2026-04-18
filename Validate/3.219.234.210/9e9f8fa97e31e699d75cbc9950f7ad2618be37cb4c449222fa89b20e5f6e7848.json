@@ -1,0 +1,20 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "9e9f8fa97e31e699d75cbc9950f7ad2618be37cb4c449222fa89b20e5f6e7848",
+  "validated_at": "2026-04-18T04:48:33.823Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "high",
+    "value": "FTP: diretório Comunicados + ficheiro oculto .aviso!",
+    "url": "ftp://3.219.234.210/Comunicados/.aviso!",
+    "meta": "Dica interna sobre WordPress instalado pela equipa; Flag1 Solyd{c4r3ful_w1th_an0nym0us_ftp}.",
+    "flags": [
+      "Solyd{c4r3ful_w1th_an0nym0us_ftp}"
+    ],
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

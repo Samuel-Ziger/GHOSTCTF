@@ -1,0 +1,17 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "7340a3fba2654a73f5951372bd95007d7478b2d78c86f8d1f467aede462e4535",
+  "validated_at": "2026-04-18T01:05:55.825Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "high",
+    "value": "ZIP Trabalho_Estagiario.zip protegido + script backup.sh (cópia /root,/etc para /var/backups)",
+    "url": "file:///home/estagiario/backup.sh",
+    "meta": "Senha ZIP estagiario; chmod estagiario no zip em /var/backups — cadeia para flag4.",
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

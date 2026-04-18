@@ -1,11 +1,12 @@
 import { UA } from '../config.js';
+import { fetchWithBackoff } from './http-utils.js';
 
 /**
  * Passivo: Certificate Transparency via crt.sh
  */
 export async function fetchCrtShSubdomains(domain) {
   const url = `https://crt.sh/?q=%25.${encodeURIComponent(domain)}&output=json`;
-  const res = await fetch(url, {
+  const res = await fetchWithBackoff(url, {
     headers: { 'User-Agent': UA, Accept: 'application/json' },
     signal: AbortSignal.timeout(90000),
   });

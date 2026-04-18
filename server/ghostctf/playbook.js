@@ -14,7 +14,7 @@ function parseNmapFindingValue(v) {
   return { proto: m[1].toLowerCase(), port: Number(m[2]), service: m[3].toLowerCase() };
 }
 
-export function buildCtfPlaybookSuggestions({ ip, findings }) {
+export function buildCtfPlaybookSuggestions({ ip, findings = [], flagPathHttpProbe = null } = {}) {
   const suggestions = [];
 
   const nmap = (findings || []).filter((f) => f && f.type === 'nmap');
@@ -112,6 +112,19 @@ export function buildCtfPlaybookSuggestions({ ip, findings }) {
       `# robots/sitemap: /robots.txt /sitemap.xml`,
       `# procurar flag: view-source + grep Solyd{ / HTB{ / GCTF{`,
       `# dir enum: ffuf -u ${urls[0].replace(/\/$/, '')}/FUZZ -w <wordlist> -mc 200,204,301,302,307,401,403`,
+    ], 'high');
+  }
+
+  const fpTried = Number(flagPathHttpProbe?.tried || 0);
+  if (urls.length || fpTried > 0) {
+    emit('Flags em texto não HTML + paths CTF (pipeline GhostCTF)', [
+      '# nmap: saídas de scripts NSE e banners já passam pelo detector de flags (base64/base32 + regex).',
+      '# HTTP: headers repetidos no scan + corpo + stderr curl; robots.txt / sitemap / disclosure (.env) incluídos.',
+      fpTried > 0
+        ? `# Este run fez ${fpTried} GET(s) extra em paths típicos (/flag, /flag.txt, …) por origem — rever findings tech com via=ctf-flag-paths no JSON/correlação.`
+        : '# Com web activa, o servidor tenta também GET em /flag, /flag.txt, /root/flag.txt, … por origem (ver correlation.ctfFlagPathProbe).',
+      '# Shell: auto-explore já corre cat em /flag, /flag.txt, /root/flag.txt e find *flag*; em homes: for d in /home/*/.flag*; do cat …',
+      '# Pós-login CTF: GHOSTCTF_HTTP_COOKIE="session=…" no .env do servidor, ou campo “Cookie (pós-login)” (httpSessionCookie no POST /api/ghostctf/stream) — curl usa -b em todas as respostas HTTP.',
     ], 'high');
   }
 

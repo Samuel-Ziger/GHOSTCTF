@@ -4,6 +4,7 @@
  */
 import postgres from 'postgres';
 import { fingerprintFinding, findingsForRunsTable, norm } from './db-common.js';
+import { serializeFindingsForRunSnapshot, parseFindingsSnapshotJson } from './finding-serialize.js';
 
 let sqlInstance = null;
 
@@ -129,28 +130,71 @@ export async function mergeIntelForTarget(target, runId, findings) {
 
     return { newArtifacts, alreadyKnown, totalKnownForTarget };
   } catch (e) {
-    console.error('[GHOSTCTF DB intel]', e.message);
+    console.error('[GHOSTRECON DB intel]', e.message);
     return { newArtifacts: 0, alreadyKnown: 0, totalKnownForTarget: 0, error: e.message };
   }
 }
 
-export async function saveRun({ target, exactMatch, modules, stats, findings, correlation }) {
+function snapshotPayloadForPg(findingsJson, findings) {
+  const raw = findingsJson ?? serializeFindingsForRunSnapshot(findings);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveRun({ target, exactMatch, modules, stats, findings, correlation, findingsJson = null }) {
   try {
     const sql = getSql();
     const t = norm(target);
     const corr = correlation == null ? null : sql.json(correlation);
+    const snapObj = snapshotPayloadForPg(findingsJson, findings);
 
-    const [runRow] = await sql`
-      insert into runs (target, exact_match, modules_json, stats_json, correlation_json)
-      values (
-        ${t},
-        ${Boolean(exactMatch)},
-        ${sql.json(modules)},
-        ${sql.json(stats)},
-        ${corr}
-      )
-      returning id
-    `;
+    let runRow;
+    try {
+      const rows = snapObj
+        ? await sql`
+            insert into runs (target, exact_match, modules_json, stats_json, correlation_json, findings_json)
+            values (
+              ${t},
+              ${Boolean(exactMatch)},
+              ${sql.json(modules)},
+              ${sql.json(stats)},
+              ${corr},
+              ${sql.json(snapObj)}
+            )
+            returning id
+          `
+        : await sql`
+            insert into runs (target, exact_match, modules_json, stats_json, correlation_json)
+            values (
+              ${t},
+              ${Boolean(exactMatch)},
+              ${sql.json(modules)},
+              ${sql.json(stats)},
+              ${corr}
+            )
+            returning id
+          `;
+      runRow = rows[0];
+    } catch (e) {
+      if (!snapObj || !String(e?.message || e).includes('findings_json')) throw e;
+      console.warn('[GHOSTRECON DB] runs.findings_json ausente — grava sem snapshot completo. SQL: ALTER TABLE runs ADD COLUMN findings_json jsonb;');
+      const rows = await sql`
+        insert into runs (target, exact_match, modules_json, stats_json, correlation_json)
+        values (
+          ${t},
+          ${Boolean(exactMatch)},
+          ${sql.json(modules)},
+          ${sql.json(stats)},
+          ${corr}
+        )
+        returning id
+      `;
+      runRow = rows[0];
+    }
     const runId = Number(runRow.id);
 
     const rows = findingsForRunsTable(t, findings).map((f) => ({
@@ -172,7 +216,7 @@ export async function saveRun({ target, exactMatch, modules, stats, findings, co
 
     return { runId, intelMerge };
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return null;
   }
 }
@@ -194,7 +238,7 @@ export async function listRuns(limit = 50) {
       stats: parseJsonField(r.stats_json),
     }));
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return [];
   }
 }
@@ -205,12 +249,26 @@ export async function getRunById(id) {
     const runs = await sql`select * from runs where id = ${id} limit 1`;
     const run = runs[0];
     if (!run) return null;
-    const findings = await sql`
+    const tableFindings = await sql`
       select type, prio, score, value, meta, url
       from findings
       where run_id = ${id}
       order by id asc
     `;
+    let snap = null;
+    const fj = run.findings_json;
+    if (fj != null) {
+      if (typeof fj === 'string') snap = parseFindingsSnapshotJson(fj);
+      else if (Array.isArray(fj.findings)) snap = fj.findings;
+      else if (Array.isArray(fj)) snap = fj;
+      else
+        try {
+          snap = parseFindingsSnapshotJson(JSON.stringify(fj));
+        } catch {
+          snap = null;
+        }
+    }
+    const findings = snap?.length ? snap : tableFindings;
     return {
       id: run.id,
       target: run.target,
@@ -220,9 +278,10 @@ export async function getRunById(id) {
       correlation: run.correlation_json != null ? parseJsonField(run.correlation_json) : null,
       created_at: run.created_at,
       findings,
+      findingsScopeRows: snap?.length ? tableFindings : undefined,
     };
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return null;
   }
 }
@@ -240,7 +299,7 @@ export async function listIntelForTarget(target, limit = 500) {
       limit ${lim}
     `;
   } catch (e) {
-    console.error('[GHOSTCTF DB]', e.message);
+    console.error('[GHOSTRECON DB]', e.message);
     return [];
   }
 }

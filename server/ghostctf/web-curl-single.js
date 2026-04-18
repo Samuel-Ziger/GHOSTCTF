@@ -5,6 +5,7 @@ import { tmpdir } from 'os';
 import { UA } from '../config.js';
 import { detectTech } from '../modules/tech.js';
 import { decodeBodyBufferToUtf8, effectiveUrlAfterRedirects, stripDefaultPortsFromUrl } from './http-body.js';
+import { getPipelineHttpCookie } from './http-cookie-context.js';
 
 function parseHttpHeadersBlock(raw) {
   const out = new Map();
@@ -60,6 +61,10 @@ export async function curlWebSingle({ url: urlIn, timeoutMs = 12000, maxBodyByte
     bodyPath,
     url,
   ];
+  const sess = getPipelineHttpCookie();
+  if (sess) {
+    args.splice(args.length - 1, 0, '-b', sess);
+  }
 
   const { spawn } = await import('node:child_process');
   const proc = await new Promise((resolve, reject) => {
@@ -105,6 +110,7 @@ export async function curlWebSingle({ url: urlIn, timeoutMs = 12000, maxBodyByte
     bodyText,
     tech: techHints,
     curlExitCode: proc.code,
+    curlStderr: proc.stderr || '',
   };
 }
 

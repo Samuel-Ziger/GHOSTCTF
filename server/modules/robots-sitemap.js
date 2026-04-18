@@ -1,12 +1,7 @@
 import { UA, limits } from '../config.js';
+import { hostInReconScope } from './scope.js';
 
-export function hostnameInScope(hostname, rootDomain) {
-  const h = String(hostname || '')
-    .toLowerCase()
-    .replace(/^\[|\]$/g, '');
-  const r = String(rootDomain).toLowerCase();
-  return h === r || h.endsWith(`.${r}`);
-}
+export { hostnameInScope } from './scope.js';
 
 function extractSitemapLines(robotsText) {
   const out = [];
@@ -42,7 +37,7 @@ async function fetchText(url, timeoutMs) {
   return t.length > 2_000_000 ? t.slice(0, 2_000_000) : t;
 }
 
-function parseSitemapLocs(xml, rootDomain, limit) {
+function parseSitemapLocs(xml, rootDomain, limit, outOfScopeRules = []) {
   const urls = [];
   const re = /<loc>\s*([^<]+)\s*<\/loc>/gi;
   let m;
@@ -50,7 +45,7 @@ function parseSitemapLocs(xml, rootDomain, limit) {
     const u = m[1].trim();
     try {
       const parsed = new URL(u);
-      if (hostnameInScope(parsed.hostname, rootDomain)) urls.push(u);
+      if (hostInReconScope(parsed.hostname, rootDomain, outOfScopeRules)) urls.push(u);
     } catch {
       continue;
     }
@@ -62,8 +57,9 @@ function parseSitemapLocs(xml, rootDomain, limit) {
 /**
  * @param {string} baseOrigin ex. https://www.example.com/
  * @param {string} rootDomain ex. example.com
+ * @param {string[]} [outOfScopeRules] hosts fora de escopo (env GHOSTRECON_OUT_OF_SCOPE)
  */
-export async function crawlRobotsAndSitemapsForOrigin(baseOrigin, rootDomain) {
+export async function crawlRobotsAndSitemapsForOrigin(baseOrigin, rootDomain, outOfScopeRules = []) {
   const result = {
     robotsUrl: null,
     robotsOk: false,
@@ -134,14 +130,15 @@ export async function crawlRobotsAndSitemapsForOrigin(baseOrigin, rootDomain) {
         try {
           const innerXml = await fetchText(inner, to);
           if (innerXml) {
-            for (const u of parseSitemapLocs(innerXml, rootDomain, maxPages - pageUrls.size)) pageUrls.add(u);
+            for (const u of parseSitemapLocs(innerXml, rootDomain, maxPages - pageUrls.size, outOfScopeRules))
+              pageUrls.add(u);
           }
         } catch {
           /* skip */
         }
       }
     } else {
-      for (const u of parseSitemapLocs(xml, rootDomain, maxPages - pageUrls.size)) pageUrls.add(u);
+      for (const u of parseSitemapLocs(xml, rootDomain, maxPages - pageUrls.size, outOfScopeRules)) pageUrls.add(u);
     }
     if (pageUrls.size >= maxPages) break;
   }

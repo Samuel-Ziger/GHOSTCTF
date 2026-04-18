@@ -1,0 +1,17 @@
+{
+  "target": "44.192.85.165",
+  "fingerprint": "6bbb95e0ad9dfbfb1525256b2bd374406d5bb724f7ed908b7c2cd87a2190d21c",
+  "validated_at": "2026-04-18T04:45:03.850Z",
+  "notes": "",
+  "snapshot": {
+    "type": "flag",
+    "prio": "high",
+    "value": "Solyd{!@#D0m4inAcc3SS3D#*}",
+    "url": "http://flow.projects-blogo.sy/",
+    "meta": "platform=solyd; evidence=base64; decodedFrom=U29seWR7IUAjRDBtNGluQWNjM1NTM0QjKn0=; url=http://flow.projects-blogo.sy/; via=etc-hosts-name; host=flow.projects-blogo.sy",
+    "desafio": "inside",
+    "projectName": "inside"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

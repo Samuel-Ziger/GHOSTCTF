@@ -1,0 +1,17 @@
+{
+  "target": "imobiliarians.solyd",
+  "fingerprint": "abb4f4a71addc3ba937a8903aa1c23df0d91a872be2ec58d0275e2b84b066060",
+  "validated_at": "2026-04-18T01:10:31.318Z",
+  "notes": "",
+  "snapshot": {
+    "type": "endpoint",
+    "prio": "medium",
+    "value": "http://imobiliarians.solyd:8081/admin/home.php (admin sem login neste cenário)",
+    "url": "http://imobiliarians.solyd:8081/admin/home.php",
+    "meta": "Flag2 em comentário no código-fonte. Solyd{local_or_remote_brute_force?}.",
+    "desafio": "CTF2_Imobiliaria",
+    "projectName": "CTF2_Imobiliaria"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

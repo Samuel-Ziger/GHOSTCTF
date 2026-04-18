@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "target": "44.211.59.106",
+  "desafio": "CTF2_Workshop_Empreendedorismo",
+  "projectName": "CTF2_Workshop_Empreendedorismo",
+  "updatedAt": "2026-04-17T12:00:00.000Z",
+  "source": "historicos/CTFsSolyd/CTF2/Worshop/RESUMO_FLAGS_CTF2_WORKSHOP.md + nmap (resumo.txt estava vazio)",
+  "notes": "O ficheiro resumo.txt na pasta Worshop está vazio; este pacote resume o write-up em Markdown e o scan Nmap local. Importar no Reporte (JSON). Flags opcionais por achado quando confirmadas nesse passo.",
+  "findings": [
+    {
+      "type": "intel",
+      "prio": "medium",
+      "value": "Nmap: host 44.211.59.106 — 22/tcp ssh, 80/tcp http (997 closed)",
+      "url": "http://44.211.59.106/",
+      "meta": "Scan nmap Worshop/nmap; latência ~0.14s."
+    },
+    {
+      "type": "endpoint",
+      "prio": "medium",
+      "value": "http://44.211.59.106/",
+      "url": "http://44.211.59.106/",
+      "meta": "Workshop «Empreendedorismo em Foco»; formulário e-book PDF na home."
+    },
+    {
+      "type": "intel",
+      "prio": "low",
+      "value": "Flag 1: PDF «Baixe o e-book prévia do workshop» (download na página inicial)",
+      "url": "http://44.211.59.106/",
+      "meta": "Primeira flag no conteúdo do PDF (prévia workshop)."
+    },
+    {
+      "type": "intel",
+      "prio": "low",
+      "value": "Email referência no material: empreendedorismoemfoco@company.com.br",
+      "url": "http://44.211.59.106/",
+      "meta": "Pista para vhost /etc/hosts — empreendedorismoemfoco.company.com.br (4ª flag pendente)."
+    },
+    {
+      "type": "endpoint",
+      "prio": "medium",
+      "value": "Cadastro: index.php#cadastro (POST nome, login, senha, perfil)",
+      "url": "http://44.211.59.106/index.php",
+      "meta": "Conta de teste usada no write-up: teste@gmail.com (senha conforme notas locais)."
+    },
+    {
+      "type": "endpoint",
+      "prio": "high",
+      "value": "Login plataforma: acesso.php (POST entrar, email, senha)",
+      "url": "http://44.211.59.106/acesso.php",
+      "meta": "Após registo — área admin (inicio, material, sobre, tutorial, area)."
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "Área restrita admin/area.php — código PIN 4 dígitos (brute 0000–9999 → 0625)",
+      "url": "http://44.211.59.106/admin/area.php",
+      "meta": "Flag2 Solyd{4-digit-code-is-just-not-secure-enough}; redirect admin/restrita.php.",
+      "flags": ["Solyd{4-digit-code-is-just-not-secure-enough}"]
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "LFI em admin/restrita.php?input= — php://filter base64 em list.php",
+      "url": "http://44.211.59.106/admin/restrita.php?input=php://filter/convert.base64-encode/resource=list.php",
+      "meta": "Flag3 Solyd{f1ltters_f1llters__allow_source_read}; credenciais BD no código: tabata / tabata#123.",
+      "flags": ["Solyd{f1ltters_f1llters__allow_source_read}"]
+    },
+    {
+      "type": "endpoint",
+      "prio": "medium",
+      "value": "Virtual host sugerido para 4ª flag",
+      "url": "http://empreendedorismoemfoco.company.com.br/",
+      "meta": "Mapear 44.211.59.106 em /etc/hosts; testar / e /control/ com Host correcto."
+    },
+    {
+      "type": "intel",
+      "prio": "low",
+      "value": "Rotas úteis pós-login: admin/inicio.php, material.php, sobre.php, tutorial.php, area.php; logout control/logout.php",
+      "url": "http://44.211.59.106/admin/inicio.php",
+      "meta": "Mapa de navegação do workshop."
+    },
+    {
+      "type": "intel",
+      "prio": "low",
+      "value": "LFI — outros alvos sugeridos no write-up (sessão logada + código 0625)",
+      "url": "http://44.211.59.106/admin/restrita.php?input=../control/GenericDAO.php",
+      "meta": "Tentar includes adicionais após ler list.php em base64."
+    }
+  ]
+}

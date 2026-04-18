@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "target": "13.220.146.182",
+  "desafio": "CTF3_Detective",
+  "projectName": "CTF3_Detective",
+  "updatedAt": "2026-04-17T12:00:00.000Z",
+  "source": "historicos/CTFsSolyd/CTF3/Detective/resumo.txt.save + nmap + dica.txt",
+  "notes": "resumo.txt.save é curto; inclui-se contexto de dica.txt (cliente + PCAP) e nmap (só SSH no IP). Ajusta o target se a plataforma do CTF usar outro hostname. Quando houver flag confirmada num achado, incluir array \"flags\" nesse objecto do finding.",
+  "findings": [
+    {
+      "type": "intel",
+      "prio": "medium",
+      "value": "Nmap -A: 13.220.146.182 — 22/tcp OpenSSH 8.2p1 Ubuntu; 998 portas fechadas",
+      "url": "ssh://root@13.220.146.182",
+      "meta": "Detective/nmap; cenário Linux EC2; sem HTTP no scan agressivo."
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "Briefing (dica.txt): cliente enviou captura de rede — investigar vazamento de credenciais",
+      "url": "",
+      "meta": "Artefacto principal: ficheiro de rede (PCAP/pcapng) para análise forense."
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "Pipeline resumo: ficheiro de rede → Wireshark → extrair objecto PDF",
+      "url": "",
+      "meta": "Exportar PDF dos objectos HTTP no Wireshark (conforme notas em resumo.txt.save)."
+    },
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "PDF: pdfinfo (ou equivalente) nos metadados — campo Subject com JavaScript ofuscado",
+      "url": "",
+      "meta": "Metadados PDF como vector de pistas (Subject)."
+    },
+    {
+      "type": "intel",
+      "prio": "medium",
+      "value": "Deofuscar JS: beautifier.io no browser + Node (ou compilador online) para executar / limpar código",
+      "url": "https://beautifier.io/",
+      "meta": "Passo descrito em resumo.txt.save após extrair o script do Subject."
+    },
+    {
+      "type": "intel",
+      "prio": "low",
+      "value": "Próximos passos típicos CTF Detective: seguir URLs/credenciais reveladas pelo JS; correlacionar com tráfego no PCAP",
+      "url": "",
+      "meta": "Extensão lógica após deofuscação — não detalhado no .save."
+    }
+  ]
+}

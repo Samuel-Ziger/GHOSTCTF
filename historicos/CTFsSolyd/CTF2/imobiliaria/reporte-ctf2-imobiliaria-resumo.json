@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "target": "imobiliarians.solyd",
+  "desafio": "CTF2_Imobiliaria",
+  "projectName": "CTF2_Imobiliaria",
+  "updatedAt": "2026-04-17T12:00:00.000Z",
+  "source": "historicos/CTFsSolyd/CTF2/imobiliaria/RESUMO_CTF_FLAGS.md",
+  "notes": "IP actual no write-up: 44.202.186.132 (antes 100.55.88.158). Mapear imobiliarians.solyd → IP no /etc/hosts; serviço HTTP na porta 8081. Fingerprints calculados no Reporte se omitidos. Opcional: flags por achado (strings obtidas nesse vector).",
+  "findings": [
+    {
+      "type": "intel",
+      "prio": "high",
+      "value": "Virtual host: imobiliarians.solyd → 44.202.186.132 (porta 8081)",
+      "url": "http://imobiliarians.solyd:8081/",
+      "meta": "/etc/hosts obrigatório; base URL do desafio imobiliária."
+    },
+    {
+      "type": "endpoint",
+      "prio": "medium",
+      "value": "http://imobiliarians.solyd:8081/index.php",
+      "url": "http://imobiliarians.solyd:8081/index.php",
+      "meta": "Flag1 em comentário HTML no fim da página — view-source ou curl. Solyd{virtual_hosts_are_a_thing_for_sure}.",
+      "flags": ["Solyd{virtual_hosts_are_a_thing_for_sure}"]
+    },
+    {
+      "type": "endpoint",
+      "prio": "medium",
+      "value": "http://imobiliarians.solyd:8081/admin/home.php (admin sem login neste cenário)",
+      "url": "http://imobiliarians.solyd:8081/admin/home.php",
+      "meta": "Flag2 em comentário no código-fonte. Solyd{local_or_remote_brute_force?}.",
+      "flags": ["Solyd{local_or_remote_brute_force?}"]
+    },
+    {
+      "type": "endpoint",
+      "prio": "high",
+      "value": "Login — acesso.php (usuario, senha, entrar=entrar)",
+      "url": "http://imobiliarians.solyd:8081/acesso.php",
+      "meta": "Brute force sugerido (Hydra http-post-form); pista flag2 «local_or_remote_brute_force»; após login explorar /control/."
+    },
+    {
+      "type": "endpoint",
+      "prio": "medium",
+      "value": "Cadastro — cadastro.php campo code + validar=validar",
+      "url": "http://imobiliarians.solyd:8081/cadastro.php",
+      "meta": "Código enviado por e-mail (imovelns@imobiliarians.solyd); procurar pistas no HTML/JS ou serviço de mail do CTF."
+    },
+    {
+      "type": "endpoint",
+      "prio": "high",
+      "value": "Upload admin — upload.php e uploadim.php; listagem admin/uploads/",
+      "url": "http://imobiliarians.solyd:8081/admin/upload.php",
+      "meta": "Testar upload .php/.phtml; flags 3–4 possíveis em upload/SQLi/brute."
+    },
+    {
+      "type": "sqli",
+      "prio": "medium",
+      "value": "Erro MySQL visível em admin/imovel.php e admin/proposta.php (1064 near '')",
+      "url": "http://imobiliarians.solyd:8081/admin/imovel.php",
+      "meta": "Testar parâmetros id/POST com sqlmap ou payloads manuais; write-up: erro pode ser variável vazia interna."
+    },
+    {
+      "type": "intel",
+      "prio": "low",
+      "value": "Enumeração: Gobuster — /admin/, /control/, /assets/, index.php",
+      "url": "http://imobiliarians.solyd:8081/",
+      "meta": "/control/ → 302 ../index.php sem sessão; continuar ffuf em / e /admin/ (.bak, flag.txt, config.php)."
+    },
+    {
+      "type": "intel",
+      "prio": "low",
+      "value": "Testes no IP 44.202.186.132: Hydra admin + top500 rockyou e variantes de user → 0 credenciais",
+      "url": "http://imobiliarians.solyd:8081/acesso.php",
+      "meta": "Sugestão: rockyou completo ou wordlist do site; SQLi aprofundada em todos os parâmetros admin."
+    }
+  ]
+}

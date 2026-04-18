@@ -1,0 +1,17 @@
+{
+  "target": "44.211.59.106",
+  "fingerprint": "f51341b534e77e0057b0f60935ac619a8375aea89daaaabfc22c5825a60bf2a2",
+  "validated_at": "2026-04-18T01:09:40.414Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "high",
+    "value": "Área restrita admin/area.php — código PIN 4 dígitos (brute 0000–9999 → 0625)",
+    "url": "http://44.211.59.106/admin/area.php",
+    "meta": "Flag2 Solyd{4-digit-code-is-just-not-secure-enough}; redirect admin/restrita.php.",
+    "desafio": "CTF2_Workshop_Empreendedorismo",
+    "projectName": "CTF2_Workshop_Empreendedorismo"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

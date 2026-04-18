@@ -1,0 +1,20 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "c6df3bf3730e1146ccca30faa61d8ff597bedc0ad25f0080e2ee19e81953174e",
+  "validated_at": "2026-04-18T04:54:11.194Z",
+  "notes": "",
+  "snapshot": {
+    "type": "intel",
+    "prio": "medium",
+    "value": "Reverse engineering: license.bin (ltrace Usage: user key; patch JNE→JE ou strings)",
+    "url": "file:///home/estagiario/license.bin",
+    "meta": "GDB/PEDA/objdump; flag Solyd{3ng3n33r1ng_r3v3rs3d}.",
+    "flags": [
+      "Solyd{3ng3n33r1ng_r3v3rs3d}"
+    ],
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}

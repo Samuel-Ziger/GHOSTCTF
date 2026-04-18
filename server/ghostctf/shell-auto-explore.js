@@ -30,8 +30,10 @@ export function getReactiveFollowups(stepIndex, buf) {
         label: '↳ Heurística: aprofundar web root',
         cmd:
           'ls -la /var/www/html 2>/dev/null; ls -la /var/www 2>/dev/null; ' +
-          'find /var/www -maxdepth 4 -type f 2>/dev/null | head -50\n',
-        wait: 3200,
+          'for p in /var/www/html/flag /var/www/html/flag.txt /var/www/flag.txt; do ' +
+          'test -r "$p" 2>/dev/null && echo "=== $p ===" && cat "$p" 2>/dev/null; done; ' +
+          'find /var/www -maxdepth 5 -iname "*flag*" -type f 2>/dev/null | head -40\n',
+        wait: 3600,
       });
     }
     if (/\/home\/[a-zA-Z0-9._-]+/i.test(b)) {
@@ -122,8 +124,10 @@ export async function runCtfShellAutoExplore({ write, send, isAborted, getBuffer
       label: 'Ficheiros flag / user / proof (cat se legível)',
       cmd:
         'for p in /flag /flag.txt /root/flag.txt ./flag.txt .flag.txt flag.txt user.txt proof.txt; do ' +
-        'test -r "$p" 2>/dev/null && echo "=== $p ===" && cat "$p" 2>/dev/null && echo; done\n',
-      wait: 2600,
+        'test -r "$p" 2>/dev/null && echo "=== $p ===" && cat "$p" 2>/dev/null && echo; done; ' +
+        'find /home -maxdepth 4 \\( -name ".flag*" -o -name "flag.txt" \\) -type f 2>/dev/null | head -25 | while read -r g; do ' +
+        'echo "=== $g ==="; cat "$g" 2>/dev/null; echo; done\n',
+      wait: 3200,
     },
     {
       label: 'passwd + shadow (head)',
@@ -142,9 +146,11 @@ export async function runCtfShellAutoExplore({ write, send, isAborted, getBuffer
       wait: 3500,
     },
     {
-      label: 'Grep padrão Solyd{ no cwd (se existir)',
-      cmd: 'grep -r "Solyd{" . 2>/dev/null | head -25\n',
-      wait: 2800,
+      label: 'Grep Solyd{ em todas as homes (/etc/passwd) + cwd',
+      cmd:
+        '( awk -F: \'$6!=""{print $6}\' /etc/passwd 2>/dev/null | sort -u | while read -r h; do ' +
+        '[ -d "$h" ] && grep -rH "Solyd{" "$h" 2>/dev/null; done; grep -rH "Solyd{" . 2>/dev/null ) | head -45\n',
+      wait: 4200,
     },
   ];
 

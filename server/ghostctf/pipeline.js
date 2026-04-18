@@ -1,4 +1,5 @@
-import { scanIpPorts } from './nmap-scan.js';
+import { scanIpPorts, extractNmapScriptOutputBlob } from './nmap-scan.js';
+import { appendCtfFlagPathHttpProbes } from './flag-path-probe.js';
 import { curlWebFromNmap, curlWebFromNmapForHost, rowPrefersHttps, webOriginUrl } from './web-curl.js';
 import { dirEnumAllTools } from './dir-enum.js';
 import { detectFlagsWithDecoding } from './flag-detector.js';
@@ -16,6 +17,7 @@ import { runCredentialReuseProbe, runDisclosureHunt, runWordpressCredentialReuse
 import { runWordpressFocusProbe } from './wordpress-focus-probe.js';
 import { extractWpscanFindings, runWpscanJson } from '../modules/wpscan.js';
 import { normalizeExtraHostnames } from './extra-hosts-web.js';
+import { collectHostnamesFromLocalEtcHosts } from './local-etc-hosts.js';
 import { runExtendedServiceProbe } from './extended-service-probe.js';
 import { runOpenApiDiscovery } from './openapi-probe.js';
 import { runVhostPrefixFuzz } from './vhost-prefix-fuzz.js';
@@ -32,6 +34,120 @@ import { runSqlmapWsProbe } from './sqlmap-ws-probe.js';
 import { runWpHydraBrute } from './hydra-wp-brute-probe.js';
 import { runActiveMqProbe } from './activemq-probe.js';
 import { runUploadSurfaceProbe } from './upload-surface.js';
+import { ghostctfPositiveIntEnv } from './env-budgets.js';
+
+function safeToStringPipeline(v) {
+  return v == null ? '' : String(v);
+}
+
+/**
+ * Extrai flags (regex + base64/base32) de qualquer texto — headers, nmap, LFI, .env, etc.
+ */
+function ingestFlagsFromDecodedText({
+  rawText,
+  platformId,
+  foundFlagSet,
+  addFinding,
+  log,
+  maxTextLen = 900_000,
+  pageUrl = null,
+  extraMeta = '',
+}) {
+  const raw = String(rawText || '').trim().slice(0, maxTextLen);
+  if (!raw) return;
+  let flagHits = [];
+  try {
+    const hits = detectFlagsWithDecoding({ rawText: raw, platformId });
+    flagHits = Array.isArray(hits) ? hits : [];
+  } catch (e) {
+    if (typeof log === 'function') log(`scan de flags: ${e?.message || String(e)}`, 'warn');
+    flagHits = [];
+  }
+  for (const hit of flagHits) {
+    if (!hit || !hit.flag) continue;
+    if (foundFlagSet.has(hit.flag)) continue;
+    foundFlagSet.add(hit.flag);
+    addFinding(
+      {
+        type: 'flag',
+        prio: 'high',
+        score: 99,
+        value: hit.flag,
+        meta: `platform=${platformId}; evidence=${hit.evidence || 'unknown'}; decodedFrom=${hit.decodedFrom || ''}${pageUrl ? `; url=${pageUrl}` : ''}${extraMeta}`,
+        url: pageUrl,
+      },
+      'flags',
+    );
+  }
+}
+
+/** `detectFlagsWithDecoding` sobre value+meta de findings já agregados (mail, SMB, LFI snippet, SQLMap, tech). */
+function ingestFlagFindingsFromFindingsArtifacts({
+  findings,
+  platformId,
+  foundFlagSet,
+  addFinding,
+  log,
+  maxPerFinding = 120_000,
+}) {
+  const types = new Set(['nmap', 'endpoint', 'tech', 'secret', 'param', 'sqli']);
+  for (const f of findings || []) {
+    if (!f || !types.has(f.type)) continue;
+    const blob = `${safeToStringPipeline(f.value)}\n${safeToStringPipeline(f.meta)}`.trim();
+    if (blob.length < 6) continue;
+    ingestFlagsFromDecodedText({
+      rawText: blob.slice(0, maxPerFinding),
+      platformId,
+      foundFlagSet,
+      addFinding,
+      log,
+      maxTextLen: maxPerFinding,
+      pageUrl: f.url || null,
+      extraMeta: `; artifact=${f.type}`,
+    });
+  }
+}
+
+function ingestFlagFindingsFromWebResponses({
+  webResponses,
+  platformId,
+  foundFlagSet,
+  addFinding,
+  log,
+  maxTextLen = 900_000,
+}) {
+  for (const r of webResponses || []) {
+    if (!r) continue;
+    const pageUrl = r.finalUrl || r.url || null;
+    const ht = safeToStringPipeline(r.headersText || '');
+    const bt = safeToStringPipeline(r.bodyText || '');
+    const se = safeToStringPipeline(r.curlStderr || '');
+    const rawText = `${ht}\n${ht}\n${bt}\n${se}`.trim().slice(0, maxTextLen);
+    if (!rawText) continue;
+    let via = '';
+    if (r.__via === 'robots-disallow') {
+      via = `; via=robots-disallow; path=${String(r.__disallowPath || '')}`;
+    } else if (r.__via === 'etc-hosts-name') {
+      via = `; via=etc-hosts-name; host=${String(r.__vhostName || '')}`;
+    } else if (r.__via === 'ctf-flag-paths') {
+      via = `; via=ctf-flag-paths; path=${String(r.__ctfFlagPath || '')}`;
+    } else if (r.__via === 'robots.txt') {
+      via = '; via=robots.txt';
+    } else if (r.__via === 'disclosure-hunt') {
+      via = '; via=disclosure-hunt';
+    }
+    ingestFlagsFromDecodedText({
+      rawText,
+      platformId,
+      foundFlagSet,
+      addFinding,
+      log,
+      maxTextLen,
+      pageUrl,
+      extraMeta: via,
+    });
+  }
+}
 
 /** Uma seed por origem (ex.: :80 vs :443 vs :8080) para dir-enum não ficar só nas primeiras URLs da mesma porta. */
 function collectDirEnumSeedUrls(webResponses, { maxOrigins = 8 } = {}) {
@@ -115,6 +231,13 @@ export async function runGhostCtfPipeline({
   const progress = (p) => emit({ type: 'progress', pct: p });
   const intel = (line) => emit({ type: 'intel', line });
 
+  const tPipeline0 = Date.now();
+  /** @type {Record<string, number>} */
+  const timingsMs = {};
+  const markTiming = (key) => {
+    timingsMs[key] = Math.round(Date.now() - tPipeline0);
+  };
+
   // 1) INPUT
   pipe('input', 'active');
   progress(5);
@@ -126,11 +249,27 @@ export async function runGhostCtfPipeline({
   log(`GhostCTF Recon por IP: ${ip}`, 'section');
 
   let nmapRows = [];
+  /** XML bruto do nmap (saídas de `--script` / `<script output=…>`). */
+  let nmapXml = '';
   try {
-    nmapRows = await scanIpPorts({ ip, tcpAllPorts, udpScan, log });
+    const nm = await scanIpPorts({ ip, tcpAllPorts, udpScan, log });
+    nmapRows = nm.rows || [];
+    nmapXml = String(nm.xml || '');
   } catch (e) {
     emit({ type: 'error', message: e?.message || String(e) });
-    return { runId: null, findings, stats, intelMerge: null, correlation: { ip, platformId } };
+    markTiming('failedAtNmap');
+    return {
+      runId: null,
+      findings,
+      stats,
+      intelMerge: null,
+      correlation: {
+        ip,
+        platformId,
+        timingsMs,
+        totalRunMs: Math.round(Date.now() - tPipeline0),
+      },
+    };
   }
 
   const openPorts = (nmapRows || []).length;
@@ -164,6 +303,23 @@ export async function runGhostCtfPipeline({
     );
   }
 
+  const nmapScriptBlob = extractNmapScriptOutputBlob(nmapXml);
+  if (nmapScriptBlob.trim()) {
+    log('nmap: a extrair possíveis flags de saídas de scripts (XML, texto não HTML)…', 'info');
+    ingestFlagsFromDecodedText({
+      rawText: nmapScriptBlob,
+      platformId,
+      foundFlagSet,
+      addFinding,
+      log,
+      maxTextLen: 320_000,
+      pageUrl: null,
+      extraMeta: '; via=nmap-xml-script',
+    });
+  }
+
+  markTiming('afterNmapAndScriptBlob');
+
   // Exploit-DB lookup (searchsploit) — opcional
   if (Array.isArray(modules) && modules.includes('exploitdb')) {
     try {
@@ -186,7 +342,7 @@ export async function runGhostCtfPipeline({
     for (const ftpPort of ftpPorts) {
       ftpAnonymousSummary.tried += 1;
       try {
-        const fr = await probeFtpAnonymous({ host: ip, port: ftpPort, timeoutMs: 12000 });
+        const fr = await probeFtpAnonymous({ host: ip, port: ftpPort, timeoutMs: 12000, platformId });
         if (fr.anonymousOk) {
           ftpAnonymousSummary.successPorts.push(ftpPort);
           const listPreview = Array.isArray(fr.listPreview) ? fr.listPreview.slice(0, 6) : [];
@@ -202,7 +358,55 @@ export async function runGhostCtfPipeline({
             },
             'endpoints',
           );
+          const fh = fr.flagHarvest;
+          if (fh?.grepMatches?.length) {
+            const seenGrep = new Set();
+            for (const gm of fh.grepMatches) {
+              const key = `${String(gm.term || '').toLowerCase()}|${String(gm.snippet || '').slice(0, 120)}`;
+              if (seenGrep.has(key)) continue;
+              seenGrep.add(key);
+              if (seenGrep.size > 10) break;
+              addFinding(
+                {
+                  type: 'secret',
+                  prio: 'med',
+                  score: 62,
+                  value: `FTP grep «${gm.term}» @ ${ip}:${ftpPort}`,
+                  meta: `ftp-flag-grep · ${gm.where || 'LIST'} · ${String(gm.snippet || '').slice(0, 360)}`,
+                  url: `ftp://${ip}:${ftpPort}/`,
+                },
+                'secrets',
+              );
+            }
+          }
+          if (fh?.detectorFlags?.length) {
+            for (const df of fh.detectorFlags) {
+              if (!df?.flag || foundFlagSet.has(df.flag)) continue;
+              foundFlagSet.add(df.flag);
+              addFinding(
+                {
+                  type: 'flag',
+                  prio: 'high',
+                  score: 99,
+                  value: df.flag,
+                  meta: [
+                    `platform=${platformId}`,
+                    `evidence=${df.evidence || 'ftp-anon'}`,
+                    df.ftpPath ? `ftpPath=${df.ftpPath}` : null,
+                    df.decodedFrom ? `decodedFrom=${String(df.decodedFrom).slice(0, 120)}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · '),
+                  url: `ftp://${ip}:${ftpPort}/`,
+                },
+                'flags',
+              );
+            }
+          }
           log(`FTP anonymous: SUCESSO em ${ip}:${ftpPort} — ${fr.summary || '230'}`, 'success');
+          if (fh?.retrTried?.length) {
+            log(`FTP flag-harvest ${ip}:${ftpPort}: RETR tentados=${fh.retrTried.join(', ')}`, 'info');
+          }
           if (listPreview.length) {
             log(`FTP LIST ${ip}:${ftpPort}: ${listPreview.join(' | ')}`, 'info');
           } else {
@@ -593,6 +797,7 @@ export async function runGhostCtfPipeline({
     log(`playbook: ${e?.message || String(e)}`, 'warn');
   }
 
+  markTiming('beforeSubdomainsPipeDone');
   pipe('subdomains', 'done');
   progress(28);
 
@@ -605,7 +810,30 @@ export async function runGhostCtfPipeline({
   // 4) WEB PROBE (mapa para "alive")
   pipe('alive', 'active');
   progress(35);
-  const namesForEtc = normalizeExtraHostnames(extraHosts);
+  /** Hostnames descobertos em `/etc/hosts` local (máquina do Node) com o mesmo IP do alvo — fundidos com a lista da UI. */
+  let hostnamesFromLocalEtcHosts = [];
+  if (
+    Array.isArray(modules) &&
+    modules.includes('etcHostsProbe') &&
+    String(process.env.GHOSTCTF_SKIP_LOCAL_ETC_HOSTS || '').trim() !== '1'
+  ) {
+    try {
+      const maxLocal = Math.min(
+        64,
+        Math.max(1, Number(process.env.GHOSTCTF_MAX_LOCAL_ETC_HOSTS) || 32),
+      );
+      hostnamesFromLocalEtcHosts = await collectHostnamesFromLocalEtcHosts(ip, { max: maxLocal });
+      if (hostnamesFromLocalEtcHosts.length) {
+        log(
+          `Hostnames do /etc/hosts local (IP=${ip}): ${hostnamesFromLocalEtcHosts.join(', ')} — a juntar ao recon (módulo Hostnames).`,
+          'info',
+        );
+      }
+    } catch (e) {
+      log(`Leitura automática de /etc/hosts: ${e?.message || String(e)}`, 'warn');
+    }
+  }
+  const namesForEtc = normalizeExtraHostnames([...(extraHosts || []), ...hostnamesFromLocalEtcHosts]);
   const useHostsOnlyWeb =
     Boolean(hostsOnlyWeb) &&
     Array.isArray(modules) &&
@@ -628,10 +856,11 @@ export async function runGhostCtfPipeline({
     webResponses = await curlWebFromNmap({ ip, nmapRows, timeoutMs: 12000, maxBodyBytes: 250000, log });
   }
 
-  /** @type {{ enabled: boolean, hosts: string[], urls: number }} */
-  let etcHostsSummary = { enabled: false, hosts: [], urls: 0 };
+  /** @type {{ enabled: boolean, hosts: string[], urls: number, localFileHosts: string[] }} */
+  let etcHostsSummary = { enabled: false, hosts: [], urls: 0, localFileHosts: [] };
   if (Array.isArray(modules) && modules.includes('etcHostsProbe')) {
     etcHostsSummary.enabled = true;
+    etcHostsSummary.localFileHosts = hostnamesFromLocalEtcHosts;
     const names = namesForEtc;
     etcHostsSummary.hosts = names;
     if (names.length) {
@@ -670,7 +899,10 @@ export async function runGhostCtfPipeline({
         log(`Hostnames (/etc/hosts): ${e?.message || String(e)}`, 'warn');
       }
     } else {
-      log('Hostnames (/etc/hosts): módulo ON — preenche a lista de nomes (um por linha) antes do RUN.', 'warn');
+      log(
+        'Hostnames (/etc/hosts): módulo ON mas sem nomes — cola hostnames na UI ou mapeia o IP do alvo em /etc/hosts desta máquina (Node). Opcional: GHOSTCTF_SKIP_LOCAL_ETC_HOSTS=1 para não ler o ficheiro.',
+        'warn',
+      );
     }
   } else {
     log('Hostnames (/etc/hosts): OFF (ative em Modules se usares nomes no /etc/hosts)', 'info');
@@ -716,6 +948,8 @@ export async function runGhostCtfPipeline({
     }
   }
 
+  /** @type {{ fetched: number; tried: number; origins: number }} */
+  let ctfFlagPathProbeSummary = { fetched: 0, tried: 0, origins: 0 };
   let robotsFetched = 0;
   let robotsDisallowFetched = 0;
   try {
@@ -762,6 +996,23 @@ export async function runGhostCtfPipeline({
     }
   } else {
     log('VHost/Sitemap probe: OFF (ative em Modules)', 'info');
+  }
+
+  try {
+    const fp = await appendCtfFlagPathHttpProbes(webResponses, { ip, log, timeoutMs: 9000, maxBodyBytes: 140000 });
+    ctfFlagPathProbeSummary = {
+      fetched: Number(fp?.fetched || 0),
+      tried: Number(fp?.tried || 0),
+      origins: Number(fp?.origins || 0),
+    };
+    if (ctfFlagPathProbeSummary.tried) {
+      log(
+        `CTF flag-paths HTTP: ${ctfFlagPathProbeSummary.tried} GET(s) em ${ctfFlagPathProbeSummary.origins} origem(ns) (/flag, /flag.txt, …)`,
+        'info',
+      );
+    }
+  } catch (e) {
+    log(`CTF flag-path probe: ${e?.message || String(e)}`, 'warn');
   }
 
   const countAfterInitialCurl = webResponses.length;
@@ -901,7 +1152,7 @@ export async function runGhostCtfPipeline({
       maxBodyBytes: 350000,
       /** Listagens grandes (ex. Python em /) — seguir mais níveis até ficheiros tipo shell. */
       maxDepth: 4,
-      maxNewFetches: 150,
+      maxNewFetches: ghostctfPositiveIntEnv('GHOSTCTF_MAX_LINK_CRAWL_FETCHES', 150),
     });
     linkPagesFetched = linkRes.fetched || 0;
     if (linkPagesFetched) log(`HTML links: ${linkPagesFetched} página(s) extra com curl`, 'success');
@@ -1064,6 +1315,7 @@ export async function runGhostCtfPipeline({
     log,
     maxTextLen: 500_000,
   });
+  markTiming('afterAliveWebProbe');
   pipe('alive', 'done');
   progress(52);
 
@@ -1135,12 +1387,14 @@ export async function runGhostCtfPipeline({
   }
 
   log(`Páginas extra (curl das dirs): ${pagesFetched}`, pagesFetched ? 'success' : 'info');
+  markTiming('afterDirEnumSurface');
   pipe('surface', 'done');
   progress(70);
 
   // 6) URLS / DISCOVERY — links HTML já cobertos em “alive”; robots/sitemap podem ser acrescentados depois
   pipe('urls', 'active');
   log('Discovery URLs: robots.txt + links HTML + ffuf/gobuster/dirb.', 'info');
+  markTiming('afterUrlDiscoveryLabel');
   pipe('urls', 'done');
 
   // 7) PARAM DISCOVERY / FLAG SCAN (mapa para "params")
@@ -1507,6 +1761,14 @@ export async function runGhostCtfPipeline({
 
   log('Scan de flags Solyd{...} e validação do formato (com base64/base32 decoding)...', 'info');
 
+  ingestFlagFindingsFromFindingsArtifacts({
+    findings,
+    platformId,
+    foundFlagSet,
+    addFinding,
+    log,
+  });
+
   ingestFlagFindingsFromWebResponses({
     webResponses,
     platformId,
@@ -1521,7 +1783,7 @@ export async function runGhostCtfPipeline({
 
   // Playbook final (pós-params): já inclui achados contextuais (LFI/SQLMap/etc).
   try {
-    const sug = buildCtfPlaybookSuggestions({ ip, findings });
+    const sug = buildCtfPlaybookSuggestions({ ip, findings, flagPathHttpProbe: ctfFlagPathProbeSummary });
     for (const s of sug.slice(0, 10)) {
       intel(`PLAYBOOK+ (${String(s.prio).toUpperCase()}): ${s.title}`);
       for (const step of s.steps.slice(0, 6)) intel(`  - ${step}`);
@@ -1553,6 +1815,9 @@ export async function runGhostCtfPipeline({
   progress(100);
   pipe('score', 'done');
 
+  markTiming('beforeCorrelationSave');
+  const totalRunMs = Math.round(Date.now() - tPipeline0);
+
   const modulesForDb = [
     '__ghostctf__',
     `platform:${platformId}`,
@@ -1564,6 +1829,8 @@ export async function runGhostCtfPipeline({
   const corr = {
     ip,
     platformId,
+    timingsMs,
+    totalRunMs,
     udpScan,
     tcpAllPorts,
     pagesFetched:
@@ -1577,6 +1844,8 @@ export async function runGhostCtfPipeline({
     etcHosts: {
       enabled: etcHostsSummary.enabled,
       hosts: etcHostsSummary.hosts || [],
+      /** Só entradas cujo IP no `/etc/hosts` local coincide com o alvo (antes do merge com a UI). */
+      localFileHosts: etcHostsSummary.localFileHosts || [],
       urls: etcHostsSummary.urls || 0,
       hostsOnlyWeb: Boolean(useHostsOnlyWeb),
     },
@@ -1621,6 +1890,7 @@ export async function runGhostCtfPipeline({
     sshBruteProbe: sshBruteSummary,
     langflowExploitProbe: langflowExploitSummary,
     uploadSurfaceProbe: uploadSurfaceSummary,
+    ctfFlagPathProbe: ctfFlagPathProbeSummary,
   };
 
   let saved = null;
@@ -1658,60 +1928,3 @@ export async function runGhostCtfPipeline({
 
   return { runId, findings, stats, intelMerge, correlation: corr };
 }
-
-function safeToString(v) {
-  return v == null ? '' : String(v);
-}
-
-/**
- * Agrega headers/bodies das respostas web e extrai flags (com decoding).
- * Usa array garantido — evita ReferenceError se detectFlagsWithDecoding falhar.
- */
-function ingestFlagFindingsFromWebResponses({
-  webResponses,
-  platformId,
-  foundFlagSet,
-  addFinding,
-  log,
-  maxTextLen = 900_000,
-}) {
-  for (const r of webResponses || []) {
-    if (!r) continue;
-    const pageUrl = r.finalUrl || r.url || null;
-    const ht = safeToString(r.headersText || '');
-    const bt = safeToString(r.bodyText || '');
-    const rawText = `${ht}\n${bt}`.trim().slice(0, maxTextLen);
-    if (!rawText) continue;
-    let flagHits = [];
-    try {
-      const hits = detectFlagsWithDecoding({ rawText, platformId });
-      flagHits = Array.isArray(hits) ? hits : [];
-    } catch (e) {
-      if (typeof log === 'function') log(`scan de flags: ${e?.message || String(e)}`, 'warn');
-      flagHits = [];
-    }
-    const via =
-      r.__via === 'robots-disallow'
-        ? `; via=robots-disallow; path=${String(r.__disallowPath || '')}`
-        : r.__via === 'etc-hosts-name'
-          ? `; via=etc-hosts-name; host=${String(r.__vhostName || '')}`
-          : '';
-    for (const hit of flagHits) {
-      if (!hit || !hit.flag) continue;
-      if (foundFlagSet.has(hit.flag)) continue;
-      foundFlagSet.add(hit.flag);
-      addFinding(
-        {
-          type: 'flag',
-          prio: 'high',
-          score: 99,
-          value: hit.flag,
-          meta: `platform=${platformId}; evidence=${hit.evidence || 'unknown'}; decodedFrom=${hit.decodedFrom || ''}${pageUrl ? `; url=${pageUrl}` : ''}${via}`,
-          url: pageUrl,
-        },
-        'flags',
-      );
-    }
-  }
-}
-

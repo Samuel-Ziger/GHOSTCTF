@@ -85,6 +85,8 @@ export const DORK_TEMPLATES = {
   rdap: [],
   security_headers: [],
   virustotal: [],
+  /** Lista servida pela UI/API; não gera dorks */
+  out_of_scope: [],
 };
 
 const HIGH_DORK = new Set([
@@ -99,7 +101,30 @@ const HIGH_DORK = new Set([
   'pastebin',
 ]);
 
-export function buildDorks(domainStr, selectedMods) {
+function buildTechContextDorks(domainStr, techHints = []) {
+  const hints = techHints.map((x) => String(x).toLowerCase());
+  const out = [];
+  const add = (query, mod = 'tech_context', prio = 'med') => {
+    out.push({
+      mod,
+      query,
+      googleUrl: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+      prio,
+    });
+  };
+  if (hints.some((h) => h.includes('wordpress'))) {
+    add(`site:${domainStr} inurl:wp-json OR inurl:xmlrpc.php OR inurl:wp-admin`, 'tech_wp', 'high');
+  }
+  if (hints.some((h) => h.includes('next.js') || h.includes('__next'))) {
+    add(`site:${domainStr} inurl:_next/static OR inurl:_next/data`, 'tech_next', 'med');
+  }
+  if (hints.some((h) => h.includes('laravel'))) {
+    add(`site:${domainStr} inurl:.env OR inurl:telescope OR intitle:"Laravel"`, 'tech_laravel', 'high');
+  }
+  return out;
+}
+
+export function buildDorks(domainStr, selectedMods, techHints = []) {
   const out = [];
   for (const mod of selectedMods) {
     const tpls = DORK_TEMPLATES[mod];
@@ -114,5 +139,5 @@ export function buildDorks(domainStr, selectedMods) {
       });
     }
   }
-  return out;
+  return [...out, ...buildTechContextDorks(domainStr, techHints)];
 }

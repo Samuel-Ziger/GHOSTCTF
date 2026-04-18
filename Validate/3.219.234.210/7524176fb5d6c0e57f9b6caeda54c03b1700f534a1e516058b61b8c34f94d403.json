@@ -1,0 +1,17 @@
+{
+  "target": "3.219.234.210",
+  "fingerprint": "7524176fb5d6c0e57f9b6caeda54c03b1700f534a1e516058b61b8c34f94d403",
+  "validated_at": "2026-04-18T01:05:06.478Z",
+  "notes": "",
+  "snapshot": {
+    "type": "wpscan",
+    "prio": "high",
+    "value": "WordPress plugin simply-poll 1.4.1 (vulnerável — XSS/SQLi)",
+    "url": "http://3.219.234.210/wordpress",
+    "meta": "WPScan / Exploit-DB; vetor admin-ajax.php.",
+    "desafio": "CTF1_Solyd_2019",
+    "projectName": "CTF1_Solyd_2019"
+  },
+  "brainCategoryId": null,
+  "brainCategoryTitle": null
+}
