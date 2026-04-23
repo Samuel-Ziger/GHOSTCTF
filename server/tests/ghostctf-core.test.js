@@ -5,9 +5,27 @@ import { extractNmapScriptOutputBlob } from '../ghostctf/nmap-scan.js';
 import { parseNmapXml } from '../modules/kali-scan.js';
 import { ghostctfPositiveIntEnv } from '../ghostctf/env-budgets.js';
 import { ghostctfHttpCookieAls, getPipelineHttpCookie } from '../ghostctf/http-cookie-context.js';
-import { envGhostctfThenRecon, ghostctfAiPolicyDisableGemini } from '../modules/ai-dual-report.js';
+import {
+  envGhostctfThenRecon,
+  ghostctfAiPolicyDisableGemini,
+  normalizeAiPrimaryCloud,
+  lmStudioExplicitlyEnabledForGhostctf,
+} from '../modules/ai-dual-report.js';
 import { parseEtcHostsContentForTarget } from '../ghostctf/local-etc-hosts.js';
 import { isFalhasHistoricoDecorativeLine, parseFalhasHistoricoSections } from '../ghostctf/brain-sync-falhas-historico.js';
+import { jdwpPortsFromNmap } from '../ghostctf/jdwp-probe.js';
+import {
+  expandIntranetSweepTargets,
+  normalizeIntranetSweepPorts,
+  isValidIpv4ForSweep,
+} from '../ghostctf/intranet-sweep-probe.js';
+import {
+  parsePostFormTargetUrl,
+  htmlAttr,
+  extractPostCodeFormsFromHtml,
+  inferHydraFailFromBodies,
+} from '../ghostctf/hydra-form-code-probe.js';
+import { buildGhostreconMarkdownFromCtfPayload } from '../modules/ghost-local-ai.js';
 
 test('detectFlagsWithDecoding: directo + base64', () => {
   const direct = detectFlagsWithDecoding({
@@ -161,4 +179,98 @@ test('ghostctfAiPolicyDisableGemini', () => {
   assert.equal(ghostctfAiPolicyDisableGemini(), false);
   if (prev === undefined) delete process.env[k];
   else process.env[k] = prev;
+});
+
+test('jdwpPortsFromNmap: identifica 5005 e serviço jdwp', () => {
+  const rows = [
+    { proto: 'tcp', port: '22', name: 'ssh', product: 'OpenSSH' },
+    { proto: 'tcp', port: '5005', name: 'unknown', product: '' },
+    { proto: 'tcp', port: '7001', name: 'tcp', product: 'Java Debug Wire Protocol' },
+    { proto: 'udp', port: '5005', name: 'ignored', product: 'jdwp' },
+  ];
+  const got = jdwpPortsFromNmap(rows);
+  assert.deepEqual(got, [5005, 7001]);
+});
+
+test('intranet sweep helpers: parse CIDR + portas e valida IPv4', () => {
+  assert.equal(isValidIpv4ForSweep('10.15.38.36'), true);
+  assert.equal(isValidIpv4ForSweep('999.15.38.36'), false);
+  const tg = expandIntranetSweepTargets('10.15.38.36,10.15.38.0/30', 10);
+  // /30 => .1 e .2 (sem network/broadcast), mais ip explícito
+  assert.deepEqual(tg, ['10.15.38.36', '10.15.38.1', '10.15.38.2']);
+  const ports = normalizeIntranetSweepPorts('22,5005,61616,22,99999');
+  assert.deepEqual(ports, [22, 5005, 61616]);
+});
+
+test('parsePostFormTargetUrl: http e https default ports', () => {
+  const h = parsePostFormTargetUrl('http://imobiliarians.solyd:8081/cadastro.php');
+  assert.equal(h.host, 'imobiliarians.solyd');
+  assert.equal(h.port, 8081);
+  assert.equal(h.module, 'http-post-form');
+  assert.equal(h.path, '/cadastro.php');
+  const s = parsePostFormTargetUrl('https://x.example/path');
+  assert.equal(s.port, 443);
+  assert.equal(s.module, 'https-post-form');
+});
+
+test('htmlAttr: aspas duplas e simples', () => {
+  assert.equal(htmlAttr(' name="code" type=\'password\' ', 'name'), 'code');
+  assert.equal(htmlAttr(' type=password name=token ', 'name'), 'token');
+});
+
+test('extractPostCodeFormsFromHtml: cadastro-like', () => {
+  const html = `<div><form method="post" role="form">
+    <input class="x" name="code" type="password" placeholder="Insira">
+    <button type="submit" name="validar" value="validar">OK</button>
+  </form></div>`;
+  const rows = extractPostCodeFormsFromHtml(html, 'http://host/cadastro.php');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].fieldName, 'code');
+  assert.match(rows[0].extraPost, /validar=validar/);
+  assert.equal(rows[0].postUrl, 'http://host/cadastro.php');
+});
+
+test('inferHydraFailFromBodies: token novo no POST', () => {
+  const getH = '<html><body><p>login</p></body></html>';
+  const postH = '<html><body><p>login</p><div class="err">Código inválido</div></body></html>';
+  const got = inferHydraFailFromBodies(getH, postH);
+  assert.equal(got, 'inválido');
+});
+
+test('normalizeAiPrimaryCloud: ghost_local', () => {
+  assert.equal(normalizeAiPrimaryCloud('ghost_local', false), 'ghost_local');
+  assert.equal(normalizeAiPrimaryCloud('GHOST', false), 'ghost_local');
+});
+
+test('lmStudioExplicitlyEnabledForGhostctf: só MODEL não activa', () => {
+  const k = [
+    'GHOSTCTF_LMSTUDIO_ENABLED',
+    'GHOSTRECON_LMSTUDIO_ENABLED',
+    'GHOSTCTF_LMSTUDIO_MODEL',
+    'GHOSTRECON_LMSTUDIO_MODEL',
+  ];
+  const snap = Object.fromEntries(k.map((x) => [x, process.env[x]]));
+  try {
+    for (const x of k) delete process.env[x];
+    process.env.GHOSTRECON_LMSTUDIO_MODEL = 'qwen';
+    assert.equal(lmStudioExplicitlyEnabledForGhostctf(), false);
+    process.env.GHOSTRECON_LMSTUDIO_ENABLED = '1';
+    assert.equal(lmStudioExplicitlyEnabledForGhostctf(), true);
+    process.env.GHOSTCTF_LMSTUDIO_ENABLED = '0';
+    assert.equal(lmStudioExplicitlyEnabledForGhostctf(), false);
+  } finally {
+    for (const x of k) {
+      if (snap[x] === undefined) delete process.env[x];
+      else process.env[x] = snap[x];
+    }
+  }
+});
+
+test('buildGhostreconMarkdownFromCtfPayload: inclui findings', () => {
+  const md = buildGhostreconMarkdownFromCtfPayload(
+    { findings: [{ type: 'endpoint', prio: 'med', url: 'http://x/a' }] },
+    'x.test',
+  );
+  assert.match(md, /GHOSTCTF/);
+  assert.match(md, /endpoint/);
 });

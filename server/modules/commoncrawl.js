@@ -18,6 +18,7 @@ export async function fetchCommonCrawlUrls(domain) {
     colls.find((c) => c?.id) ||
     colls[0];
   const apiBase =
+    process.env.GHOSTCTF_CC_CDX_API?.trim() ||
     process.env.GHOSTRECON_CC_CDX_API?.trim() ||
     main['cdx-api'] ||
     (main.id ? `https://index.commoncrawl.org/${main.id}-index` : null);

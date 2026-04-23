@@ -1,6 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { DATA_DIR, resolveLocalProjectDbDir, sanitizePathSegment } from './db-sqlite.js';
+import {
+  buildGhostreconMarkdownFromCtfPayload,
+  callGhostLocalChatCompletion,
+  probeGhostLocalHealth,
+  resolveGhostLocalBaseUrl,
+  resolveGhostLocalModel,
+} from './ghost-local-ai.js';
 
 /** Primeiro `GHOSTCTF_*`, depois `GHOSTRECON_*` (mesmo `.env` que no GHOSTRECON). */
 export function envGhostctfThenRecon(ctfKey, reconKey) {
@@ -32,7 +39,7 @@ function clampMarkdown(text, max) {
 /** Prompt idêntico para Gemini, OpenRouter e Anthropic direct (system + instrução sobre o JSON). */
 export function buildAiSystemPrompt() {
   const { maxRelatorio, maxProximos } = getAiMarkdownCharLimits();
-  return `És analista de segurança (bug bounty / pentest defensivo). Recebes UM objeto JSON exportado do framework GHOSTRECON (recon passivo, OSINT, heurísticas).
+  return `És analista de segurança (bug bounty / pentest defensivo / CTF). Recebes UM objeto JSON exportado do GHOSTCTF (recon passivo, OSINT, heurísticas).
 
 Regras obrigatórias:
 - Baseia-te APENAS no conteúdo do JSON. Não inventes CVEs, versões exactas, URLs que não apareçam, nem explorações "confirmadas" se o dado for só heurística ou passivo.
@@ -55,7 +62,7 @@ Idioma: português (Portugal ou Brasil, consistente).`;
 
 function buildAiSystemPromptCompact() {
   const { maxRelatorio, maxProximos } = getAiMarkdownCharLimits();
-  return `Analisa o JSON do GHOSTRECON e responde APENAS com JSON válido (chaves exactas relatorio, proximos_passos — nunca vazias):
+  return `Analisa o JSON do GHOSTCTF e responde APENAS com JSON válido (chaves exactas relatorio, proximos_passos — nunca vazias):
 {"relatorio":"...","proximos_passos":"..."}.
 Regras: usar só dados do JSON, sem inventar, português, conciso. relatorio primeiro no objecto.
 Limites: relatorio <= ${maxRelatorio} chars; proximos_passos <= ${maxProximos} chars.`;
@@ -106,7 +113,7 @@ function buildUserContent(jsonString) {
 
 ---
 
-Segue o JSON completo do pipeline GHOSTRECON (é o único contexto). Depois da análise, responde só com o objeto JSON com "relatorio" e "proximos_passos".
+Segue o JSON completo do pipeline GHOSTCTF (é o único contexto). Depois da análise, responde só com o objeto JSON com "relatorio" e "proximos_passos".
 
 JSON:
 ${jsonString}`;
@@ -581,7 +588,7 @@ function isLmStudioRetryablePayloadError(err) {
 /** Conteúdo user só com o JSON (system já leva as regras no Claude). */
 function buildClaudeUserPayloadJsonOnly(jsonString) {
   const { maxRelatorio, maxProximos } = getAiMarkdownCharLimits();
-  return `Analisa o seguinte JSON do GHOSTRECON. Responde APENAS com o objeto JSON pedido (chaves "relatorio" e "proximos_passos", valores Markdown; nenhuma vazia; relatorio primeiro no objecto). Cumpre os limites: relatorio ≤ ${maxRelatorio} caracteres, proximos_passos ≤ ${maxProximos} caracteres.
+  return `Analisa o seguinte JSON do GHOSTCTF. Responde APENAS com o objeto JSON pedido (chaves "relatorio" e "proximos_passos", valores Markdown; nenhuma vazia; relatorio primeiro no objecto). Cumpre os limites: relatorio ≤ ${maxRelatorio} caracteres, proximos_passos ≤ ${maxProximos} caracteres.
 
 JSON:
 ${jsonString}`;
@@ -677,6 +684,23 @@ export function ghostctfAiPolicyDisableGemini() {
 }
 
 /**
+ * LM Studio na GHOSTCTF: **desligado** por defeito.
+ * Activa só com `GHOSTCTF_LMSTUDIO_ENABLED=1` ou `GHOSTRECON_LMSTUDIO_ENABLED=1` **e** modelo em
+ * `GHOSTCTF_LMSTUDIO_MODEL` ou `GHOSTRECON_LMSTUDIO_MODEL` (só definir MODEL já não basta).
+ */
+export function lmStudioExplicitlyEnabledForGhostctf() {
+  const ctf = String(process.env.GHOSTCTF_LMSTUDIO_ENABLED ?? '').trim().toLowerCase();
+  const recon = String(process.env.GHOSTRECON_LMSTUDIO_ENABLED ?? '').trim().toLowerCase();
+  if (['0', 'false', 'no', 'off'].includes(ctf)) return false;
+  const flagOn =
+    ['1', 'true', 'yes', 'on'].includes(ctf) || ['1', 'true', 'yes', 'on'].includes(recon);
+  if (!flagOn) return false;
+  const model =
+    process.env.GHOSTCTF_LMSTUDIO_MODEL?.trim() || process.env.GHOSTRECON_LMSTUDIO_MODEL?.trim();
+  return Boolean(model);
+}
+
+/**
  * Primeiro provider cloud a tentar (`gemini` | `openrouter`).
  * Compat: `aiOpenrouterOnly` antigo força `openrouter`.
  */
@@ -684,6 +708,7 @@ export function normalizeAiPrimaryCloud(v, legacyOpenrouterOnly = false) {
   if (normalizeOpenrouterOnlyFlag(legacyOpenrouterOnly)) return 'openrouter';
   if (typeof v === 'string') {
     const s = v.trim().toLowerCase();
+    if (s === 'ghost_local' || s === 'ghost' || s === 'ghost-v3' || s === 'ollama_local') return 'ghost_local';
     if (s === 'openrouter' || s === 'or') return 'openrouter';
     if (s === 'gemini' || s === 'google') return 'gemini';
   }
@@ -701,7 +726,7 @@ function resolvePrimaryWithKeys(primaryGuess, aiUseOpenrouter, geminiKey, openro
 /**
  * @param {object} payload — export completo do pipeline (UI)
  * @param {string} [aiProviderMode] — reservado; `lmstudio_only` na UI só activa pré-check (ordem no servidor: cloud → LM no fim).
- * @returns {{ outputDir: string, gemini: object, openrouter: object, claude: object, lmstudio: object, pipelineJsonPath: string }}
+ * @returns {{ outputDir: string, gemini: object, openrouter: object, claude: object, lmstudio: object, ghostLocal: object, pipelineJsonPath: string }}
  */
 export async function runDualAiReports(
   payload,
@@ -730,9 +755,7 @@ export async function runDualAiReports(
   const geminiKey = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_AI_API_KEY?.trim();
   const openrouterKey = process.env.OPENROUTER_API_KEY?.trim();
   const claudeKey = process.env.ANTHROPIC_API_KEY?.trim();
-  const lmStudioEnabled =
-    ['1', 'true', 'yes', 'on'].includes(String(process.env.GHOSTRECON_LMSTUDIO_ENABLED || '').trim().toLowerCase())
-    || Boolean(process.env.GHOSTRECON_LMSTUDIO_MODEL?.trim());
+  const lmStudioEnabled = lmStudioExplicitlyEnabledForGhostctf();
   /** Modelo por defeito: 2.5-flash costuma ter cota free distinta de 2.0; sobrescreve com GHOSTRECON_GEMINI_MODEL. */
   const geminiModel = process.env.GHOSTRECON_GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
   const openrouterModel =
@@ -807,6 +830,14 @@ export async function runDualAiReports(
       relatorioPath: null,
       proximosPath: null,
     },
+    ghostLocal: {
+      ok: false,
+      error: null,
+      relatorio: null,
+      proximos_passos: null,
+      relatorioPath: null,
+      proximosPath: null,
+    },
   };
 
   const { maxRelatorio, maxProximos } = getAiMarkdownCharLimits();
@@ -828,6 +859,52 @@ export async function runDualAiReports(
     Math.floor(lmStudioInputChars * 0.32),
     Math.min(2200, lmCap),
   ].filter((v, i, arr) => v >= 800 && arr.indexOf(v) === i);
+
+  const tryGhostLocalReport = async () => {
+    const base = resolveGhostLocalBaseUrl();
+    const model = resolveGhostLocalModel();
+    status(`IA GHOST local (Ollama @ ${base}, modelo ${model}): a verificar /health…`, 'info');
+    const health = await probeGhostLocalHealth(base, 5000);
+    if (!health.ok) {
+      result.ghostLocal = {
+        ok: false,
+        error: health.error || `HTTP /health em ${base}`,
+        relatorio: null,
+        proximos_passos: null,
+        relatorioPath: null,
+        proximosPath: null,
+      };
+      return false;
+    }
+    status('IA GHOST local: a gerar relatório (JSON via Ollama)…', 'info');
+    try {
+      const ctxMd = buildGhostreconMarkdownFromCtfPayload(p, targetDomain);
+      const systemPrompt = `${buildAiSystemPromptCompact()}${ctxMd}`;
+      const raw = await callGhostLocalChatCompletion({
+        baseUrl: base,
+        model,
+        systemText: systemPrompt,
+        userText: secondUser,
+        maxTokens: 8192,
+        timeoutMs: 300000,
+      });
+      fs.writeFileSync(path.join(outputDir, 'ghost_local_raw.txt'), raw, 'utf8');
+      const parsed = extractJsonObject(raw);
+      const paths = writePair('ghost_local', parsed);
+      result.ghostLocal = { ok: true, error: null, ...paths };
+      return true;
+    } catch (e) {
+      result.ghostLocal = {
+        ok: false,
+        error: e?.message || String(e),
+        relatorio: null,
+        proximos_passos: null,
+        relatorioPath: null,
+        proximosPath: null,
+      };
+      return false;
+    }
+  };
 
   const tryLmStudioReport = async () => {
     let lastErr = null;
@@ -870,13 +947,65 @@ export async function runDualAiReports(
     return false;
   };
 
-  const primaryGuess = aiDisableGemini
-    ? 'openrouter'
-    : normalizeAiPrimaryCloud(aiPrimaryCloudRaw, aiOpenrouterOnly);
-  const primary = aiDisableGemini
-    ? 'openrouter'
-    : resolvePrimaryWithKeys(primaryGuess, aiUseOpenrouter, Boolean(geminiKey), Boolean(openrouterKey));
-  const alt = aiDisableGemini ? 'openrouter' : primary === 'gemini' ? 'openrouter' : 'gemini';
+  const rawPrimary = String(aiPrimaryCloudRaw || '').trim().toLowerCase();
+  const wantsGhostLocal =
+    rawPrimary === 'ghost_local' || rawPrimary === 'ghost' || rawPrimary === 'ghost-v3' || rawPrimary === 'ollama_local';
+
+  /** Sem `aiPrimaryCloud` no pedido: Ghost Intelligence (Ollama) primeiro — alinhado ao `npm start` que sobe :8000. */
+  const defaultPrimaryWhenUnset = String(process.env.GHOSTCTF_AI_PRIMARY_DEFAULT || 'ghost_local')
+    .trim()
+    .toLowerCase();
+
+  let primaryGuess;
+  if (normalizeOpenrouterOnlyFlag(aiOpenrouterOnly)) {
+    primaryGuess = 'openrouter';
+  } else if (wantsGhostLocal) {
+    primaryGuess = 'ghost_local';
+  } else if (rawPrimary) {
+    if (aiDisableGemini) {
+      const n = normalizeAiPrimaryCloud(aiPrimaryCloudRaw, false);
+      primaryGuess = n === 'gemini' ? 'openrouter' : n;
+    } else {
+      primaryGuess = normalizeAiPrimaryCloud(aiPrimaryCloudRaw, false);
+    }
+  } else if (defaultPrimaryWhenUnset === 'openrouter' || defaultPrimaryWhenUnset === 'or') {
+    primaryGuess = 'openrouter';
+  } else if (
+    (defaultPrimaryWhenUnset === 'gemini' || defaultPrimaryWhenUnset === 'google') &&
+    !aiDisableGemini
+  ) {
+    primaryGuess = 'gemini';
+  } else {
+    primaryGuess = 'ghost_local';
+  }
+
+  const primary =
+    primaryGuess === 'ghost_local'
+      ? 'ghost_local'
+      : aiDisableGemini
+        ? 'openrouter'
+        : resolvePrimaryWithKeys(primaryGuess, aiUseOpenrouter, Boolean(geminiKey), Boolean(openrouterKey));
+
+  const alt =
+    primary === 'ghost_local'
+      ? 'openrouter'
+      : aiDisableGemini
+        ? 'openrouter'
+        : primary === 'gemini'
+          ? 'openrouter'
+          : 'gemini';
+
+  if (primary !== 'ghost_local') {
+    result.ghostLocal = {
+      ok: false,
+      error: 'Não solicitado (usa aiPrimaryCloud: ghost_local para GHOST v3 + Ollama).',
+      relatorio: null,
+      proximos_passos: null,
+      relatorioPath: null,
+      proximosPath: null,
+    };
+  }
+
   const reorderClouds =
     Boolean(aiOpenrouterThenGeminiBeforeLm) && primary === 'openrouter' && !aiDisableGemini;
   let attemptedGemini = false;
@@ -898,7 +1027,8 @@ export async function runDualAiReports(
     result.gemini.ok === true ||
     result.openrouter.ok === true ||
     result.claude.ok === true ||
-    result.lmstudio.ok === true;
+    result.lmstudio.ok === true ||
+    result.ghostLocal.ok === true;
 
   const runGeminiAttempts = async () => {
     if (attemptedGemini) return;
@@ -993,20 +1123,25 @@ export async function runDualAiReports(
   };
 
   status(
-    aiDisableGemini
-      ? 'IA (GHOSTCTF): ordem — OpenRouter primeiro; se falhar → LM Studio (se activo); por fim Claude se configurado. Gemini desactivado.'
-      : reorderClouds
-        ? 'IA (Reporte): ordem — OpenRouter primeiro; se falhar → Gemini; se ainda falhar → LM Studio; por fim Claude se configurado.'
-        : `IA: ordem — primeiro ${primary === 'openrouter' ? 'OpenRouter' : 'Gemini'}; se falhar → LM Studio; depois ${alt === 'openrouter' ? 'OpenRouter' : 'Gemini'} (se permitido); por fim Claude se configurado.`,
+    primary === 'ghost_local'
+      ? `IA: Ghost Intelligence (Ollama @ GHOST v3) primeiro; depois OpenRouter / Gemini / Claude${lmStudioEnabled ? '; LM Studio (opt-in)' : ''}.`
+      : aiDisableGemini
+        ? `IA (GHOSTCTF): OpenRouter → Claude${lmStudioEnabled ? ' → LM Studio (opt-in)' : ''} (sem Gemini na cloud por política).`
+        : reorderClouds
+          ? `IA (Reporte): OpenRouter → Gemini${lmStudioEnabled ? ' → LM Studio' : ''} → Claude.`
+          : `IA: ${primary === 'openrouter' ? 'OpenRouter' : 'Gemini'}${lmStudioEnabled ? ' → LM Studio' : ''} → ${alt === 'openrouter' ? 'OpenRouter' : 'Gemini'} → Claude.`,
     'info',
   );
 
   // Fase 1 — provider escolhido na UI (ou legado aiOpenrouterOnly)
-  if (primary === 'gemini') await runGeminiAttempts();
+  if (primary === 'ghost_local') await tryGhostLocalReport();
+  else if (primary === 'gemini') await runGeminiAttempts();
   else await runOpenrouterAttempt();
 
   const primarySucceeded =
-    (primary === 'gemini' && result.gemini.ok) || (primary === 'openrouter' && result.openrouter.ok);
+    (primary === 'gemini' && result.gemini.ok) ||
+    (primary === 'openrouter' && result.openrouter.ok) ||
+    (primary === 'ghost_local' && result.ghostLocal.ok);
 
   if (primarySucceeded && primary === 'gemini' && !attemptedOpenrouter) {
     result.openrouter = {
@@ -1028,6 +1163,29 @@ export async function runDualAiReports(
       proximosPath: null,
     };
     attemptedGemini = true;
+  } else if (primarySucceeded && primary === 'ghost_local') {
+    if (!attemptedOpenrouter) {
+      result.openrouter = {
+        ok: false,
+        error: 'Não executado (GHOST local/Ollama respondeu primeiro).',
+        relatorio: null,
+        proximos_passos: null,
+        relatorioPath: null,
+        proximosPath: null,
+      };
+      attemptedOpenrouter = true;
+    }
+    if (!attemptedGemini) {
+      result.gemini = {
+        ok: false,
+        error: 'Não executado (GHOST local respondeu primeiro).',
+        relatorio: null,
+        proximos_passos: null,
+        relatorioPath: null,
+        proximosPath: null,
+      };
+      attemptedGemini = true;
+    }
   }
 
   // Reporte: Gemini como segunda cloud (antes do LM Studio) quando o primeiro é OpenRouter
@@ -1052,7 +1210,8 @@ export async function runDualAiReports(
     } else if (!reportOk() && !lmStudioEnabled) {
       result.lmstudio = {
         ok: false,
-        error: 'LM Studio desativado (define GHOSTRECON_LMSTUDIO_ENABLED=1 e GHOSTRECON_LMSTUDIO_MODEL).',
+        error:
+          'LM Studio desactivado na GHOSTCTF (opt-in: GHOSTCTF_LMSTUDIO_ENABLED=1 e GHOSTCTF_LMSTUDIO_MODEL ou equivalentes GHOSTRECON_*).',
         relatorio: null,
         proximos_passos: null,
         relatorioPath: null,
@@ -1074,7 +1233,8 @@ export async function runDualAiReports(
   } else if (!primarySucceeded && !lmStudioEnabled) {
     result.lmstudio = {
       ok: false,
-      error: 'LM Studio desativado (define GHOSTRECON_LMSTUDIO_ENABLED=1 e GHOSTRECON_LMSTUDIO_MODEL).',
+      error:
+        'LM Studio desactivado na GHOSTCTF (opt-in: GHOSTCTF_LMSTUDIO_ENABLED=1 e GHOSTCTF_LMSTUDIO_MODEL ou equivalentes GHOSTRECON_*).',
       relatorio: null,
       proximos_passos: null,
       relatorioPath: null,
@@ -1131,13 +1291,26 @@ export async function runDualAiReports(
     };
   }
 
-  const cascade =
-    reorderClouds
-      ? ['openrouter', 'gemini', 'lmstudio', ...(claudeKey ? ['claude'] : [])]
-      : [primary, 'lmstudio', ...(alt !== primary ? [alt] : []), ...(claudeKey ? ['claude'] : [])];
+  let cascade;
+  if (primary === 'ghost_local') {
+    cascade = ['ghost_local'];
+    if (openrouterKey && aiUseOpenrouter !== false) cascade.push('openrouter');
+    if (!aiDisableGemini && geminiKey) cascade.push('gemini');
+    if (claudeKey) cascade.push('claude');
+    if (lmStudioEnabled) cascade.push('lmstudio');
+  } else if (reorderClouds) {
+    cascade = ['openrouter', 'gemini'];
+    if (lmStudioEnabled) cascade.push('lmstudio');
+    if (claudeKey) cascade.push('claude');
+  } else {
+    cascade = [primary];
+    if (lmStudioEnabled) cascade.push('lmstudio');
+    if (alt !== primary) cascade.push(alt);
+    if (claudeKey) cascade.push('claude');
+  }
   result._reportCascadeOrder = cascade;
 
-  for (const key of ['gemini', 'openrouter', 'claude', 'lmstudio']) {
+  for (const key of ['gemini', 'openrouter', 'claude', 'lmstudio', 'ghostLocal']) {
     const b = result[key];
     if (b && !b.ok && (b.error === null || b.error === undefined || b.error === '')) {
       b.error = 'Não executado.';
@@ -1152,7 +1325,7 @@ export function pickAiReportForWebhook(aiOut) {
   if (!aiOut || typeof aiOut !== 'object') return null;
   const order = Array.isArray(aiOut._reportCascadeOrder)
     ? aiOut._reportCascadeOrder
-    : ['gemini', 'openrouter', 'claude', 'lmstudio'];
+    : ['gemini', 'openrouter', 'claude', 'lmstudio', 'ghostLocal'];
   const usable = (b) =>
     b?.ok
     && typeof b.relatorio === 'string'
@@ -1177,15 +1350,18 @@ export function aiKeysConfigured() {
   const g = Boolean(process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_AI_API_KEY?.trim());
   const o = Boolean(process.env.OPENROUTER_API_KEY?.trim());
   const c = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
-  const l =
-    ['1', 'true', 'yes', 'on'].includes(String(process.env.GHOSTRECON_LMSTUDIO_ENABLED || '').trim().toLowerCase())
-    || Boolean(process.env.GHOSTRECON_LMSTUDIO_MODEL?.trim());
+  const l = lmStudioExplicitlyEnabledForGhostctf();
+  const gh =
+    ['1', 'true', 'yes', 'on'].includes(String(process.env.GHOSTCTF_GHOST_LOCAL_ENABLED || '').trim().toLowerCase()) ||
+    Boolean(process.env.GHOSTCTF_GHOST_LOCAL_URL?.trim()) ||
+    Boolean(process.env.GHOSTRECON_GHOST_BASE_URL?.trim());
   return {
     gemini: g,
     openrouter: o,
     claude: Boolean(c),
     lmstudio: l,
-    any: g || o || c || l,
+    ghostLocal: gh,
+    any: g || o || c || l || gh,
     both: [g, o, c].filter(Boolean).length >= 2,
   };
 }

@@ -94,6 +94,7 @@ flowchart LR
 | Área | Notas |
 |------|--------|
 | **Cartões ON/OFF** | Estado em `localStorage` (`ghostctf_sidebar_*_off`). |
+| **Intranet Sweep Presets** | Perfis rápidos (Pivot SyCP / Broker Focus / Light Pivot) para pivot interno. |
 | **Decode rápido** | Base64 / Base32 + hash rápido. |
 | **PTY** | Linhas copiáveis para estabilizar shell no alvo. |
 | **Servidor HTTP** | Comando `python3 -m http.server` com porta configurável. |
@@ -104,8 +105,8 @@ flowchart LR
 ### Módulos do painel (pipeline CTF)
 
 - **Plataforma de flag:** Solyd, HackTheBox, Google CTF.
-- **Recon:** UDP, `-p-`, Exploit-DB, LFI, SQLMap (+ WebSocket), vhost/sitemap, **upload surface**, disclosure, cred reuse, WordPress, WPScan, repetição web por **hostnames** (`/etc/hosts`).
-- **Extended:** Tiny File Manager, ActiveMQ, mail/SMB, MySQL em IPs extra, OpenAPI, vhost prefix fuzz.
+- **Recon:** UDP, `-p-`, Exploit-DB, LFI, SQLMap (+ WebSocket), vhost/sitemap, **upload surface**, disclosure, cred reuse (FTP/HTTP basic/SSH/MySQL), WordPress, WPScan, repetição web por **hostnames** (`/etc/hosts`).
+- **Extended:** Tiny File Manager, ActiveMQ (8161 + STOMP/OpenWire/AMQP/MQTT), JDWP (5005), intranet sweep (CIDR/IP + portas), mail/SMB, MySQL em IPs extra, OpenAPI, vhost prefix fuzz.
 - **Agressivo** *(só com autorização):* SSH hydra (+ wordlists `wordlists/`), WP hydra, **Langflow** (CVE-2025-3248, vértices, ngrok).
 
 ---

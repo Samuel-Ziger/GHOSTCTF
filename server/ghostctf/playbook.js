@@ -97,6 +97,22 @@ export function buildCtfPlaybookSuggestions({ ip, findings = [], flagPathHttpPro
     ], 'high');
   }
 
+  if (has(5005) || ports.some((p) => p.service.includes('jdwp'))) {
+    emit('JDWP (5005) exposto → risco de debug attach remoto', [
+      `# validação segura: confirmar handshake JDWP e bloquear exposição externa`,
+      `# hardening: bind em localhost, firewall e remoção de flags de debug em produção`,
+      `# se houver compromisso prévio, priorizar rotação de credenciais/tokens da app Java`,
+    ], 'high');
+  }
+
+  if (has(61616) || has(61613) || has(5672) || has(1883)) {
+    emit('Broker/mensageria exposto (ActiveMQ/STOMP/AMQP/MQTT)', [
+      `# validar autenticação e ACL por tópico/queue (evitar anonymous/guest)`,
+      `# confirmar se portas de broker precisam de exposição pública`,
+      `# recolher versão e cruzar CVEs do broker antes de qualquer teste profundo`,
+    ], 'high');
+  }
+
   if (has(3000) || ports.some((p) => p.port === 3000)) {
     emit('Porta 3000 (Node/React) → fuzz com Host / paths', [
       `# Node com vhost: ffuf -u http://${ip}:3000/FUZZ -w <wordlist> -H "Host: app.alvo.ctf" -mc 200,204,301,302,401,403`,
@@ -189,6 +205,26 @@ export function buildCtfPlaybookSuggestions({ ip, findings = [], flagPathHttpPro
       '# com DB_HOST=localhost no servidor: SSH primeiro, depois mysql -u DB_USER -p',
       '# com DB_HOST apontando a IP interno: testar mysql -h <host> -u ... desde a rede permitida',
       '# procurar flags/tabelas: SHOW DATABASES; USE <db>; SHOW TABLES;',
+    ], 'high');
+  }
+
+  const hasCredReuseHit = /credential reuse ok|credencial potencial|wp-config:db_user\/db_password|password=/.test(blobAll);
+  if (hasCredReuseHit && (has(22) || has(3306) || has(61616) || has(61613) || has(5672) || has(5005))) {
+    emit('Cadeia de pivot interno (credencial → SSH/DB/broker)', [
+      '# validar primeiro login SSH e recolher /etc/hosts, .bash_history e credenciais reaproveitáveis',
+      '# com shell: testar DB local/interna (mysql -h 127.0.0.1 e hosts da rede privada) e procurar users.properties/.env',
+      '# se broker exposto: confirmar auth em STOMP/AMQP/OpenWire e mapear tópicos/filas antes de ações invasivas',
+      '# se JDWP exposto: priorizar mitigação/bloqueio de debug remoto e tratar host como comprometível',
+      '# registar rota de movimento lateral (origem, credencial, destino, evidência) no reporte final',
+    ], 'high');
+  }
+
+  if (/intranet sweep hit:/.test(blobAll)) {
+    emit('Pivot intranet orientado por sweep (host interno ativo)', [
+      '# priorizar host interno com mais portas abertas (22/3306/5005/61613/61616)',
+      '# confirmar alcance de rede a partir do ponto comprometido (não do teu host local)',
+      '# repetir enum web/serviços no IP interno prioritário e procurar credenciais reutilizadas',
+      '# documentar cada salto (origem -> destino -> credencial/porta) para o relatório técnico',
     ], 'high');
   }
 

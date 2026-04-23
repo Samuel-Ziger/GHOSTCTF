@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ghost Intelligence</title>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --g0:#050508; --g1:#080b12; --g2:#0d1220;
+  --green:#00d4ff; --green2:#00ff88;
+  --gd:rgba(0,212,255,.08); --gb:rgba(0,212,255,.15);
+  --blue:#00ff88; --bd:rgba(0,255,136,.08);
+  --amber:#ffaa00; --red:#ff2244; --purple:#ce93d8;
+  --text:#c8d8f0; --t2:#6f87aa; --t3:#4a6080;
+  --border:rgba(30,58,95,.65); --border2:rgba(0,212,255,.35);
+  --font:'Share Tech Mono',monospace; --fd:'Orbitron',monospace; --body:'Rajdhani',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;overflow:hidden;-webkit-text-size-adjust:100%}
+body{
+  height:100%;
+  min-height:100%;
+  min-height:100dvh;
+  max-height:100dvh;
+  overflow:hidden;
+  margin:0;
+  background:var(--g0);color:var(--text);font-family:var(--body);
+  display:flex;flex-direction:column;
+}
+#app{
+  display:flex;flex-direction:row;flex:1;min-height:0;width:100%;
+  overflow:hidden;align-items:stretch;
+}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px);pointer-events:none;z-index:900}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+
+/* ══ SIDEBAR ══ */
+.sb{
+  width:320px;min-width:240px;max-width:min(320px,42vw);
+  flex:0 0 auto;
+  background:var(--g1);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:10;
+  min-height:0;height:100%;max-height:100%;
+  overflow:hidden;
+}
+.sb-logo{padding:14px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(0,212,255,.08),transparent);flex-shrink:0}
+.sbs:not(.sb-params):not(.sb-sessions-wrap){flex-shrink:0}
+.logo-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.logo-hex{width:36px;height:36px;background:linear-gradient(135deg,rgba(0,212,255,.14),rgba(0,212,255,.04));border:1px solid rgba(0,212,255,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--green);animation:hexPulse 4s ease-in-out infinite;box-shadow:0 0 10px rgba(0,212,255,.24)}
+.logo-hex svg{width:24px;height:26px;display:block;filter:drop-shadow(0 0 7px rgba(0,212,255,.4))}
+.logo-name{font-family:var(--fd);font-size:19px;font-weight:900;color:var(--green);letter-spacing:4px}
+.logo-ver{font-size:8px;color:var(--t2);letter-spacing:2px}
+.hbar{display:flex;gap:6px;flex-wrap:wrap}
+.hchip{display:flex;align-items:center;gap:4px;font-size:9px;letter-spacing:1px;padding:2px 7px;border:1px solid var(--border);background:rgba(0,0,0,.35)}
+.dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 5px var(--green);animation:blink 2s ease-in-out infinite}
+.dot.off{background:var(--red);box-shadow:0 0 5px var(--red)}
+.dot.warn{background:var(--amber);box-shadow:0 0 5px var(--amber)}
+
+.sbs{padding:10px 14px;border-bottom:1px solid var(--border)}
+.sbl{font-size:8px;letter-spacing:2.5px;color:var(--t2);margin-bottom:7px}
+select.s{width:100%;background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:11px;padding:6px 8px;outline:none;cursor:pointer;transition:border-color .2s}
+select.s:focus{border-color:var(--border2)}
+select.s option{background:#080f14}
+
+/* PARAMS */
+.pg{display:flex;flex-direction:column;gap:9px}
+.pr{display:flex;flex-direction:column;gap:2px}
+.ph{display:flex;justify-content:space-between;align-items:center}
+.pn{font-size:8px;color:var(--t2);letter-spacing:1px}
+.pv{font-size:10px;color:var(--green);background:var(--gd);padding:1px 5px;min-width:38px;text-align:center}
+input[type=range]{width:100%;height:3px;background:var(--border);-webkit-appearance:none;appearance:none;outline:none;cursor:pointer;border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;background:var(--green);border-radius:50%;box-shadow:0 0 5px rgba(0,212,255,.5)}
+input[type=range]::-webkit-slider-runnable-track{background:linear-gradient(to right,var(--green) 0%,var(--green) var(--pct,50%),var(--border) var(--pct,50%));height:3px;border-radius:2px}
+
+/* STATS */
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.sx{background:rgba(0,0,0,.3);border:1px solid var(--border);padding:7px 4px;text-align:center}
+.sn{font-size:16px;font-weight:700;color:var(--green);line-height:1}
+.sl{font-size:8px;color:var(--t2);letter-spacing:1px;margin-top:2px}
+
+/* SESSION LIST */
+.slist{display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow-y:auto}
+.sb-params{flex:0 1 auto;min-height:0;max-height:min(300px,32vh);overflow-y:auto;overflow-x:hidden}
+.sb-sessions-wrap{flex:1 1 0;min-height:72px;display:flex;flex-direction:column;overflow:hidden}
+.si{display:flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid transparent;cursor:pointer;transition:all .15s;background:rgba(0,0,0,.2)}
+.si:hover{border-color:var(--border);background:var(--gd)}
+.si.act{border-color:rgba(0,212,255,.25);background:var(--gd)}
+.si-t{font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.si-m{font-size:8px;color:var(--t2);flex-shrink:0}
+
+.sbb{width:100%;padding:6px 8px;background:transparent;border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:10px;letter-spacing:1.5px;cursor:pointer;text-align:left;transition:all .15s;margin-top:3px;display:flex;align-items:center;gap:5px}
+.sbb:hover{color:var(--green);border-color:var(--border2);background:var(--gd)}
+
+/* ══ MAIN ══ */
+.main{
+  flex:1;min-width:0;min-height:0;
+  display:flex;flex-direction:column;
+  overflow:hidden;height:100%;max-height:100%;
+}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--g1);flex-shrink:0;overflow-x:auto;gap:2px}
+.tabs::-webkit-scrollbar{height:2px}
+.tab{padding:10px 18px;font-family:var(--font);font-size:10px;letter-spacing:2px;cursor:pointer;color:var(--t2);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.tab.act{color:var(--green);border-bottom-color:var(--green)}
+.tab:hover:not(.act){color:var(--text)}
+.tab.gr{color:var(--amber)}
+.tab.gr.act{color:var(--amber);border-bottom-color:var(--amber)}
+
+/* CHAT */
+.cbody{
+  flex:1;min-height:0;
+  overflow-y:auto;overflow-x:hidden;
+  padding:18px 20px;display:flex;flex-direction:column;gap:13px;
+  -webkit-overflow-scrolling:touch;
+}
+.emp{margin:auto;text-align:center;padding:40px 20px;opacity:.3}
+.emp-i{font-family:var(--fd);font-size:44px;color:var(--green);opacity:.3;margin-bottom:10px}
+.emp-t{font-size:11px;letter-spacing:3px;color:var(--green)}
+.emp-s{font-size:9px;color:var(--t2);margin-top:5px;letter-spacing:1px}
+
+/* QUICKBAR */
+.qbar{padding:7px 18px;border-bottom:1px solid var(--border);display:flex;gap:5px;overflow-x:auto;flex-shrink:0;background:rgba(0,0,0,.18);min-height:0}
+.qbar::-webkit-scrollbar{height:2px}
+.qcat{padding:3px 9px;flex-shrink:0;background:var(--gd);border:1px solid rgba(0,212,255,.2);color:var(--t2);font-family:var(--font);font-size:9px;cursor:pointer;letter-spacing:1.5px;transition:all .15s}
+.qcat.act{color:var(--green);border-color:rgba(0,212,255,.35);background:var(--gb)}
+.qcat.gr{border-color:rgba(255,171,64,.2);color:rgba(255,171,64,.6)}
+.qcat.gr.act{color:var(--amber);border-color:var(--amber);background:rgba(255,171,64,.08)}
+.qchip{padding:3px 9px;flex-shrink:0;background:transparent;border:1px solid var(--border);color:var(--t2);font-family:var(--font);font-size:9px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.qchip:hover{color:var(--text);border-color:var(--border2);background:var(--gd)}
+
+/* MESSAGES */
+.msg{display:flex;flex-direction:column;gap:2px;animation:fadeUp .22s ease}
+.msg.user{align-items:flex-end}
+.msg.assistant{align-items:flex-start}
+.mlabel{font-size:8px;letter-spacing:2px;padding:0 3px}
+.msg.user .mlabel{color:rgba(64,196,255,.4)}
+.msg.assistant .mlabel{color:rgba(0,212,255,.4)}
+.mbubble{max-width:78%;padding:10px 14px;font-size:12px;line-height:1.78;word-break:break-word}
+.msg.user .mbubble{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:8px 2px 8px 8px;color:#bfe7ff}
+.msg.assistant .mbubble{background:rgba(0,212,255,.025);border:1px solid var(--border);border-radius:2px 8px 8px 8px}
+.mbubble pre{background:rgba(0,0,0,.65);border:1px solid rgba(0,212,255,.1);border-left:2px solid rgba(0,212,255,.35);padding:9px 12px;margin:7px 0;overflow-x:auto;border-radius:2px;font-size:11px;line-height:1.6;color:#b7ecff}
+.code-wrap{position:relative;margin:7px 0}
+.code-wrap pre{margin:0;padding-top:28px}
+.copy-code-btn{position:absolute;top:4px;right:5px;padding:2px 7px;background:rgba(0,0,0,.65);border:1px solid var(--border);color:var(--green2);font-family:var(--font);font-size:9px;letter-spacing:1px;cursor:pointer;z-index:2}
+.copy-code-btn:hover{border-color:var(--border2);color:var(--green)}
+.mbubble code:not(pre code){background:rgba(0,0,0,.5);border:1px solid var(--border);padding:1px 5px;font-size:11px;color:var(--blue)}
+.mbubble strong{color:var(--green2)}
+.mbubble em{color:var(--amber);font-style:normal}
+.mbubble h3{color:var(--green);font-size:11px;letter-spacing:1px;margin:7px 0 3px}
+.mbubble ul,ol{padding-left:14px}
+.mbubble li{margin:2px 0}
+.mbubble hr{border:none;border-top:1px solid var(--border);margin:8px 0}
+
+.meta-row{display:flex;align-items:center;gap:6px;padding-left:2px;margin-top:2px}
+.mbadge{font-size:8px;letter-spacing:1px;padding:1px 6px;border:1px solid var(--border);color:var(--t2)}
+.mbadge.mem{border-color:rgba(0,230,118,.15);color:rgba(0,230,118,.4)}
+.mbadge.tok{border-color:rgba(64,196,255,.15);color:rgba(64,196,255,.4)}
+.fbtn{font-family:var(--font);font-size:9px;letter-spacing:1px;padding:2px 7px;cursor:pointer;background:transparent;border:1px solid var(--border);color:var(--t2);transition:all .15s}
+.fbtn.g:hover{color:var(--green);border-color:rgba(0,230,118,.3)}
+.fbtn.b:hover{color:var(--red);border-color:rgba(255,82,82,.3)}
+.fbtn.rg{color:var(--green);border-color:var(--green);background:var(--gd)}
+.fbtn.rb{color:var(--red);border-color:var(--red);background:rgba(255,82,82,.05)}
+
+.thinking{display:flex;gap:5px;padding:10px 14px;background:rgba(0,212,255,.03);border:1px solid var(--border);border-radius:2px 8px 8px 8px;align-items:center}
+.thinking span{width:5px;height:5px;background:var(--green);border-radius:1px;animation:db 1.2s ease-in-out infinite}
+.thinking span:nth-child(2){animation-delay:.2s}
+.thinking span:nth-child(3){animation-delay:.4s}
+.stxt{font-size:9px;color:var(--t2);margin-left:7px;letter-spacing:1px}
+.thinking.below{margin-top:6px}
+
+/* INPUT */
+.izone{border-top:1px solid var(--border);padding:11px 18px;background:var(--g1);display:flex;flex-direction:column;gap:7px;flex-shrink:0}
+.irow{display:flex;gap:7px;align-items:flex-end}
+.iwrap{flex:1;display:flex;align-items:center;gap:7px;border:1px solid var(--border);padding:8px 11px;background:rgba(0,0,0,.4);transition:border-color .2s}
+.iwrap:focus-within{border-color:var(--border2)}
+.isym{color:var(--green);font-size:13px;opacity:.45;flex-shrink:0}
+textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:12px;resize:none;line-height:1.5;max-height:130px}
+textarea::placeholder{color:var(--t2)}
+.sbtn{padding:8px 16px;background:transparent;border:1px solid rgba(0,212,255,.32);color:var(--green);font-family:var(--font);font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .2s;flex-shrink:0;white-space:nowrap}
+.sbtn:hover:not(:disabled){background:var(--gb);box-shadow:0 0 10px rgba(0,212,255,.12)}
+.sbtn:disabled{opacity:.22;cursor:not-allowed}
+.stopbtn{padding:8px 13px;background:rgba(255,82,82,.07);border:1px solid rgba(255,82,82,.28);color:var(--red);font-family:var(--font);font-size:10px;letter-spacing:1px;cursor:pointer;flex-shrink:0}
+.imeta{display:flex;align-items:center;gap:8px;font-size:8px;color:var(--t2);letter-spacing:1px;flex-wrap:wrap}
+.imeta select{background:transparent;border:1px solid var(--border);color:var(--t2);font-family:var(--font);font-size:8px;padding:2px 5px;outline:none;cursor:pointer}
+.imeta select option{background:#080f14}
+
+/* ══ PANELS ══ */
+.panel{flex:1;min-height:0;overflow-y:auto;padding:22px 22px;-webkit-overflow-scrolling:touch}
+.ptitle{font-family:var(--fd);font-size:12px;color:var(--green);letter-spacing:3px;margin-bottom:6px}
+.psub{font-size:10.5px;color:var(--t2);line-height:1.7;margin-bottom:18px}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.fl{font-size:8px;letter-spacing:2px;color:var(--t2)}
+.fi{background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:11.5px;padding:7px 9px;outline:none;transition:border-color .2s;resize:vertical;width:100%}
+.fi:focus{border-color:var(--border2)}
+.fi::placeholder{color:var(--t3)}
+.cchips{display:flex;flex-wrap:wrap;gap:4px}
+.cchip{padding:3px 9px;background:transparent;border:1px solid var(--border);color:var(--t2);font-family:var(--font);font-size:9px;cursor:pointer;transition:all .15s;letter-spacing:1px}
+.cchip.act{color:var(--green);border-color:rgba(0,212,255,.32);background:var(--gd)}
+.pbtn{padding:9px 20px;background:var(--gd);border:1px solid rgba(0,212,255,.3);color:var(--green);font-family:var(--font);font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .2s}
+.pbtn:hover:not(:disabled){background:var(--gb);box-shadow:0 0 14px rgba(0,212,255,.08)}
+.pbtn:disabled{opacity:.25;cursor:not-allowed}
+.pdiv{border:none;border-top:1px solid var(--border);margin:20px 0}
+
+/* MEMORY */
+.mtb{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.mswrap{flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--border);padding:5px 9px;background:rgba(0,0,0,.4);min-width:160px}
+.mswrap input{background:transparent;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:10px;flex:1}
+.mswrap input::placeholder{color:var(--t2)}
+.fchips{display:flex;gap:4px;flex-wrap:wrap}
+.fchip{padding:3px 8px;background:transparent;border:1px solid var(--border);color:var(--t2);font-family:var(--font);font-size:8px;cursor:pointer;letter-spacing:1px;transition:all .15s}
+.fchip.act{color:var(--green);border-color:rgba(0,212,255,.28);background:var(--gd)}
+.fchip.gr{color:var(--amber);border-color:rgba(255,171,64,.2)}
+.fchip.gr.act{background:rgba(255,171,64,.07)}
+.mgrid{display:flex;flex-direction:column;gap:5px}
+.mcard{background:rgba(0,0,0,.22);border:1px solid var(--border);padding:9px 11px;display:flex;gap:9px;align-items:flex-start;transition:border-color .15s}
+.mcard:hover{border-color:var(--border2)}
+.mc-body{flex:1;min-width:0}
+.mc-topic{font-size:11px;color:var(--green2);margin-bottom:3px}
+.mc-pre{font-size:10px;color:var(--t2);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mc-side{display:flex;flex-direction:column;gap:3px;align-items:flex-end;flex-shrink:0}
+.cbadge{font-size:8px;letter-spacing:1px;padding:1px 6px;border:1px solid var(--border);color:var(--t2)}
+.sbadge{font-size:7px;padding:1px 5px;border:1px solid rgba(255,171,64,.2);color:rgba(255,171,64,.6)}
+.delbtn{background:transparent;border:1px solid rgba(255,82,82,.2);color:rgba(255,82,82,.4);font-family:var(--font);font-size:8px;padding:2px 7px;cursor:pointer;transition:all .15s}
+.delbtn:hover{color:var(--red);border-color:var(--red)}
+
+/* GHOSTRECON TAB */
+.gr-panel{flex:1;min-height:0;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+.gr-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px}
+.gr-title{font-family:var(--fd);font-size:12px;color:var(--amber);letter-spacing:3px}
+.gr-runs{display:flex;flex-direction:column;gap:5px}
+.run-card{background:rgba(0,0,0,.25);border:1px solid var(--border);padding:10px 12px;cursor:pointer;transition:all .15s;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.run-card:hover{border-color:rgba(255,171,64,.25);background:rgba(255,171,64,.03)}
+.run-card.sel{border-color:rgba(255,171,64,.4);background:rgba(255,171,64,.05)}
+.run-domain{font-size:12px;color:var(--amber)}
+.run-meta{font-size:9px;color:var(--t2);letter-spacing:1px}
+.run-badge{font-size:9px;padding:2px 8px;border:1px solid rgba(255,82,82,.3);color:var(--red)}
+.run-badge.med{border-color:rgba(255,171,64,.3);color:var(--amber)}
+.run-badge.low{border-color:rgba(0,230,118,.2);color:var(--green)}
+.gr-actions{display:flex;gap:6px;flex-wrap:wrap}
+.gr-btn{padding:7px 14px;background:transparent;border:1px solid rgba(255,171,64,.3);color:var(--amber);font-family:var(--font);font-size:10px;letter-spacing:1.5px;cursor:pointer;transition:all .15s}
+.gr-btn:hover{background:rgba(255,171,64,.07)}
+.gr-btn.act{background:rgba(255,171,64,.1);border-color:var(--amber)}
+.gr-ingest{background:rgba(0,0,0,.4);border:1px solid var(--border);padding:14px}
+.gr-result{background:rgba(0,0,0,.3);border:1px solid rgba(0,212,255,.18);padding:12px;font-size:11px;line-height:1.7;white-space:pre-wrap;max-height:min(400px,38vh);overflow-y:auto;color:var(--text)}
+
+/* FINDINGS TABLE */
+.ftable{width:100%;border-collapse:collapse;font-size:10px}
+.ftable th{padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:8px;letter-spacing:2px;color:var(--t2)}
+.ftable td{padding:6px 10px;border-bottom:1px solid rgba(0,230,118,.04);vertical-align:top;line-height:1.5}
+.ftable tr:hover td{background:rgba(0,230,118,.02)}
+.sev{font-size:8px;padding:1px 6px;letter-spacing:1px;font-weight:700}
+.sev.CRITICAL,.sev.critical{background:rgba(255,82,82,.1);color:var(--red);border:1px solid rgba(255,82,82,.3)}
+.sev.HIGH,.sev.high{background:rgba(255,82,82,.07);color:#ff8a80;border:1px solid rgba(255,82,82,.2)}
+.sev.MEDIUM,.sev.medium{background:rgba(255,171,64,.07);color:var(--amber);border:1px solid rgba(255,171,64,.2)}
+.sev.LOW,.sev.low{background:rgba(0,212,255,.08);color:var(--green);border:1px solid rgba(0,212,255,.22)}
+.sev.INFO,.sev.info{background:rgba(64,196,255,.05);color:var(--blue);border:1px solid rgba(64,196,255,.15)}
+
+.tab.actc{color:var(--purple);border-bottom-color:var(--purple)}
+.tab.hs{color:#ff8a80}
+.tab.hs.act{color:#ff5252;border-bottom-color:#ff5252}
+.hs-panel{flex:1;min-height:0;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+.hs-title{font-family:var(--fd);font-size:12px;color:#ff8a80;letter-spacing:3px}
+.hs-sub{font-size:10px;color:var(--t2);line-height:1.6}
+.hs-btn{padding:7px 14px;background:transparent;border:1px solid rgba(255,82,82,.35);color:#ff8a80;font-family:var(--font);font-size:10px;letter-spacing:1.5px;cursor:pointer;transition:all .15s}
+.hs-btn:hover{background:rgba(255,82,82,.08)}
+.hs-btn.act{background:rgba(255,82,82,.12);border-color:#ff5252;color:#ffb4b4}
+.hs-out{background:rgba(0,0,0,.35);border:1px solid rgba(255,82,82,.12);border-left:2px solid rgba(255,82,82,.35);padding:12px;font-size:10px;line-height:1.6;white-space:pre-wrap;overflow:auto;max-height:min(360px,40vh);color:var(--text)}
+
+/* CODESCAN */
+.cs-panel{flex:1;min-height:0;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+.cs-header{font-family:var(--fd);font-size:12px;color:var(--purple);letter-spacing:3px}
+.cs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cs-card{background:rgba(0,0,0,.25);border:1px solid var(--border);padding:12px}
+.cs-card-title{font-size:9px;letter-spacing:2px;color:var(--t2);margin-bottom:8px}
+.cs-stat{font-size:24px;font-weight:700;line-height:1}
+.cs-stat.c{color:var(--red)} .cs-stat.h{color:#ff8a80}
+.cs-stat.m{color:var(--amber)} .cs-stat.l{color:var(--green)} .cs-stat.i{color:var(--blue)}
+.cs-bar{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.cs-mode{padding:4px 10px;background:transparent;border:1px solid rgba(206,147,216,.2);color:rgba(206,147,216,.5);font-family:var(--font);font-size:9px;cursor:pointer;letter-spacing:1px;transition:all .15s}
+.cs-mode.act{color:var(--purple);border-color:var(--purple);background:rgba(206,147,216,.07)}
+.cs-btn{padding:8px 16px;background:rgba(206,147,216,.07);border:1px solid rgba(206,147,216,.3);color:var(--purple);font-family:var(--font);font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .15s}
+.cs-btn:hover:not(:disabled){background:rgba(206,147,216,.14)}
+.cs-btn:disabled{opacity:.25;cursor:not-allowed}
+.cs-stop{padding:8px 12px;background:rgba(255,82,82,.07);border:1px solid rgba(255,82,82,.28);color:var(--red);font-family:var(--font);font-size:10px;letter-spacing:1px;cursor:pointer}
+.cs-output{background:rgba(0,0,0,.35);border:1px solid rgba(206,147,216,.1);border-left:2px solid rgba(206,147,216,.3);padding:12px 14px;font-size:11.5px;line-height:1.75;white-space:pre-wrap;overflow-y:auto;max-height:min(480px,42vh);color:var(--text)}
+.fi-list{display:flex;flex-direction:column;gap:5px;max-height:min(300px,28vh);min-height:0;overflow-y:auto}
+.fi-card{padding:8px 10px;border:1px solid var(--border);background:rgba(0,0,0,.2);display:flex;gap:8px;align-items:flex-start}
+.fi-card:hover{border-color:rgba(206,147,216,.2)}
+.fi-body{flex:1;min-width:0}
+.fi-title{font-size:11px;color:var(--text);margin-bottom:2px}
+.fi-snip{font-size:10px;color:var(--t2);font-family:var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fi-meta{font-size:9px;color:var(--t2)}
+.snippet-area{background:rgba(0,0,0,.5);border:1px solid var(--border);padding:6px 10px;font-size:11px;color:#a8e6cf;margin-top:4px;max-height:80px;overflow:auto}
+.toast{position:fixed;bottom:18px;right:18px;background:rgba(0,212,255,.09);border:1px solid rgba(0,212,255,.32);color:var(--green);padding:8px 16px;font-size:10px;letter-spacing:1px;z-index:2000;animation:sir .3s ease}
+.toast.err{background:rgba(255,82,82,.07);border-color:rgba(255,82,82,.28);color:var(--red)}
+.toast.warn{background:rgba(255,171,64,.07);border-color:rgba(255,171,64,.28);color:var(--amber)}
+
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,212,255,.16);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,212,255,.32)}
+
+@keyframes hexPulse{0%,100%{box-shadow:0 0 8px rgba(0,212,255,.2)}50%{box-shadow:0 0 18px rgba(0,212,255,.42)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes db{0%,80%,100%{transform:scale(.6);opacity:.3}40%{transform:scale(1.2);opacity:1}}
+@keyframes sir{from{transform:translateX(14px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Empilha em ecrãs estreitos — tudo visível com scroll interno */
+@media (max-width:900px){
+  #app{flex-direction:column;overflow:hidden;min-height:0}
+  .sb{
+    width:100%;max-width:none;flex:0 0 auto;max-height:min(44vh,360px);
+    border-right:none;border-bottom:1px solid var(--border);
+  }
+  .sb-params{max-height:min(200px,28vh)}
+  .main{flex:1;min-height:0}
+  .tab{padding:10px 12px;font-size:9px}
+  .mbubble{max-width:92%}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ SIDEBAR ══ -->
+<div class="sb">
+  <div class="sb-logo">
+    <div class="logo-row">
+      <div class="logo-hex" aria-hidden="true">
+        <svg viewBox="0 0 48 52" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <defs>
+            <linearGradient id="ghostAiLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#e8fbff" />
+              <stop offset="45%" stop-color="#5ee0ff" />
+              <stop offset="100%" stop-color="#00a8d4" />
+            </linearGradient>
+          </defs>
+          <path
+            fill="url(#ghostAiLogoGrad)"
+            stroke="rgba(0,212,255,0.45)"
+            stroke-width="0.55"
+            d="M 24 5 C 13 5 5 13.5 5 24.5 V 40 Q 8.5 36.5 12 40 Q 15.5 36.5 19 40 Q 22.5 36.5 26 40 Q 29.5 36.5 33 40 Q 36.5 36.5 40 40 Q 43.5 36.5 43 40 V 24.5 C 43 13.5 35 5 24 5 Z"
+          />
+          <ellipse cx="17" cy="22" rx="3.2" ry="4.2" fill="#050709" />
+          <ellipse cx="31" cy="22" rx="3.2" ry="4.2" fill="#050709" />
+        </svg>
+      </div>
+      <div><div class="logo-name">GHOST <span style="color:var(--green2)">INTELLIGENCE</span></div><div class="logo-ver">LOCAL AI · KNOWLEDGE CORE</div></div>
+    </div>
+    <div class="hbar">
+      <div class="hchip"><div class="dot" :class="h.ghost==='online'?'on':'off'"></div><span>GHOST</span></div>
+      <div class="hchip"><div class="dot" :class="h.ollama==='online'?'on':h.ollama==='offline'?'off':'warn'"></div><span>OLLAMA</span></div>
+      <div class="hchip"><div class="dot" :class="h.embeddings==='online'?'on':h.embeddings==='offline'?'off':'warn'"></div><span>EMBED</span></div>
+      <div class="hchip"><div class="dot" :class="h.hexstrike==='online'?'on':'off'"></div><span>HEX</span></div>
+      <div class="hchip" style="margin-left:auto"><span style="color:var(--amber)">◈ {{h.runs||0}} runs</span></div>
+    </div>
+  </div>
+
+  <!-- MODEL -->
+  <div class="sbs">
+    <div class="sbl">MODELO</div>
+    <select class="s" v-model="model">
+      <option value="deepseek-coder-v2:16b">deepseek-coder-v2:16b ★</option>
+      <option value="deepseek-r1:latest">deepseek-r1:latest</option>
+      <option value="llama3.3:70b">Llama 3.3 (70B)</option>
+      <option value="llama3.1:8b">Llama 3.x (8B)</option>
+      <option value="gemma4:31b">Gemma 4 (31B)</option>
+      <option value="qwen3.5:9b">Qwen 3.5 (9B)</option>
+      <option value="qwen3.5:32b">Qwen 3.5 (32B)</option>
+      <option value="qwen2.5-coder:7b">qwen2.5-coder:7b</option>
+      <option value="codellama:13b">codellama:13b</option>
+      <option value="mistral:7b">mistral:7b</option>
+      <option value="phi3.5:3.8b">phi3.5:3.8b (rápido)</option>
+    </select>
+    <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
+      <input class="fi" v-model="mi.list" placeholder="modelos (csv): llama3.3:70b,qwen3.5:9b" style="font-size:10px;padding:5px 7px;resize:none"/>
+      <button class="sbtn" style="padding:6px 10px;font-size:9px;letter-spacing:1px" @click="installModels" :disabled="mi.running">
+        {{mi.running?'INSTALANDO...':'INSTALAR'}}
+      </button>
+    </div>
+    <div v-if="mi.last" style="margin-top:6px;font-size:8px;color:var(--t2);line-height:1.5;white-space:pre-wrap">{{mi.last}}</div>
+  </div>
+
+  <!-- ALL PARAMS -->
+  <div class="sbs sb-params">
+    <div class="sbl">PARÂMETROS</div>
+    <div class="pg">
+      <div class="pr" v-for="p in pdef" :key="p.k">
+        <div class="ph"><span class="pn">{{p.l}}</span><span class="pv">{{params[p.k]}}</span></div>
+        <input type="range" :min="p.min" :max="p.max" :step="p.step" v-model.number="params[p.k]"
+          :style="`--pct:${((params[p.k]-p.min)/(p.max-p.min)*100).toFixed(1)}%`">
+      </div>
+      <!-- Seed input -->
+      <div class="fg" style="margin:0">
+        <div class="ph"><span class="pn">SEED (-1=aleatório)</span><span class="pv">{{params.seed}}</span></div>
+        <input type="range" min="-1" max="999999" step="1" v-model.number="params.seed"
+          :style="`--pct:${((params.seed+1)/1000000*100).toFixed(1)}%`">
+      </div>
+      <!-- Bool params -->
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+        <label v-for="bp in bpdef" :key="bp.k"
+          style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--t2);cursor:pointer;padding:2px 6px;border:1px solid var(--border)">
+          <input type="checkbox" v-model="params[bp.k]" style="accent-color:var(--green);width:10px;height:10px">
+          {{bp.l}}
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="sbs">
+    <div class="sbl">MEMÓRIA & RUNS</div>
+    <div class="sg">
+      <div class="sx"><div class="sn">{{st.memory_entries||0}}</div><div class="sl">DOCS</div></div>
+      <div class="sx"><div class="sn">{{st.feedback_count||0}}</div><div class="sl">FEEDBACK</div></div>
+      <div class="sx"><div class="sn">{{st.runs_count||0}}</div><div class="sl">RUNS</div></div>
+    </div>
+  </div>
+
+  <!-- SESSIONS -->
+  <div class="sbs sb-sessions-wrap">
+    <div class="sbl" style="display:flex;justify-content:space-between">
+      <span>SESSÕES</span>
+      <span style="cursor:pointer;color:var(--green)" @click="newSess">+ NOVO CHAT</span>
+    </div>
+    <div class="slist">
+      <div v-for="s in sessions" :key="s.id" class="si" :class="{act:curSess===s.id}" @click="loadSess(s.id)">
+        <span class="si-t">{{s.title||'—'}}</span>
+        <span class="si-m">{{s.msg_count}}m</span>
+        <span style="color:var(--t2);font-size:11px;cursor:pointer;padding-left:3px" @click.stop="delSess(s.id)">✕</span>
+      </div>
+      <div v-if="!sessions.length" style="font-size:9px;color:var(--t3);padding:3px 0">Nenhuma sessão</div>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="sbs">
+    <button class="sbb" @click="newSess">✚ NOVO CHAT (AUTO-SAVE)</button>
+    <button class="sbb" @click="saveSess">💾 SALVAR SESSÃO</button>
+    <button class="sbb" @click="exportMem">↓ EXPORTAR MEMÓRIA</button>
+    <button class="sbb" @click="clearChat">⟳ LIMPAR CHAT</button>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+  <div class="tabs">
+    <div class="tab" :class="{act:tab==='chat'}" @click="tab='chat'">▸ CHAT</div>
+    <div class="tab gr" :class="{act:tab==='gr'}" @click="tab='gr';loadRuns()">⬡ GHOSTRECON</div>
+    <div class="tab hs" :class="{act:tab==='hs'}" @click="tab='hs';loadHexStatus()">⚑ HEXSTRIKE</div>
+    <div class="tab" style="color:var(--purple)" :class="{act:tab==='code',actc:tab==='code'}" @click="tab='code'">⌥ CODESCAN</div>
+    <div class="tab" :class="{act:tab==='ws'}" @click="tab='ws';loadWorkspaceInfo()">⌘ WORKSPACE</div>
+    <div class="tab" :class="{act:tab==='teach'}" @click="tab='teach'">⊕ ENSINAR</div>
+    <div class="tab" :class="{act:tab==='mem'}" @click="tab='mem';loadAllMem()">◈ MEMÓRIA ({{st.memory_entries||0}})</div>
+  </div>
+
+  <!-- ── CHAT ── -->
+  <template v-if="tab==='chat'">
+    <div class="qbar">
+      <button v-for="c in qcats" :key="c.k"
+        class="qcat" :class="{act:qcat===c.k, gr:c.k==='ghostrecon'}" @click="qcat=c.k">{{c.l}}</button>
+      <span style="width:1px;background:var(--border);flex-shrink:0;margin:0 3px"></span>
+      <button v-for="qp in (qp_map[qcat]||[])" :key="qp"
+        class="qchip" @click="setInput(qp)">{{qp.length>50?qp.slice(0,47)+'...':qp}}</button>
+    </div>
+
+    <div class="cbody" ref="chatArea">
+      <div v-if="!msgs.length" class="emp">
+        <div class="emp-i">◈</div>
+        <div class="emp-t">GHOST v3 PRONTO</div>
+        <div class="emp-s">Pentest · GHOSTRECON · Red Team · Dev · CTF</div>
+      </div>
+
+      <div v-for="(m,i) in msgs" :key="i" class="msg" :class="m.role">
+        <div class="mlabel">
+          {{m.role==='user'?'OPERADOR':'GHOST'}}
+          <span v-if="m.role==='assistant' && m.mem" class="mbadge mem">◈ {{m.mem}} mem</span>
+          <span v-if="m.role==='assistant' && m.fbm" class="mbadge mem" style="margin-left:4px">◇ {{m.fbm}} fb</span>
+          <span v-if="m.role==='assistant' && m.tok" class="mbadge tok">{{m.tok}}tk</span>
+          <span v-if="m.role==='assistant' && m.ms" class="mbadge" style="border-color:rgba(206,147,216,.15);color:rgba(206,147,216,.5)">{{(m.ms/1e9).toFixed(1)}}s</span>
+        </div>
+        <div class="mbubble" v-html="render(m.content)"></div>
+        <div v-if="m.role==='assistant'" class="meta-row">
+          <button class="fbtn g" :class="{'rg':m.fb==='g'}" @click="fbGood(i)">✓ BOM</button>
+          <button class="fbtn b" :class="{'rb':m.fb==='b'}" @click="fbBad(i)">✗ RUIM</button>
+        </div>
+      </div>
+
+      <div v-if="streaming" class="msg assistant">
+        <div class="mlabel">GHOST <span class="mbadge mem">streaming...</span></div>
+        <div class="mbubble" v-html="render(strbuf || '*gerando resposta...*')"></div>
+        <div class="thinking below"><span></span><span></span><span></span><span class="stxt">processando</span></div>
+      </div>
+      <div ref="bottom"></div>
+    </div>
+
+    <div class="izone">
+      <div class="irow">
+        <div class="iwrap">
+          <span class="isym">❯</span>
+          <textarea ref="iel" v-model="inp" @keydown.enter.exact.prevent="send"
+            @input="ar" placeholder="Pentest, exploit, análise GHOSTRECON, código, CTF... (Enter envia)" rows="1"></textarea>
+        </div>
+        <button v-if="!streaming" class="sbtn" @click="send" :disabled="!inp.trim()">ENVIAR</button>
+        <button v-else class="stopbtn" @click="stopStr">■ STOP</button>
+      </div>
+      <div class="imeta">
+        <span>MEM-K:</span>
+        <select v-model.number="memK">
+          <option :value="0">0 off</option>
+          <option :value="3">3</option>
+          <option :value="6">6★</option>
+          <option :value="10">10</option>
+          <option :value="20">20</option>
+        </select>
+        <span>FB-K:</span>
+        <select v-model.number="fbK">
+          <option :value="0">0 off</option>
+          <option :value="2">2</option>
+          <option :value="4">4★</option>
+          <option :value="8">8</option>
+          <option :value="12">12</option>
+        </select>
+        <span>|</span>
+        <span>CTX:{{params.num_ctx/1024}}K</span>
+        <span>|</span>
+        <span>T:{{params.temperature}}</span>
+        <span>|</span>
+        <span>TOP-P:{{params.top_p}}</span>
+        <span>|</span>
+        <span>REP:{{params.repeat_penalty}}</span>
+        <span v-if="params.mirostat">| MIRO:{{params.mirostat}}(τ{{params.mirostat_tau}})</span>
+        <span v-if="params.seed>=0">| SEED:{{params.seed}}</span>
+      </div>
+    </div>
+  </template>
+
+  <!-- ── GHOSTRECON ── -->
+  <template v-if="tab==='gr'">
+    <div class="gr-panel">
+      <div class="gr-header">
+        <div><div class="gr-title">⬡ GHOSTRECON — INTEGRAÇÃO</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:4px">Ingira runs, analise findings, correlacione vulnerabilidades</div>
+        </div>
+        <div class="gr-actions">
+          <button class="gr-btn" @click="loadRuns">↻ ATUALIZAR</button>
+          <button class="gr-btn" @click="grTab='ingest'" :class="{act:grTab==='ingest'}">⊕ INGERIR</button>
+          <button class="gr-btn" @click="grTab='runs'" :class="{act:grTab==='runs'}">◈ RUNS</button>
+          <button class="gr-btn" @click="grTab='analyze'" :class="{act:grTab==='analyze'}">⚡ ANALISAR</button>
+        </div>
+      </div>
+
+      <!-- INGEST -->
+      <div v-if="grTab==='ingest'" class="gr-ingest">
+        <div style="font-size:9px;color:var(--t2);letter-spacing:1.5px;margin-bottom:12px">INGERIR DADOS DO GHOSTRECON</div>
+        <div class="fg">
+          <label class="fl">CAMINHO DO SQLITE (data/bugbounty.db)</label>
+          <input class="fi" v-model="gr.dbPath" placeholder="/caminho/para/ghostrecon/data/bugbounty.db"/>
+        </div>
+        <button class="gr-btn act" @click="ingestSQLite" style="margin-bottom:12px">↑ INGERIR SQLITE</button>
+
+        <div class="fg">
+          <label class="fl">JSON DE RUN COMPLETO (copie do /api/runs/:id)</label>
+          <textarea class="fi" v-model="gr.runJson" rows="8" placeholder='{"domain":"alvo.com","findings":[...],"subdomains":[...],...}'></textarea>
+        </div>
+        <button class="gr-btn act" @click="ingestRun" style="margin-bottom:12px">↑ INGERIR RUN JSON</button>
+
+        <div class="fg">
+          <label class="fl">NDJSON DO PIPELINE (eventos em tempo real)</label>
+          <textarea class="fi" v-model="gr.ndjson" rows="6" placeholder='{"type":"finding","data":{...}}\n{"type":"log","data":{...}}'></textarea>
+        </div>
+        <button class="gr-btn act" @click="ingestNDJSON">↑ INGERIR NDJSON</button>
+
+        <div v-if="gr.result" style="margin-top:12px;font-size:10px;color:var(--green);padding:8px;border:1px solid rgba(0,230,118,.2);background:var(--gd)">
+          ✓ {{gr.result}}
+        </div>
+      </div>
+
+      <!-- RUNS -->
+      <div v-if="grTab==='runs'">
+        <div style="font-size:9px;color:var(--t2);letter-spacing:1.5px;margin-bottom:10px">RUNS INGERIDOS ({{runs.length}})</div>
+        <div class="gr-runs">
+          <div v-if="!runs.length" style="font-size:11px;color:var(--t3);padding:20px;text-align:center">
+            Nenhum run. Use a aba INGERIR ou o endpoint /ghostrecon/ingest/run
+          </div>
+          <div v-for="r in runs" :key="r.id" class="run-card" :class="{sel:selRun===r.id}" @click="selectRun(r)">
+            <div>
+              <div class="run-domain">{{r.domain}}</div>
+              <div class="run-meta">{{r.profile}} · {{r.created_at?.slice(0,16)}} · ID: {{r.id?.slice(0,8)}}</div>
+            </div>
+            <span class="run-badge" :class="{med:r.findings_count<10,low:r.findings_count<3}">
+              {{r.findings_count}} findings
+            </span>
+          </div>
+        </div>
+        <!-- Findings do run selecionado -->
+        <div v-if="selRun && runFindings.length" style="margin-top:16px">
+          <div style="font-size:9px;color:var(--amber);letter-spacing:1.5px;margin-bottom:8px">
+            FINDINGS — {{runDomain}} ({{runFindings.length}})
+          </div>
+          <table class="ftable">
+            <thead><tr><th>SEV</th><th>TIPO</th><th>URL</th><th>MITRE</th></tr></thead>
+            <tbody>
+              <tr v-for="(f,i) in runFindings.slice(0,50)" :key="i">
+                <td><span class="sev" :class="f.severity||f.score||'INFO'">{{f.severity||f.score||'INFO'}}</span></td>
+                <td style="color:var(--text);font-size:10px">{{f.type||f.vuln_type||'?'}}</td>
+                <td style="color:var(--t2);font-size:10px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{f.url||f.target||'?'}}</td>
+                <td style="color:var(--purple);font-size:9px">{{f.mitre||'—'}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ANALYZE -->
+      <div v-if="grTab==='analyze'">
+        <div style="font-size:9px;color:var(--t2);letter-spacing:1.5px;margin-bottom:12px">ANÁLISE PROFUNDA COM IA</div>
+        <div class="fg">
+          <label class="fl">RUN PARA ANALISAR</label>
+          <select class="fi s" v-model="gr.analyzeRunId">
+            <option value="">Selecione um run...</option>
+            <option v-for="r in runs" :key="r.id" :value="r.id">{{r.domain}} · {{r.findings_count}} findings · {{r.created_at?.slice(0,10)}}</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">MODO DE ANÁLISE</label>
+          <div class="cchips">
+            <button v-for="m in [{v:'full',l:'COMPLETO'},{v:'quick',l:'RÁPIDO'},{v:'chain',l:'CADEIAS ATAQUE'},{v:'report',l:'RELATÓRIO EXECUTIVO'}]"
+              :key="m.v" class="cchip" :class="{act:gr.mode===m.v}" @click="gr.mode=m.v">{{m.l}}</button>
+          </div>
+        </div>
+        <button class="gr-btn act" @click="analyzeRun" :disabled="!gr.analyzeRunId || grAnalyzing">
+          {{grAnalyzing ? '⚡ ANALISANDO...' : '⚡ INICIAR ANÁLISE'}}
+        </button>
+        <div v-if="gr.analysis" class="gr-result" style="margin-top:12px" v-html="render(gr.analysis)"></div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ── HEXSTRIKE ── -->
+  <template v-if="tab==='hs'">
+    <div class="hs-panel">
+      <div>
+        <div class="hs-title">⚑ HEXSTRIKE AI — BRIDGE GHOST</div>
+        <div class="hs-sub">O GHOST encaminha pedidos para <strong>{{hx.base||'—'}}</strong>. Inicia antes: <code>hexstrike-ai/start-server.sh</code> (porta 8888). Variável: <code>GHOST_HEXSTRIKE_URL</code>.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="hchip" style="border-color:rgba(255,82,82,.25)"><div class="dot" :class="hx.reachable?'on':'off'"></div> {{hx.reachable?'ALCANÇÁVEL':'OFFLINE'}}</span>
+        <button class="hs-btn" @click="loadHexStatus">↻ ESTADO</button>
+        <button class="hs-btn" @click="loadHexHealthFull" :disabled="hx.loadingH">⏱ HEALTH COMPLETO</button>
+      </div>
+      <div v-if="hx.err" style="font-size:10px;color:var(--red)">{{hx.err}}</div>
+      <div v-if="hx.healthSummary" class="hs-out">{{hx.healthSummary}}</div>
+
+      <div style="border:1px solid rgba(255,82,82,.15);padding:14px;background:rgba(0,0,0,.2)">
+        <div class="sbl" style="color:#ff8a80;margin-bottom:10px">INTELIGÊNCIA — ANALISAR ALVO</div>
+        <div class="fg"><label class="fl">ALVO (domínio / URL)</label>
+          <input class="fi" v-model="hx.target" placeholder="exemplo.com"/>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="hs-btn act" @click="hexAnalyze" :disabled="hx.busy||!hx.target.trim()">⚡ ANALISAR</button>
+          <button class="hs-btn" @click="hexSelectTools" :disabled="hx.busy||!hx.target.trim()">FERRAMENTAS</button>
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(255,82,82,.15);padding:14px;background:rgba(0,0,0,.2)">
+        <div class="sbl" style="color:#ff8a80;margin-bottom:10px">COMANDO GENÉRICO (/api/command)</div>
+        <textarea class="fi" v-model="hx.command" rows="3" placeholder="ex: nmap -sV -p 80,443 alvo.com"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="hs-btn act" @click="hexCommand" :disabled="hx.busy||!hx.command.trim()">▶ EXECUTAR</button>
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(255,82,82,.15);padding:14px;background:rgba(0,0,0,.2)">
+        <div class="sbl" style="color:#ff8a80;margin-bottom:10px">RELAY AVANÇADO</div>
+        <div class="fg"><label class="fl">PATH (whitelist /api/...)</label>
+          <input class="fi" v-model="hx.relayPath" placeholder="/api/intelligence/select-tools"/>
+        </div>
+        <div class="fg"><label class="fl">JSON PAYLOAD</label>
+          <textarea class="fi" v-model="hx.relayJson" rows="5" placeholder='{"target":"..."}'></textarea>
+        </div>
+        <button class="hs-btn act" @click="hexRelay" :disabled="hx.busy">▶ ENVIAR RELAY</button>
+      </div>
+
+      <div v-if="hx.out!==null && hx.out!==''" style="margin-top:4px">
+        <div style="font-size:9px;color:var(--t2);margin-bottom:6px">ÚLTIMA RESPOSTA — {{hx.lastPath}}</div>
+        <div class="hs-out">{{hx.out}}</div>
+        <button class="hs-btn" style="margin-top:8px" @click="hexInjectChat">⤴ INSERIR NO CHAT (contexto)</button>
+      </div>
+    </div>
+  </template>
+
+  <!-- ── CODESCAN ── -->
+  <template v-if="tab==='code'">
+    <div class="cs-panel">
+      <div class="cs-header">⌥ CODESCAN — ANÁLISE DE SEGURANÇA</div>
+
+      <!-- CONFIG -->
+      <div style="display:flex;flex-direction:column;gap:10px;background:rgba(0,0,0,.2);border:1px solid var(--border);padding:14px">
+        <div class="fg" style="margin:0">
+          <label class="fl">CAMINHO DO REPOSITÓRIO / ARQUIVO</label>
+          <input class="fi" v-model="cs.path" placeholder="/home/samuel/projetos/meu-app"/>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="fg" style="margin:0;flex:1">
+            <label class="fl">ARQUIVO ESPECÍFICO (opcional)</label>
+            <input class="fi" v-model="cs.file" placeholder="src/auth/login.py (relativo ao repo)"/>
+          </div>
+          <div class="fg" style="margin:0;flex:1">
+            <label class="fl">EXTENSÕES (opcional)</label>
+            <input class="fi" v-model="cs.exts" placeholder=".py .java .js"/>
+          </div>
+        </div>
+
+        <div>
+          <label class="fl" style="margin-bottom:6px">FOCO DA ANÁLISE</label>
+          <div class="cs-bar">
+            <button v-for="m in csModes" :key="m.v" class="cs-mode" :class="{act:cs.focus===m.v}" @click="cs.focus=m.v">{{m.l}}</button>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t2);cursor:pointer">
+            <input type="checkbox" v-model="cs.llm" style="accent-color:var(--purple)"> ANÁLISE LLM PROFUNDA
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t2);cursor:pointer">
+            <input type="checkbox" v-model="cs.learn" style="accent-color:var(--purple)"> APRENDER FINDINGS
+          </label>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button v-if="!cs.scanning" class="cs-btn" @click="scanRepo" :disabled="!cs.path.trim()">⌥ ESCANEAR REPO</button>
+            <button v-if="!cs.scanning" class="cs-btn" @click="scanSnippet" style="border-color:rgba(64,196,255,.3);color:var(--blue);background:rgba(64,196,255,.05)">⌥ SNIPPET</button>
+            <button v-if="!cs.scanning" class="cs-btn" @click="cs.disasmMode=true;cs.snippetMode=false" style="border-color:rgba(255,171,64,.3);color:var(--amber);background:rgba(255,171,64,.05)">⚙ DISASM/ASM</button>
+            <button v-if="cs.scanning" class="cs-stop" @click="stopScan">■ PARAR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUMMARY STATS -->
+      <div v-if="cs.summary" class="cs-grid">
+        <div class="cs-card">
+          <div class="cs-card-title">SEVERIDADE</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div><div class="cs-stat c">{{cs.summary.CRITICAL||0}}</div><div style="font-size:8px;color:var(--t2)">CRITICAL</div></div>
+            <div><div class="cs-stat h">{{cs.summary.HIGH||0}}</div><div style="font-size:8px;color:var(--t2)">HIGH</div></div>
+            <div><div class="cs-stat m">{{cs.summary.MEDIUM||0}}</div><div style="font-size:8px;color:var(--t2)">MEDIUM</div></div>
+            <div><div class="cs-stat l">{{cs.summary.LOW||0}}</div><div style="font-size:8px;color:var(--t2)">LOW</div></div>
+          </div>
+        </div>
+        <div class="cs-card">
+          <div class="cs-card-title">COBERTURA</div>
+          <div style="font-size:20px;color:var(--purple);font-weight:700">{{cs.filesScanned}}</div>
+          <div style="font-size:9px;color:var(--t2);margin-top:2px">arquivos · {{Object.entries(cs.langs||{}).map(([k,v])=>k+':'+v).join(' ')}}</div>
+        </div>
+      </div>
+
+      <!-- STATIC FINDINGS TABLE -->
+      <div v-if="cs.findings.length">
+        <div style="font-size:9px;color:var(--purple);letter-spacing:2px;margin-bottom:8px">
+          FINDINGS ESTÁTICOS ({{cs.findings.length}}) — <span style="font-size:8px;color:var(--t2)">clique para ver snippet</span>
+        </div>
+        <div class="fi-list">
+          <div v-for="(f,i) in cs.findings" :key="i" class="fi-card" @click="f._open=!f._open">
+            <span class="sev" :class="f.severity">{{f.severity}}</span>
+            <div class="fi-body">
+              <div class="fi-title">{{f.title}}</div>
+              <div class="fi-meta">{{f.file.split('/').slice(-2).join('/')}} : linha {{f.line}} · {{f.lang}} · {{f.cwe}}</div>
+              <div v-if="f._open" class="snippet-area">{{f.snippet}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LLM OUTPUT -->
+      <div v-if="cs.llmOutput||cs.scanning">
+        <div style="font-size:9px;color:var(--purple);letter-spacing:2px;margin-bottom:8px">
+          ANÁLISE LLM <span v-if="cs.scanning" style="color:var(--t2)">streaming...</span>
+        </div>
+        <div class="cs-output" v-html="render(cs.llmOutput)"></div>
+      </div>
+
+      <!-- SNIPPET INLINE -->
+      <div v-if="cs.snippetMode" style="border:1px solid rgba(206,147,216,.15);padding:14px">
+        <div style="font-size:9px;color:var(--purple);letter-spacing:2px;margin-bottom:8px">ANÁLISE DE SNIPPET</div>
+        <div class="fg" style="margin-bottom:8px">
+          <label class="fl">LINGUAGEM</label>
+          <select class="fi s" v-model="cs.snippetLang" style="height:32px">
+            <option v-for="l in ['python','java','javascript','php','bash','go','c','cpp','sql','vue']" :key="l" :value="l">{{l}}</option>
+          </select>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label class="fl">CÓDIGO</label>
+          <textarea class="fi" v-model="cs.snippetCode" rows="10" placeholder="Cole o código aqui..."></textarea>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="cs-btn" @click="submitSnippet" :disabled="!cs.snippetCode.trim()||cs.scanning">⌥ ANALISAR</button>
+          <button class="cs-btn" @click="cs.snippetMode=false" style="border-color:var(--border);color:var(--t2)">✕ FECHAR</button>
+        </div>
+      </div>
+
+      <!-- DISASSEMBLY / ASM -->
+      <div v-if="cs.disasmMode" style="border:1px solid rgba(255,171,64,.15);padding:14px">
+        <div style="font-size:9px;color:var(--amber);letter-spacing:2px;margin-bottom:10px">⚙ ANÁLISE DE ASSEMBLY / DISASSEMBLY</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <div class="fg" style="margin:0;flex:1">
+            <label class="fl">ARQUITETURA</label>
+            <select class="fi s" v-model="cs.arch" style="height:32px">
+              <option v-for="a in ['x86_64','x86','arm64','arm','mips','riscv']" :key="a" :value="a">{{a}}</option>
+            </select>
+          </div>
+          <div class="fg" style="margin:0;flex:2">
+            <label class="fl">CONTEXTO (opcional — origem, binário, função)</label>
+            <input class="fi" v-model="cs.disasmCtx" placeholder="ex: função authenticate() de /usr/bin/login, stripped ELF x86_64"/>
+          </div>
+        </div>
+        <div>
+          <label class="fl" style="margin-bottom:6px">FOCO</label>
+          <div class="cs-bar">
+            <button v-for="m in asmModes" :key="m.v" class="cs-mode" :class="{act:cs.asmFocus===m.v}" @click="cs.asmFocus=m.v">{{m.l}}</button>
+          </div>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label class="fl">DISASSEMBLY (output de objdump, gdb, r2, IDA, Ghidra...)</label>
+          <textarea class="fi" v-model="cs.disasmCode" rows="14"
+            placeholder="0x00401136 push   rbp&#10;0x00401137 mov    rbp,rsp&#10;0x0040113a sub    rsp,0x10&#10;0x0040113e mov    DWORD PTR [rbp-0x4],edi&#10;..."></textarea>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="cs-btn" style="border-color:rgba(255,171,64,.3);color:var(--amber);background:rgba(255,171,64,.05)"
+            @click="submitDisasm" :disabled="!cs.disasmCode.trim()||cs.scanning">⚙ ANALISAR ASM</button>
+          <button class="cs-btn" @click="cs.disasmMode=false" style="border-color:var(--border);color:var(--t2)">✕ FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ── WORKSPACE ── -->
+  <template v-if="tab==='ws'">
+    <div class="panel">
+      <div class="ptitle">⌘ WORKSPACE LOCAL</div>
+      <p class="psub">Acesse uma pasta local, liste árvore, leia arquivo e salve alterações (modo editor local do Ghost).</p>
+
+      <div class="fg">
+        <label class="fl">ROOT DA WORKSPACE</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="fi" v-model="ws.rootInput" placeholder="/home/usuario/projeto" style="flex:1;min-width:280px"/>
+          <button class="pbtn" @click="setWorkspaceRoot">DEFINIR ROOT</button>
+          <button class="pbtn" @click="refreshWorkspaceTree">ATUALIZAR ÁRVORE</button>
+        </div>
+        <div style="font-size:9px;color:var(--t2);margin-top:6px">Root atual: <code>{{ws.root||'—'}}</code></div>
+      </div>
+
+      <div class="fg">
+        <label class="fl">CAMINHO (RELATIVO À ROOT)</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="fi" v-model="ws.path" placeholder="ex: src/app.py" style="flex:1;min-width:280px"/>
+          <button class="pbtn" @click="readWorkspaceFile">ABRIR ARQUIVO</button>
+          <button class="pbtn" @click="saveWorkspaceFile">SALVAR ARQUIVO</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="fl">ÁRVORE (DEPTH)</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="fi" type="number" min="1" max="5" v-model.number="ws.depth" style="max-width:120px"/>
+          <button class="pbtn" @click="refreshWorkspaceTree">RECARREGAR</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="fl">TREE</label>
+        <textarea class="fi" :value="ws.treeText" rows="10" readonly></textarea>
+      </div>
+
+      <div class="fg">
+        <label class="fl">CONTEÚDO DO ARQUIVO</label>
+        <textarea class="fi" v-model="ws.content" rows="14" placeholder="Abra um arquivo para editar"></textarea>
+      </div>
+    </div>
+  </template>
+  <template v-if="tab==='teach'">
+    <div class="panel">
+      <div class="ptitle">⊕ ENSINAR AO GHOST</div>
+      <p class="psub">Adiciona conhecimento permanente via busca semântica. O GHOST usa automaticamente como contexto.</p>
+
+      <div class="fg"><label class="fl">CATEGORIA</label>
+        <div class="cchips">
+          <button v-for="c in cats" :key="c.v" class="cchip" :class="{act:tf.cat===c.v}" @click="tf.cat=c.v">{{c.l}}</button>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">TÓPICO</label>
+        <input class="fi" v-model="tf.topic" placeholder="Ex: Bypass WAF com chunked encoding"/>
+      </div>
+      <div class="fg"><label class="fl">CONTEÚDO (detalhado = melhor busca semântica)</label>
+        <textarea class="fi" v-model="tf.content" rows="8" placeholder="Técnica, payload, PoC, código, metodologia..."></textarea>
+      </div>
+      <div class="fg"><label class="fl">TAGS (vírgula)</label>
+        <input class="fi" v-model="tf.tags" placeholder="sqli, bypass, waf"/>
+      </div>
+      <button class="pbtn" @click="teach" :disabled="!tf.topic||!tf.content">⊕ ADICIONAR À MEMÓRIA</button>
+
+      <hr class="pdiv">
+      <div style="font-size:10px;color:var(--t2);letter-spacing:1px;margin-bottom:10px">IMPORTAR LOTE (JSON)</div>
+      <div class="fg"><textarea class="fi" v-model="bJson" rows="7"
+        placeholder='[{"topic":"...","content":"...","category":"pentest","tags":[]}]'></textarea></div>
+      <button class="pbtn" @click="batchTeach" :disabled="!bJson.trim()">↑ IMPORTAR LOTE</button>
+    </div>
+  </template>
+
+  <!-- ── MEMÓRIA ── -->
+  <template v-if="tab==='mem'">
+    <div class="panel" style="padding-top:14px">
+      <div class="mtb">
+        <div class="mswrap"><span style="color:var(--t2);font-size:12px">⌕</span>
+          <input v-model="ms" placeholder="Buscar memória..." @input="filterMem"/>
+        </div>
+        <button style="padding:5px 10px;background:transparent;border:1px solid var(--border);color:var(--t2);font-family:var(--font);font-size:9px;cursor:pointer" @click="exportMem">↓ EXPORT</button>
+      </div>
+      <div class="fchips" style="margin-bottom:12px">
+        <button class="fchip" :class="{act:mc==='all'}" @click="mc='all';filterMem()">TODOS ({{allMem.length}})</button>
+        <button v-for="c in memCats" :key="c.category"
+          class="fchip" :class="{act:mc===c.category, gr:c.source==='ghostrecon'}"
+          @click="mc=c.category;filterMem()">
+          {{c.category.toUpperCase()}} ({{c.count}})
+        </button>
+      </div>
+      <div class="mgrid">
+        <div v-if="!filtMem.length" style="text-align:center;padding:30px;color:var(--t3);font-size:11px">◈ Vazio</div>
+        <div v-for="m in filtMem" :key="m.id" class="mcard">
+          <div class="mc-body">
+            <div class="mc-topic">{{m.topic}}</div>
+            <div class="mc-pre">{{m.content}}</div>
+          </div>
+          <div class="mc-side">
+            <span class="cbadge">{{m.category}}</span>
+            <span v-if="m.source!=='manual'" class="sbadge">{{m.source}}</span>
+            <button class="delbtn" @click="delMem(m.id)">✕ DEL</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<!-- TOAST -->
+<div class="toast" :class="{err:terr,warn:twarn}" v-if="tmsg">{{tmsg}}</div>
+</div>
+
+<script>
+const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+createApp({
+setup() {
+  /* Mesma origem quando abres http://HOST:PORT/gui/ — evita NetworkError com file:// */
+  const API = (() => {
+    if (typeof window === 'undefined') return 'http://127.0.0.1:8000';
+    const { protocol, hostname, port } = window.location;
+    if (protocol === 'http:' || protocol === 'https:')
+      return `${protocol}//${hostname}${port ? ':' + port : ''}`;
+    return 'http://127.0.0.1:8000';
+  })();
+  const tab = ref('chat'), grTab = ref('runs');
+  const model = ref('deepseek-coder-v2:16b');
+  const memK = ref(6), fbK = ref(4), inp = ref(''), msgs = ref([]);
+  const streaming = ref(false), strbuf = ref('');
+  const h = ref({ghost:'offline',ollama:'offline',embeddings:'offline',embedding_strict:false,hexstrike:'offline',runs:0});
+  const mi = reactive({list:'', running:false, last:''});
+  const hx = reactive({
+    base:'', reachable:false, err:'', out:'', lastPath:'', busy:false,
+    target:'', command:'', relayPath:'/api/intelligence/analyze-target',
+    relayJson:'{"target":"example.com","analysis_type":"comprehensive"}',
+    healthSummary:'', loadingH:false,
+  });
+  const st = ref({});
+  const sessions = ref([]), curSess = ref('default');
+  const qcat = ref('pentest'), qp_map = ref({});
+  const tmsg = ref(''), terr = ref(false), twarn = ref(false);
+  const allMem = ref([]), filtMem = ref([]), memCats = ref([]);
+  const ms = ref(''), mc = ref('all');
+  const bJson = ref('');
+  const runs = ref([]), selRun = ref(null), runFindings = ref([]), runDomain = ref('');
+  const grAnalyzing = ref(false);
+  const chatArea = ref(null), bottom = ref(null), iel = ref(null);
+  let abortCtl = null;
+
+  const params = reactive({
+    temperature:0.7, top_p:0.9, top_k:40, min_p:0.0, typical_p:1.0,
+    repeat_penalty:1.1, repeat_last_n:64, presence_penalty:0.0, frequency_penalty:0.0,
+    num_ctx:8192, num_predict:2048, num_keep:0,
+    mirostat:0, mirostat_tau:5.0, mirostat_eta:0.1,
+    tfs_z:1.0, seed:-1, num_batch:512,
+    penalize_newline:false, low_vram:false, f16_kv:true,
+    use_mmap:true, use_mlock:false
+  });
+
+  const pdef = [
+    {k:'temperature',l:'TEMPERATURE',min:0,max:2,step:0.05},
+    {k:'top_p',l:'TOP-P',min:0,max:1,step:0.05},
+    {k:'top_k',l:'TOP-K',min:0,max:200,step:1},
+    {k:'min_p',l:'MIN-P',min:0,max:1,step:0.01},
+    {k:'typical_p',l:'TYPICAL-P',min:0,max:1,step:0.05},
+    {k:'repeat_penalty',l:'REPEAT PENALTY',min:0.5,max:2,step:0.05},
+    {k:'repeat_last_n',l:'REPEAT LAST-N',min:0,max:512,step:8},
+    {k:'presence_penalty',l:'PRESENCE',min:-2,max:2,step:0.1},
+    {k:'frequency_penalty',l:'FREQUENCY',min:-2,max:2,step:0.1},
+    {k:'num_ctx',l:'CONTEXT (tokens)',min:512,max:32768,step:512},
+    {k:'num_predict',l:'MAX PREDICT',min:128,max:8192,step:128},
+    {k:'num_keep',l:'NUM KEEP',min:0,max:512,step:8},
+    {k:'mirostat',l:'MIROSTAT (0/1/2)',min:0,max:2,step:1},
+    {k:'mirostat_tau',l:'MIRO TAU',min:0,max:10,step:0.5},
+    {k:'mirostat_eta',l:'MIRO ETA',min:0,max:1,step:0.05},
+    {k:'tfs_z',l:'TFS-Z',min:0,max:1,step:0.05},
+    {k:'num_batch',l:'BATCH SIZE',min:64,max:2048,step:64},
+  ];
+
+  const bpdef = [
+    {k:'f16_kv',l:'F16-KV'},{k:'use_mmap',l:'MMAP'},
+    {k:'use_mlock',l:'MLOCK'},{k:'low_vram',l:'LOW-VRAM'},
+    {k:'penalize_newline',l:'PENALIZE NL'},
+  ];
+
+  const qcats = [{k:'pentest',l:'PENTEST'},{k:'recon',l:'RECON'},{k:'exploit',l:'EXPLOIT'},
+                 {k:'code',l:'CÓDIGO'},{k:'ghostrecon',l:'GHOSTRECON'},{k:'ctf',l:'CTF'}];
+
+  const cats = [{v:'pentest',l:'PENTEST'},{v:'exploit',l:'EXPLOIT'},{v:'recon',l:'RECON'},
+                {v:'tool',l:'FERRAMENTA'},{v:'code',l:'CÓDIGO'},{v:'methodology',l:'METODOLOGIA'},
+                {v:'ctf',l:'CTF'},{v:'personal',l:'PESSOAL'},{v:'general',l:'GERAL'}];
+
+  const gr = reactive({dbPath:'',runJson:'',ndjson:'',result:'',analyzeRunId:'',mode:'full',analysis:''});
+
+  const tf = reactive({topic:'',content:'',cat:'pentest',tags:''});
+
+  const cs = reactive({
+    path:'', file:'', exts:'', focus:'all', llm:true, learn:true,
+    scanning:false, findings:[], summary:null, filesScanned:0, langs:{},
+    llmOutput:'', snippetMode:false, snippetCode:'', snippetLang:'python',
+    disasmMode:false, disasmCode:'', disasmCtx:'', arch:'x86_64', asmFocus:'rop',
+  });
+  const ws = reactive({
+    root:'',
+    rootInput:'',
+    path:'',
+    content:'',
+    treeText:'',
+    depth:2,
+  });
+  const csModes = [
+    {v:'all',l:'COMPLETO'},{v:'sqli',l:'SQL INJECTION'},{v:'auth',l:'AUTH/AUTHZ'},
+    {v:'secrets',l:'SECRETS'},{v:'injection',l:'INJEÇÕES'},{v:'crypto',l:'CRYPTO'},
+    {v:'logic',l:'LÓGICA'},
+    {v:'memory',l:'MEMÓRIA (C/C++)'},
+    {v:'rop',l:'GADGETS ROP'},
+    {v:'shellcode',l:'SHELLCODE'},
+    {v:'race',l:'RACE CONDITIONS'},
+    {v:'priv',l:'PRIVESC'},
+  ];
+  const asmModes = [
+    {v:'rop',l:'GADGETS ROP/JOP'},
+    {v:'shellcode',l:'SHELLCODE'},
+    {v:'all',l:'ANÁLISE COMPLETA'},
+    {v:'priv',l:'RING0/PRIVESC'},
+    {v:'race',l:'RACE CONDITIONS'},
+  ];
+  let scanAbort = null;
+
+  // ── Toast ──
+  const toast = (msg, type='ok') => {
+    tmsg.value=msg; terr.value=type==='err'; twarn.value=type==='warn';
+    setTimeout(()=>tmsg.value='',3000);
+  };
+
+  const scrollBot = async () => { await nextTick(); bottom.value?.scrollIntoView({behavior:'smooth'}); };
+
+  if (typeof window !== 'undefined' && !window.__ghostCopyCode) {
+    window.__ghostCopyCode = async (btn) => {
+      try {
+        const raw = decodeURIComponent(btn?.dataset?.code || '');
+        await navigator.clipboard.writeText(raw);
+        const old = btn.textContent;
+        btn.textContent = 'COPIADO';
+        setTimeout(() => { btn.textContent = old || 'COPIAR'; }, 1200);
+      } catch {
+        btn.textContent = 'ERRO';
+        setTimeout(() => { btn.textContent = 'COPIAR'; }, 1200);
+      }
+    };
+  }
+
+  /**
+   * Lê stream NDJSON (uma linha JSON por evento). Junta chunks TCP para não partir
+   * linhas ao meio — sem isto JSON.parse falha e o texto da IA fica vazio.
+   */
+  const parseNDJSONStream = async (reader, onObject) => {
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      buf += dec.decode(value || new Uint8Array(), { stream: !done });
+      const parts = buf.split('\n');
+      buf = parts.pop() || '';
+      for (const raw of parts) {
+        const line = raw.trim();
+        if (!line) continue;
+        try { onObject(JSON.parse(line)); } catch (_) {}
+      }
+      if (done) {
+        const tail = buf.trim();
+        if (tail) {
+          try { onObject(JSON.parse(tail)); } catch (_) {}
+        }
+        break;
+      }
+    }
+  };
+
+  // ── Render markdown ──
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const render = (text) => {
+    if (!text) return '';
+    text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_,l,c) => {
+      const raw = c.trim();
+      const enc = encodeURIComponent(raw);
+      return `<div class="code-wrap"><button class="copy-code-btn" data-code="${enc}" onclick="window.__ghostCopyCode(this)">COPIAR</button><pre><code class="lang-${l}">${esc(raw)}</code></pre></div>`;
+    });
+    text = text.replace(/`([^`\n]+)`/g, (_,c) => `<code>${esc(c)}</code>`);
+    text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    text = text.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+    text = text.replace(/^# (.+)$/gm, '<h3 style="font-size:13px;color:var(--amber)">$1</h3>');
+    text = text.replace(/^[-•]\s(.+)$/gm, '<li>$1</li>');
+    text = text.replace(/^---$/gm, '<hr>');
+    text = text.replace(/\n/g, '<br>');
+    return text;
+  };
+
+  // ── Send ──
+  const send = async () => {
+    const text = inp.value.trim();
+    if (!text || streaming.value) return;
+    msgs.value.push({role:'user',content:text});
+    inp.value=''; if(iel.value)iel.value.style.height='auto';
+    streaming.value=true; strbuf.value='';
+    await scrollBot();
+
+    const history = msgs.value.slice(0,-1).map(m=>({role:m.role,content:m.content}));
+    abortCtl = new AbortController();
+
+    try {
+      const res = await fetch(`${API}/chat/stream`, {
+        method:'POST', signal:abortCtl.signal,
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({message:text,model:model.value,history,
+          params:{...params},session_id:curSess.value,memory_k:memK.value,feedback_k:fbK.value})
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${errBody.slice(0, 280) || res.statusText}`);
+      }
+
+      let full='', meta={};
+      await parseNDJSONStream(res.body.getReader(), (d) => {
+        if (d.token) { full += d.token; strbuf.value = full; void scrollBot(); }
+        if (d.done) {
+          if (typeof d.full === 'string' && d.full.length) full = d.full;
+          meta = d;
+          strbuf.value = full;
+        }
+      });
+
+      msgs.value.push({role:'assistant',content:full||strbuf.value||'[resposta vazia — confira Ollama e o modelo]',fb:null,
+        mem:meta.memory_used||0, fbm:meta.feedback_used||0, tok:meta.eval_count||0,
+        ms:meta.total_duration||0});
+    } catch(e) {
+      if(e.name!=='AbortError') {
+        msgs.value.push({role:'assistant',
+          content:`**[ERRO]** \`${e.message}\`\n\nVerifique:\n- \`cd backend && uvicorn main:app --reload\`\n- \`ollama serve\``,
+          fb:null,mem:0,tok:0,ms:0});
+      }
+    }
+
+    streaming.value=false; strbuf.value='';
+    await scrollBot(); iel.value?.focus();
+  };
+
+  const stopStr = () => {
+    abortCtl?.abort();
+    if(strbuf.value) msgs.value.push({role:'assistant',content:strbuf.value+'\n\n*[interrompido]*',fb:null,mem:0,tok:0,ms:0});
+    streaming.value=false; strbuf.value='';
+  };
+
+  // ── Feedback ──
+  const fbGood = async (i) => {
+    const m=msgs.value[i]; m.fb='g';
+    const q=msgs.value[i-1]?.content||'';
+    await fetch(`${API}/memory/feedback`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q,answer:m.content,rating:5,session_id:curSess.value})});
+    toast('✓ APRENDIDO'); loadStats();
+  };
+  const fbBad = async (i) => {
+    const m=msgs.value[i]; m.fb='b';
+    const q=msgs.value[i-1]?.content||'';
+    const fix=prompt('Correção?');
+    await fetch(`${API}/memory/feedback`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q,answer:m.content,rating:2,correction:fix,session_id:curSess.value})});
+    toast('✗ Registrado','warn');
+  };
+
+  // ── Sessions ──
+  const persistCurrentSession = async ({ silent = false } = {}) => {
+    if(!msgs.value.length) return false;
+    const sid = String(curSess.value || '').trim() || ('sess_'+Date.now());
+    curSess.value = sid;
+    const title = msgs.value[0]?.content?.slice(0,50)||'Sessão';
+    const res = await fetch(`${API}/sessions/save`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({session_id:curSess.value,title,model:model.value,
+        messages:msgs.value.map(m=>({role:m.role,content:m.content})),params:{...params}})});
+    if(!res.ok){
+      const txt = await res.text().catch(()=>'');
+      throw new Error(`Falha ao salvar sessão (${res.status}) ${txt.slice(0,120)}`);
+    }
+    await loadSessions();
+    if(!silent) toast('💾 Sessão salva');
+    return true;
+  };
+  const saveSess = async () => {
+    try {
+      const ok = await persistCurrentSession({ silent:false });
+      if(!ok) toast('Nada para salvar nesta sessão','warn');
+    } catch (e) {
+      toast(String(e.message||e),'err');
+    }
+  };
+  const loadSess = async (id) => {
+    const r=await fetch(`${API}/sessions/${id}`); const s=await r.json();
+    curSess.value=id; msgs.value=s.messages.map(m=>({...m,fb:null,mem:0,tok:0,ms:0}));
+    model.value=s.model||model.value;
+    if(s.params) Object.assign(params,s.params);
+    tab.value='chat'; await scrollBot();
+  };
+  const newSess = async () => {
+    try {
+      await persistCurrentSession({ silent:true });
+    } catch (_) {
+      toast('Não foi possível auto-salvar a sessão anterior','warn');
+    }
+    curSess.value='sess_'+Date.now();
+    msgs.value=[];
+    tab.value='chat';
+    toast('🆕 Novo chat criado');
+  };
+  const delSess = async (id) => {
+    await fetch(`${API}/sessions/${id}`,{method:'DELETE'}); loadSessions();
+    if(curSess.value===id) newSess();
+  };
+  const loadSessions = async () => {
+    try { const r=await fetch(`${API}/sessions`); sessions.value=await r.json(); } catch {}
+  };
+
+  // ── Memory ──
+  const loadAllMem = async () => {
+    try {
+      const r=await fetch(`${API}/memory/all?limit=600`); const d=await r.json();
+      allMem.value=d.items||[]; filtMem.value=allMem.value;
+      const cr=await fetch(`${API}/memory/categories`); memCats.value=await cr.json();
+    } catch {}
+  };
+  const filterMem = () => {
+    let list=allMem.value;
+    if(mc.value!=='all') list=list.filter(m=>m.category===mc.value);
+    if(ms.value) { const q=ms.value.toLowerCase(); list=list.filter(m=>m.topic.toLowerCase().includes(q)||m.content.toLowerCase().includes(q)); }
+    filtMem.value=list;
+  };
+  const delMem = async (id) => {
+    await fetch(`${API}/memory/${id}`,{method:'DELETE'});
+    allMem.value=allMem.value.filter(m=>m.id!==id); filterMem();
+    toast('✕ Removido'); loadStats();
+  };
+
+  // ── Teach ──
+  const teach = async () => {
+    const tags=tf.tags.split(',').map(t=>t.trim()).filter(Boolean);
+    const r=await fetch(`${API}/memory/teach`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({topic:tf.topic,content:tf.content,category:tf.cat,tags})});
+    const d=await r.json(); toast(`⊕ ${d.topic}`);
+    tf.topic=''; tf.content=''; tf.tags=''; loadStats();
+  };
+  const batchTeach = async () => {
+    try {
+      const items=JSON.parse(bJson.value);
+      const r=await fetch(`${API}/memory/teach/bulk`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(items)});
+      const d=await r.json(); toast(`⊕ ${d.count} importadas`);
+      bJson.value=''; loadStats();
+    } catch(e) { toast(`JSON inválido: ${e.message}`,'err'); }
+  };
+
+  // ── GHOSTRECON ──
+  const loadRuns = async () => {
+    try { const r=await fetch(`${API}/ghostrecon/runs`); runs.value=await r.json(); } catch {}
+  };
+  const selectRun = async (run) => {
+    selRun.value=run.id; runDomain.value=run.domain;
+    try {
+      const r=await fetch(`${API}/ghostrecon/findings/${run.id}`); const d=await r.json();
+      runFindings.value=d.findings||[];
+    } catch {}
+    grTab.value='runs';
+  };
+  const ingestSQLite = async () => {
+    if(!gr.dbPath) return toast('Informe o caminho do SQLite','warn');
+    try {
+      const r=await fetch(`${API}/ghostrecon/ingest/sqlite`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({db_path:gr.dbPath})});
+      const d=await r.json(); gr.result=`✓ SQLite: ${d.runs} runs, ${d.findings} findings, ${d.manual_validations} validações`;
+      toast('✓ SQLite ingerido'); loadRuns(); loadStats();
+    } catch(e) { toast(e.message,'err'); }
+  };
+  const ingestRun = async () => {
+    if(!gr.runJson.trim()) return toast('JSON vazio','warn');
+    try {
+      const data=JSON.parse(gr.runJson);
+      const r=await fetch(`${API}/ghostrecon/ingest/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      const d=await r.json(); gr.result=`✓ Run ${d.run_id?.slice(0,8)}: ${d.findings} findings`;
+      toast('✓ Run ingerido'); loadRuns(); loadStats();
+    } catch(e) { toast(e.message,'err'); }
+  };
+  const ingestNDJSON = async () => {
+    if(!gr.ndjson.trim()) return toast('NDJSON vazio','warn');
+    try {
+      const r=await fetch(`${API}/ghostrecon/ingest/ndjson`,{method:'POST',headers:{'Content-Type':'application/json'},body:gr.ndjson});
+      const d=await r.json(); gr.result=`✓ NDJSON: ${d.findings} findings, ${d.logs} logs`;
+      toast('✓ NDJSON processado'); loadStats();
+    } catch(e) { toast(e.message,'err'); }
+  };
+  const analyzeRun = async () => {
+    if(!gr.analyzeRunId) return;
+    grAnalyzing.value=true; gr.analysis='';
+    try {
+      const res=await fetch(`${API}/ghostrecon/analyze`,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({run_id:gr.analyzeRunId,mode:gr.mode,model:model.value,params:{...params}})});
+      let full='';
+      await parseNDJSONStream(res.body.getReader(), (d) => {
+        if (d.token) { full += d.token; gr.analysis = full; }
+      });
+    } catch(e) { toast(e.message,'err'); }
+    grAnalyzing.value=false;
+  };
+
+  // ── Utils ──
+  const loadStats = async () => {
+    try { const r=await fetch(`${API}/stats`); st.value=await r.json(); } catch {}
+  };
+  const checkH = async () => {
+    try {
+      const r=await fetch(`${API}/health`,{signal:AbortSignal.timeout(3000)});
+      const d=await r.json();
+      h.value={...d,runs:d.runs||0,hexstrike:d.hexstrike||'offline',
+        embeddings:d.embeddings||'offline',embedding_strict:!!d.embedding_strict};
+    } catch { h.value={ghost:'offline',ollama:'offline',embeddings:'offline',embedding_strict:false,hexstrike:'offline',runs:0}; }
+  };
+
+  const loadHexStatus = async () => {
+    hx.err='';
+    try {
+      const r=await fetch(`${API}/hexstrike/status`);
+      const d=await r.json();
+      hx.base=d.base_url||''; hx.reachable=!!d.reachable;
+    } catch (e) { hx.err=String(e.message||e); hx.reachable=false; }
+  };
+
+  const _hexRelay = async (path, payload, timeout=120) => {
+    hx.busy=true; hx.err='';
+    try {
+      const r=await fetch(`${API}/hexstrike/relay`,{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({path, payload, timeout})
+      });
+      const t=await r.text();
+      let j; try { j=JSON.parse(t); } catch { j={raw:t}; }
+      if (!r.ok) {
+        const det=j.detail!==undefined?j.detail:j.error||j;
+        hx.err=(typeof det==='object'?JSON.stringify(det):String(det)).slice(0,800);
+        hx.out='';
+        return null;
+      }
+      hx.lastPath=path;
+      hx.out=(typeof j==='object'?JSON.stringify(j,null,2):t);
+      return j;
+    } catch (e) { hx.err=String(e.message||e); hx.out=''; return null; }
+    finally { hx.busy=false; }
+  };
+
+  const hexAnalyze = async () => {
+    if (!hx.target.trim()) return;
+    await _hexRelay('/api/intelligence/analyze-target',
+      {target:hx.target.trim(), analysis_type:'comprehensive'}, 180);
+  };
+  const hexSelectTools = async () => {
+    if (!hx.target.trim()) return;
+    await _hexRelay('/api/intelligence/select-tools',
+      {target:hx.target.trim(), objective:'comprehensive'}, 120);
+  };
+  const hexCommand = async () => {
+    if (!hx.command.trim()) return;
+    await _hexRelay('/api/command', {command:hx.command.trim(), use_cache:false}, 300);
+  };
+  const hexRelay = async () => {
+    let payload={};
+    try { payload=JSON.parse(hx.relayJson||'{}'); } catch { toast('JSON inválido no payload','err'); return; }
+    await _hexRelay(hx.relayPath.trim(), payload, 180);
+  };
+  const loadHexHealthFull = async () => {
+    hx.loadingH=true; hx.healthSummary=''; hx.err='';
+    try {
+      const r=await fetch(`${API}/hexstrike/health`, {signal:AbortSignal.timeout(120000)});
+      const t=await r.text();
+      try { const j=JSON.parse(t); hx.healthSummary=JSON.stringify(j,null,2).slice(0,120000); }
+      catch { hx.healthSummary=t.slice(0,50000); }
+    } catch (e) { hx.err=String(e.message||e); }
+    finally { hx.loadingH=false; }
+  };
+  const hexInjectChat = () => {
+    if (!hx.out) return;
+    const block=`[HexStrike] ${hx.lastPath}\n\n\`\`\`json\n${hx.out.slice(0,14000)}\n\`\`\`\n\nResume e interpreta como pentester (âmbito autorizado).`;
+    inp.value=block; tab.value='chat'; toast('Texto colocado no input — envia no chat'); nextTick(()=>iel.value?.focus());
+  };
+  const loadQP = async () => {
+    try { const r=await fetch(`${API}/quickprompts`); qp_map.value=await r.json(); } catch {}
+  };
+  const installModels = async () => {
+    mi.running = true; mi.last = '';
+    try {
+      const models = (mi.list.trim()
+        ? mi.list.split(',').map(s=>s.trim()).filter(Boolean)
+        : [model.value]);
+      const r = await fetch(`${API}/models/install`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({models})
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        throw new Error((d?.detail && (typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail))) || d?.error || `HTTP ${r.status}`);
+      }
+      const lines = [
+        `Solicitados: ${d.requested} | OK: ${d.installed} | Falhas: ${d.failed}`,
+        ...((d.results||[]).map(x => `${x.ok?'✓':'✗'} ${x.model}`))
+      ];
+      mi.last = lines.join('\n');
+      toast(`Modelos: ${d.installed} instalado(s)`);
+      mi.list = '';
+    } catch (e) {
+      mi.last = `Erro: ${String(e.message||e)}`;
+      toast(`Erro install: ${String(e.message||e)}`,'err');
+    } finally {
+      mi.running = false;
+    }
+  };
+  const exportMem = async () => {
+    const r=await fetch(`${API}/memory/export`); const d=await r.json();
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
+    a.download=`ghost_mem_${new Date().toISOString().split('T')[0]}.json`; a.click();
+    toast('↓ Exportado');
+  };
+  const clearChat = () => {
+    msgs.value=[];
+    curSess.value='sess_'+Date.now();
+    tab.value='chat';
+    toast('Chat limpo e nova sessão iniciada');
+  };
+  const setInput = (t) => { inp.value=t; tab.value='chat'; nextTick(()=>iel.value?.focus()); };
+  const ar = (e) => { e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight,130)+'px'; };
+
+  // ── Workspace local (estilo code assistant) ──
+  const _flattenTree = (node, indent='') => {
+    if (!node) return [];
+    const lines = [];
+    if (node.path === '.' || node.name === '.') lines.push('.');
+    else lines.push(`${indent}${node.type === 'dir' ? '[D]' : '[F]'} ${node.name}`);
+    const children = Array.isArray(node.children) ? node.children : [];
+    for (const ch of children) {
+      lines.push(..._flattenTree(ch, indent + '  '));
+    }
+    return lines;
+  };
+  const loadWorkspaceInfo = async () => {
+    try {
+      const r = await fetch(`${API}/workspace/info`);
+      const d = await r.json();
+      ws.root = d.root || '';
+      if (!ws.rootInput) ws.rootInput = ws.root;
+    } catch (e) {
+      toast(`Workspace info: ${String(e.message||e)}`,'err');
+    }
+  };
+  const setWorkspaceRoot = async () => {
+    if (!ws.rootInput.trim()) return toast('Informe a pasta root','warn');
+    try {
+      const r = await fetch(`${API}/workspace/root`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({path: ws.rootInput.trim()}),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error || `HTTP ${r.status}`);
+      ws.root = d.root || ws.rootInput.trim();
+      toast('Workspace root definida');
+      await refreshWorkspaceTree();
+    } catch (e) {
+      toast(`Workspace root: ${String(e.message||e)}`,'err');
+    }
+  };
+  const refreshWorkspaceTree = async () => {
+    try {
+      const dep = Math.max(1, Math.min(5, Number(ws.depth || 2)));
+      ws.depth = dep;
+      const u = new URL(`${API}/workspace/tree`);
+      u.searchParams.set('path', '');
+      u.searchParams.set('depth', String(dep));
+      const r = await fetch(u.toString());
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error || `HTTP ${r.status}`);
+      ws.treeText = _flattenTree(d).join('\n');
+    } catch (e) {
+      toast(`Tree: ${String(e.message||e)}`,'err');
+    }
+  };
+  const readWorkspaceFile = async () => {
+    if (!ws.path.trim()) return toast('Informe o caminho do arquivo','warn');
+    try {
+      const u = new URL(`${API}/workspace/read`);
+      u.searchParams.set('path', ws.path.trim());
+      const r = await fetch(u.toString());
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error || `HTTP ${r.status}`);
+      ws.content = d.content || '';
+      toast(d.truncated ? 'Arquivo aberto (truncado)' : 'Arquivo aberto');
+    } catch (e) {
+      toast(`Read: ${String(e.message||e)}`,'err');
+    }
+  };
+  const saveWorkspaceFile = async () => {
+    if (!ws.path.trim()) return toast('Informe o caminho do arquivo','warn');
+    try {
+      const r = await fetch(`${API}/workspace/write`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({path: ws.path.trim(), content: ws.content, create_dirs: true}),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error || `HTTP ${r.status}`);
+      toast(`Arquivo salvo: ${d.path}`);
+      await refreshWorkspaceTree();
+    } catch (e) {
+      toast(`Write: ${String(e.message||e)}`,'err');
+    }
+  };
+
+  // ── CodeScan ──
+  const scanRepo = async () => {
+    if (!cs.path.trim()) return;
+    cs.scanning=true; cs.findings=[]; cs.llmOutput=''; cs.summary=null;
+    cs.filesScanned=0; cs.langs={};
+    scanAbort = new AbortController();
+
+    const exts = cs.exts.trim() ? cs.exts.trim().split(/\s+/) : [];
+
+    try {
+      const res = await fetch(`${API}/codescan/repo`, {
+        method:'POST', signal:scanAbort.signal,
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          repo_path: cs.path, focus: cs.focus, model: model.value,
+          params: {...params}, include_exts: exts,
+          target_file: cs.file||null, llm_review: cs.llm, learn: cs.learn
+        })
+      });
+
+      await parseNDJSONStream(res.body.getReader(), (d) => {
+        if (d.type === 'static' && d.data) {
+          cs.findings = d.data.static_findings || [];
+          cs.summary = d.data.severity_summary || {};
+          cs.filesScanned = d.data.files_scanned || 0;
+          cs.langs = d.data.files_by_lang || {};
+        } else if (d.type === 'llm' && d.token) {
+          cs.llmOutput += d.token;
+        }
+      });
+      toast(`⌥ Scan: ${cs.findings.length} findings em ${cs.filesScanned} arquivos`);
+    } catch(e) {
+      if(e.name!=='AbortError') toast(e.message,'err');
+    }
+    cs.scanning=false;
+  };
+
+  const stopScan = () => {
+    scanAbort?.abort();
+    cs.scanning=false;
+    toast('■ Scan interrompido','warn');
+  };
+
+  const scanSnippet = () => {
+    cs.snippetMode=true; cs.llmOutput='';
+  };
+
+  const submitSnippet = async () => {
+    if(!cs.snippetCode.trim()) return;
+    cs.scanning=true; cs.llmOutput='';
+    scanAbort = new AbortController();
+    try {
+      const res = await fetch(`${API}/codescan/snippet`, {
+        method:'POST', signal:scanAbort.signal,
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({code:cs.snippetCode,lang:cs.snippetLang,focus:cs.focus,model:model.value,params:{...params}})
+      });
+      await parseNDJSONStream(res.body.getReader(), (d) => {
+        if (d.token) cs.llmOutput += d.token;
+      });
+      toast('⌥ Snippet analisado');
+    } catch(e){if(e.name!=='AbortError')toast(e.message,'err');}
+    cs.scanning=false;
+  };
+
+  const submitDisasm = async () => {
+    if(!cs.disasmCode.trim()) return;
+    cs.scanning=true; cs.llmOutput=''; cs.findings=[];
+    scanAbort = new AbortController();
+    try {
+      const res = await fetch(`${API}/codescan/disasm`, {
+        method:'POST', signal:scanAbort.signal,
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          disasm: cs.disasmCode, focus: cs.asmFocus,
+          arch: cs.arch, context: cs.disasmCtx,
+          model: model.value, params: {...params}
+        })
+      });
+      await parseNDJSONStream(res.body.getReader(), (d) => {
+        if (d.type === 'static') cs.findings = d.findings || [];
+        else if (d.type === 'llm' && d.token) cs.llmOutput += d.token;
+      });
+      toast(`⚙ ASM analisado — ${cs.findings.length} hits estáticos`);
+    } catch(e){if(e.name!=='AbortError')toast(e.message,'err');}
+    cs.scanning=false;
+  };
+
+  onMounted(()=>{
+    checkH(); loadStats(); loadSessions(); loadQP(); loadRuns(); loadHexStatus();
+    loadWorkspaceInfo();
+    refreshWorkspaceTree();
+    setInterval(checkH, 8000); setInterval(loadStats, 25000);
+  });
+
+  return {
+    tab,grTab,model,memK,fbK,inp,msgs,streaming,strbuf,h,st,
+    sessions,curSess,qcat,qcats,qp_map,params,pdef,bpdef,
+    cats,tf,bJson,tmsg,terr,twarn,
+    allMem,filtMem,memCats,ms,mc,
+    runs,selRun,runFindings,runDomain,gr,grAnalyzing,
+    cs,csModes,asmModes,
+    ws,
+    chatArea,bottom,iel,
+    send,stopStr,fbGood,fbBad,
+    saveSess,loadSess,newSess,delSess,
+    loadAllMem,filterMem,delMem,teach,batchTeach,
+    loadRuns,selectRun,ingestSQLite,ingestRun,ingestNDJSON,analyzeRun,
+    exportMem,clearChat,setInput,ar,render,
+    loadWorkspaceInfo,setWorkspaceRoot,refreshWorkspaceTree,readWorkspaceFile,saveWorkspaceFile,
+    scanRepo,stopScan,scanSnippet,submitSnippet,submitDisasm,
+    mi,installModels,
+    hx,loadHexStatus,hexAnalyze,hexSelectTools,hexCommand,hexRelay,loadHexHealthFull,hexInjectChat,
+  };
+}
+}).mount('#app');
+</script>
+</body>
+</html>

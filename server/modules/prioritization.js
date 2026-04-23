@@ -70,8 +70,16 @@ function paramSensitivityBoost(f) {
 function endpointUrlBoost(f) {
   if (f.type !== 'endpoint' && f.type !== 'js') return { x: 1, r: null };
   const u = f.url || f.value || '';
+  const m = String(f.meta || '').toLowerCase();
   if (SENSITIVE_PARAM_IN_URL.test(u)) {
     return { x: 1.32, r: 'URL com query sensível (token/key/auth…)' };
+  }
+  if (
+    /jdwp|java debug wire protocol|activemq|openwire|stomp|amqp|mqtt|xml-rpc endpoint exposto|wp user enum/i.test(
+      `${u} ${m}`,
+    )
+  ) {
+    return { x: 1.3, r: 'exposição de serviço sensível (debug/broker/auth)' };
   }
   if (/\/(api|graphql|admin|internal|debug|actuator|swagger)/i.test(u)) {
     return { x: 1.15, r: 'caminho API/admin/debug' };

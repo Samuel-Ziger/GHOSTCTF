@@ -170,7 +170,28 @@ export async function saveRun(payload) {
     }
   }
 
+  if (result?.runId != null && String(localProjectName || '').trim() && Array.isArray(rest.findings)) {
+    try {
+      const d = sqlite.getDb();
+      const m = sqlite.mergeProjectSecretPeersDb(d, localProjectName, rest.target, result.runId, rest.findings);
+      result = { ...result, projectSecretDuplicates: m.duplicates };
+    } catch (e) {
+      console.warn('[GHOSTCTF project_secret_peers]', e?.message || e);
+    }
+  }
+
   return result;
+}
+
+/** Correlação de segredos (value_fp) entre alvos no mesmo nome de projeto — índice em SQLite local. */
+export function listProjectSecretDuplicates(projectName) {
+  try {
+    const d = sqlite.getDb();
+    return sqlite.listProjectSecretDuplicatesSqlite(d, sqlite.sanitizePathSegment(String(projectName || '').trim()));
+  } catch (e) {
+    console.error('[GHOSTCTF listProjectSecretDuplicates]', e.message);
+    return [];
+  }
 }
 
 export async function listRuns(limit) {

@@ -16,3 +16,12 @@ supabase/.temp/
 # Artefactos locais (não enviar ao remoto)
 /hash.txt
 /key.pub
+
+# Ghost local em third_party: venv e logs gerados na máquina
+third_party/**/venv/
+third_party/**/__pycache__/
+third_party/**/*.py[cod]
+third_party/**/ollama-serve.log
+third_party/**/ghost.log
+# Estado local do Ghost (Chroma + SQLite)
+third_party/**/ghost_data/

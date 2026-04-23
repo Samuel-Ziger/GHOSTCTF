@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { findingsForRunsTable, fingerprintFinding, knowledgeKeyFromFinding, norm } from './db-common.js';
+import { buildSecretPeerRows } from './secret-project-peers.js';
 import { parseFindingsSnapshotJson } from './finding-serialize.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -90,6 +91,21 @@ const SCHEMA_SQL = `
       FOREIGN KEY (category_id) REFERENCES brain_categories(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_brain_links_category ON brain_links(category_id);
+
+    CREATE TABLE IF NOT EXISTS project_secret_peers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_name TEXT NOT NULL,
+      value_fp TEXT NOT NULL,
+      target TEXT NOT NULL,
+      kind_hint TEXT,
+      value_preview TEXT,
+      url TEXT,
+      last_run_id INTEGER,
+      first_seen TEXT NOT NULL,
+      last_seen TEXT NOT NULL,
+      UNIQUE(project_name, value_fp, target)
+    );
+    CREATE INDEX IF NOT EXISTS idx_psp_proj_fp ON project_secret_peers(project_name, value_fp);
   `;
 
 const BRAIN_CATEGORY_SEED_TITLES = [
@@ -310,6 +326,72 @@ export function mergeIntelForTargetDb(d, target, runId, findings) {
 
 export function mergeIntelForTarget(target, runId, findings) {
   return mergeIntelForTargetDb(getDb(), target, runId, findings);
+}
+
+export function mergeProjectSecretPeersDb(d, projectName, target, runId, findings) {
+  const rows = buildSecretPeerRows(projectName, target, runId, findings);
+  if (!rows.length) {
+    return {
+      inserted: 0,
+      duplicates: listProjectSecretDuplicatesSqlite(d, sanitizePathSegment(String(projectName || '').trim())),
+    };
+  }
+  const ins = d.prepare(`
+    INSERT INTO project_secret_peers (
+      project_name, value_fp, target, kind_hint, value_preview, url, last_run_id, first_seen, last_seen
+    ) VALUES (
+      @project_name, @value_fp, @target, @kind_hint, @value_preview, @url, @last_run_id, @ts, @ts
+    )
+    ON CONFLICT(project_name, value_fp, target) DO UPDATE SET
+      last_seen = excluded.last_seen,
+      last_run_id = excluded.last_run_id,
+      kind_hint = COALESCE(excluded.kind_hint, project_secret_peers.kind_hint),
+      value_preview = COALESCE(excluded.value_preview, project_secret_peers.value_preview),
+      url = COALESCE(excluded.url, project_secret_peers.url)
+  `);
+  const tx = d.transaction((list) => {
+    for (const r of list) ins.run(r);
+  });
+  tx(rows);
+  return {
+    inserted: rows.length,
+    duplicates: listProjectSecretDuplicatesSqlite(d, sanitizePathSegment(String(projectName || '').trim())),
+  };
+}
+
+export function listProjectSecretDuplicatesSqlite(d, projectNameSanitized) {
+  const pn = String(projectNameSanitized || '').trim();
+  if (!pn) return [];
+  try {
+    const rows = d
+      .prepare(
+        `SELECT value_fp, kind_hint,
+          GROUP_CONCAT(DISTINCT target) AS targets_csv,
+          COUNT(DISTINCT target) AS n_targets,
+          MAX(value_preview) AS preview,
+          MAX(url) AS sample_url
+         FROM project_secret_peers
+         WHERE project_name = ?
+         GROUP BY value_fp
+         HAVING COUNT(DISTINCT target) >= 2
+         ORDER BY n_targets DESC, value_fp`,
+      )
+      .all(pn);
+    return (rows || []).map((r) => ({
+      value_fp: r.value_fp,
+      kind_hint: r.kind_hint || '',
+      targets: String(r.targets_csv || '')
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+      targetCount: Number(r.n_targets) || 0,
+      preview: r.preview || '',
+      sample_url: r.sample_url || null,
+    }));
+  } catch (e) {
+    console.error('[GHOSTCTF project_secret_peers list]', e.message);
+    return [];
+  }
 }
 
 function saveRunWithDb(d, { target, exactMatch, modules, stats, findings, correlation, findingsJson = null }) {

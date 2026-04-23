@@ -5,7 +5,9 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "start": "node server/index.js",
+    "start": "bash scripts/start-stack.sh",
+    "start:api": "node server/index.js",
+    "start:ghost": "bash third_party/ghost-local-v5/ghost-local/start.sh",
     "dev": "node --watch server/index.js",
     "test": "node --test server/tests/security-headers.test.js server/tests/ghostctf-core.test.js",
     "recon:build-pipeline": "node server/scripts/build-recon-pipeline.mjs",

@@ -28,6 +28,7 @@ import {
   aiKeysConfigured,
   ghostctfAiPolicyDisableGemini,
 } from './modules/ai-dual-report.js';
+import { probeGhostLocalHealth, resolveGhostLocalBaseUrl } from './modules/ghost-local-ai.js';
 import { fetchWaybackUrls, filterInterestingUrls, extractJsUrls } from './modules/wayback.js';
 import { extractParamsFromUrls } from './modules/params.js';
 import { analyzeJsUrl } from './modules/js-analyzer.js';
@@ -249,6 +250,17 @@ app.post('/api/ghostctf/stream', async (req, res) => {
     .filter((h) => isValidIpv4(h))
     .slice(0, 8);
 
+  const intranetSweepTargets = String(req.body?.intranetSweepTargets || '').trim();
+  const intranetSweepPorts = String(req.body?.intranetSweepPorts || '').trim();
+  const intranetSweepMaxHosts = Math.min(
+    512,
+    Math.max(1, Number(req.body?.intranetSweepMaxHosts) || 48),
+  );
+  const intranetSweepTimeoutMs = Math.min(
+    8000,
+    Math.max(250, Number(req.body?.intranetSweepTimeoutMs) || 1200),
+  );
+
   const vhostBaseDomain = String(req.body?.vhostBaseDomain || '')
     .trim()
     .replace(/^https?:\/\//i, '')
@@ -268,6 +280,16 @@ app.post('/api/ghostctf/stream', async (req, res) => {
   const hydraWpBruteUsers = String(req.body?.hydraWpBruteUsers || '').trim();
   const hydraWpBruteWordlistPath = String(req.body?.hydraWpBruteWordlistPath || '').trim();
   const hydraWpBruteMaxPasswords = Math.min(500, Math.max(20, Number(req.body?.hydraWpBruteMaxPasswords) || 150));
+
+  const hydraFormCodeUrls = String(req.body?.hydraFormCodeUrls || '').trim();
+  const hydraFormCodeField = String(req.body?.hydraFormCodeField || 'code').trim() || 'code';
+  const hydraFormCodeExtra = String(req.body?.hydraFormCodeExtra ?? 'validar=validar').trim();
+  const hydraFormCodeWordlistPath = String(req.body?.hydraFormCodeWordlistPath || '').trim();
+  const hydraFormCodeMaxPasswords = Math.min(500, Math.max(10, Number(req.body?.hydraFormCodeMaxPasswords) || 200));
+  const hydraFormCodeFail = String(req.body?.hydraFormCodeFail || '').trim();
+  const hydraFormCodeSuccess = String(req.body?.hydraFormCodeSuccess || '').trim();
+  const hydraFormCodeDiffOnly = Boolean(req.body?.hydraFormCodeDiffOnly);
+  const hydraFormCodeSkipAutoDetect = Boolean(req.body?.hydraFormCodeSkipAutoDetect);
 
   const langflowHostHeader = String(req.body?.langflowHostHeader || '').trim();
   const langflowTryAllOrigins = Boolean(req.body?.langflowTryAllOrigins);
@@ -297,6 +319,10 @@ app.post('/api/ghostctf/stream', async (req, res) => {
         udpScan,
         tcpAllPorts,
         secondaryMysqlHosts,
+        intranetSweepTargets,
+        intranetSweepPorts,
+        intranetSweepMaxHosts,
+        intranetSweepTimeoutMs,
         vhostBaseDomain,
         vhostFuzzExtraPrefixes,
         sshBruteUsers,
@@ -308,6 +334,15 @@ app.post('/api/ghostctf/stream', async (req, res) => {
         hydraWpBruteUsers,
         hydraWpBruteWordlistPath,
         hydraWpBruteMaxPasswords,
+        hydraFormCodeUrls,
+        hydraFormCodeField,
+        hydraFormCodeExtra,
+        hydraFormCodeWordlistPath,
+        hydraFormCodeMaxPasswords,
+        hydraFormCodeFail,
+        hydraFormCodeSuccess,
+        hydraFormCodeDiffOnly,
+        hydraFormCodeSkipAutoDetect,
         langflowHostHeader,
         langflowTryAllOrigins,
         langflowVerticesShell,
@@ -342,6 +377,7 @@ app.get('/api/capabilities', async (_req, res) => {
         openrouter: keys.openrouter,
         claude: keys.claude,
         lmstudio: keys.lmstudio,
+        ghostLocal: keys.ghostLocal,
         any: keys.any,
         /** Relatórios por IA no servidor GHOSTCTF não chamam Gemini quando `true`. */
         openrouter_only_cloud: disableGemini,
@@ -1102,6 +1138,16 @@ app.get('/api/ai/lmstudio-check', async (_req, res) => {
   }
 });
 
+app.get('/api/ai/ghost-local-check', async (_req, res) => {
+  try {
+    const base = resolveGhostLocalBaseUrl();
+    const out = await probeGhostLocalHealth(base, 5000);
+    res.json({ ok: out.ok, base: out.base, health: out.body ?? null, error: out.error || null });
+  } catch (e) {
+    res.status(503).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
 app.get('/api/brain/categories', async (_req, res) => {
   try {
     const items = await listBrainCategories();
@@ -1407,8 +1453,13 @@ server.listen(PORT, async () => {
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(
-      `[GHOSTCTF] Porta ${PORT} em uso. Encerre a instância anterior (ex.: netstat -ano | findstr :${PORT}) ou defina PORT=3850 antes de npm start.`,
+      `[GHOSTCTF] Porta ${PORT} em uso — outro processo (muitas vezes um \`node server/index.js\` antigo) já escuta aí.`,
     );
+    console.error(
+      `  Linux:   ss -tlnp | grep :${PORT}     ou     fuser -v ${PORT}/tcp     ou     kill $(lsof -t -i:${PORT} -sTCP:LISTEN)`,
+    );
+    console.error(`  Windows: netstat -ano | findstr :${PORT}   (depois taskkill /PID … /F)`);
+    console.error(`  Alternativa: PORT=3850 npm start   (ou outra porta livre no .env)`);
   } else {
     console.error('[GHOSTCTF]', err.message);
   }

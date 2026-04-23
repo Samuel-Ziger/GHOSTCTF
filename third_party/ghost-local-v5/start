@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Arranca GHOST local a partir da raiz do repositório: ./start
+exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ghost-local/start.sh" "$@"

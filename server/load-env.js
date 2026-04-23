@@ -12,10 +12,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const envPath = path.join(__dirname, '..', '.env');
 const r = dotenv.config({ path: envPath });
 if (r.error && !fs.existsSync(envPath)) {
-  console.warn('[GHOSTRECON] Ficheiro .env não encontrado em:', envPath);
+  console.warn('[GHOSTCTF] Ficheiro .env não encontrado em:', envPath);
 }
 
 const autoPathAdded = augmentProcessPathFromCommonDirs();
 if (autoPathAdded.length) {
-  console.warn('[GHOSTRECON] PATH (automático): prefixadas', autoPathAdded.join(', '));
+  console.warn('[GHOSTCTF] PATH (automático): prefixadas', autoPathAdded.join(', '));
 }

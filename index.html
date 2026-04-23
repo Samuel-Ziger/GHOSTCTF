@@ -1919,6 +1919,88 @@
     margin-top: 4px;
   }
 
+  /* ===== FAB Ghost Intelligence (chat IA local :8000/gui/) ===== */
+  .ghost-fab {
+    position: fixed;
+    right: 18px;
+    bottom: 22px;
+    z-index: 1600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 28% 24%, rgba(232, 251, 255, 0.22), transparent 54%),
+      linear-gradient(145deg, rgba(8, 18, 30, 0.98), rgba(4, 8, 16, 0.98));
+    box-shadow:
+      0 0 0 1px rgba(0, 212, 255, 0.15),
+      0 0 22px rgba(0, 212, 255, 0.2),
+      0 10px 30px rgba(0, 0, 0, 0.5);
+    color: var(--accent);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .ghost-fab:hover {
+    transform: translateY(-2px) scale(1.02);
+    border-color: rgba(0, 255, 136, 0.52);
+    box-shadow:
+      0 0 0 1px rgba(0, 255, 136, 0.24),
+      0 0 28px rgba(0, 212, 255, 0.28),
+      0 12px 34px rgba(0, 0, 0, 0.55);
+  }
+  .ghost-fab:active {
+    transform: translateY(0) scale(0.98);
+  }
+  .ghost-fab:focus-visible {
+    outline: 2px solid var(--accent2);
+    outline-offset: 3px;
+  }
+  .ghost-fab svg {
+    width: 31px;
+    height: 34px;
+    display: block;
+    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.45));
+  }
+  .ghost-fab .ghost-fab-tip {
+    position: absolute;
+    right: 70px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    opacity: 0;
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--text-bright);
+    background: rgba(8, 14, 24, 0.94);
+    border: 1px solid var(--border-bright);
+    padding: 7px 10px;
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.45);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .ghost-fab:hover .ghost-fab-tip,
+  .ghost-fab:focus-visible .ghost-fab-tip {
+    opacity: 1;
+    transform: translateY(-50%) translateX(-2px);
+  }
+
+  @media (max-width: 900px) {
+    .ghost-fab {
+      width: 54px;
+      height: 54px;
+      right: 12px;
+      bottom: 14px;
+    }
+    .ghost-fab .ghost-fab-tip {
+      display: none;
+    }
+  }
+
   /* Scrollbar base */
   .sidebar, .terminal, .findings-panel {
     scrollbar-gutter: stable;
@@ -1931,7 +2013,16 @@
 <header class="header">
   <div class="logo">
     <div class="logo-mark">
-      <div class="logo-ghost-bg" aria-hidden="true" title="Fastaminha">
+      <div
+        class="logo-ghost-bg"
+        role="button"
+        tabindex="0"
+        title="Ghost Intelligence — chat IA (Ollama). Clica para abrir; mesmo que o botão flutuante."
+        aria-label="Abrir Ghost Intelligence"
+        onclick="openGhostAssistantUi(event)"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openGhostAssistantUi(event);}"
+        style="cursor:pointer"
+      >
         <svg viewBox="0 0 48 52" xmlns="http://www.w3.org/2000/svg" width="52" height="58" focusable="false" aria-hidden="true">
           <g class="logo-gh-anim">
             <path
@@ -2392,16 +2483,33 @@
         <label class="checkbox-item"><input type="checkbox" class="mod" value="vhostSitemapProbe"><div class="checkbox-box"></div><span class="checkbox-text">VHost + Sitemap + .well-known probe</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="uploadSurfaceProbe"><div class="checkbox-box"></div><span class="checkbox-text">Upload surface (type=file / multipart no HTML)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="disclosureProbe"><div class="checkbox-box"></div><span class="checkbox-text">Disclosure Hunt (comments/files/creds)</span><span class="tag tag-med">OFF</span></label>
-        <label class="checkbox-item"><input type="checkbox" class="mod" value="credReuseProbe"><div class="checkbox-box"></div><span class="checkbox-text">Credential Reuse (FTP/HTTP basic)</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="credReuseProbe"><div class="checkbox-box"></div><span class="checkbox-text">Credential Reuse (FTP/HTTP basic/SSH/MySQL)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="wpFocusProbe"><div class="checkbox-box"></div><span class="checkbox-text">WordPress Focus (wp-login/xmlrpc/wp-json/plugins)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="wpScanProbe"><div class="checkbox-box"></div><span class="checkbox-text">WPScan probe (heavy, optional)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="etcHostsProbe" id="modEtcHostsProbe"><div class="checkbox-box"></div><span class="checkbox-text">Hostnames (/etc/hosts) — lê o ficheiro local + curl após recon no IP</span><span class="tag tag-med">OFF</span></label>
         <div class="module-group-title" style="margin-top:14px">// Extended (lacunas típicas CTF4/9/Langflow)</div>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="tinyFmProbe"><div class="checkbox-box"></div><span class="checkbox-text">Tiny File Manager — credenciais CTF comuns (POST)</span><span class="tag tag-med">OFF</span></label>
-        <label class="checkbox-item"><input type="checkbox" class="mod" value="activeMqProbe"><div class="checkbox-box"></div><span class="checkbox-text">ActiveMQ — GET :8161 + dicas túnel SSH / CVE</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="activeMqProbe"><div class="checkbox-box"></div><span class="checkbox-text">ActiveMQ — HTTP :8161 + STOMP/OpenWire/AMQP/MQTT</span><span class="tag tag-med">OFF</span></label>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="jdwpProbe"><div class="checkbox-box"></div><span class="checkbox-text">JDWP probe (5005/debug remoto)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="extendedServiceProbe" id="modExtendedSvc"><div class="checkbox-box"></div><span class="checkbox-text">Mail + SMB — POP3/IMAP/SMTP banner + smbclient -L</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="secondaryMysqlProbe" id="modSecondaryMysql"><div class="checkbox-box"></div><span class="checkbox-text">MySQL em IPs extra (DB noutro EC2)</span><span class="tag tag-med">OFF</span></label>
         <textarea id="secondaryMysqlHostsInput" placeholder="13.220.129.145&#10;outro.ip.valido" autocomplete="off" spellcheck="false" style="width:100%;min-height:56px;margin:4px 0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="intranetSweepProbe" id="modIntranetSweep"><div class="checkbox-box"></div><span class="checkbox-text">Intranet sweep (pivot subnet/IP + portas)</span><span class="tag tag-med">OFF</span></label>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px;margin:4px 0 6px">
+          <select id="intranetSweepPresetSelect" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+            <option value="custom">Preset sweep: Custom</option>
+            <option value="sycp">Pivot SyCP (JDWP + Broker + Web)</option>
+            <option value="broker">Broker Focus (ActiveMQ/STOMP/AMQP)</option>
+            <option value="light">Light Pivot (SSH/Web básicos)</option>
+          </select>
+          <button type="button" class="export-btn" style="padding:7px 10px" onclick="applyIntranetSweepPreset()">Aplicar</button>
+        </div>
+        <textarea id="intranetSweepTargetsInput" placeholder="10.15.38.0/24&#10;10.15.38.36" autocomplete="off" spellcheck="false" style="width:100%;min-height:56px;margin:4px 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
+        <input id="intranetSweepPortsInput" type="text" value="22,80,443,5005,7575,61613,61616" placeholder="Portas sweep (csv)" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 10px">
+          <input id="intranetSweepMaxHostsInput" type="number" min="1" max="512" value="48" title="Máximo hosts do sweep" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+          <input id="intranetSweepTimeoutMsInput" type="number" min="250" max="8000" value="1200" title="Timeout por socket (ms)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        </div>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="openapiProbe" id="modOpenapi"><div class="checkbox-box"></div><span class="checkbox-text">OpenAPI — /openapi.json, /v3/api-docs (Langflow/FastAPI)</span><span class="tag tag-med">OFF</span></label>
         <label class="checkbox-item"><input type="checkbox" class="mod" value="vhostPrefixFuzz" id="modVhostFuzz"><div class="checkbox-box"></div><span class="checkbox-text">VHost prefix fuzz — compara corpo com Host: &lt;prefix&gt;.domínio</span><span class="tag tag-med">OFF</span></label>
         <input id="vhostBaseDomainInput" type="text" placeholder="Domínio apex (ex.: projects-blogo.sy)" style="width:100%;margin:4px 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
@@ -2442,6 +2550,25 @@
         <textarea id="hydraWpBruteUsersInput" placeholder="Utilizadores WP (max 5): admin&#10;editor" style="width:100%;min-height:44px;margin:4px 0;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
         <input id="hydraWpBruteWordlistPathInput" type="text" placeholder="Caminho wordlist (ex.: /usr/share/wordlists/rockyou.txt)" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
         <input id="hydraWpBruteMaxPwInput" type="number" min="20" max="500" value="150" style="width:100%;margin:0 0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px" title="Máx. linhas da wordlist a usar">
+          </div>
+        </div>
+        <div id="formCodeHydraModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
+          <div class="section-label section-label--with-help" style="margin-bottom:6px">
+            <button type="button" class="sidebar-module-toggle" id="formCodeHydraModuleToggle" onclick="toggleSidebarPayloadModule('formCodeHydra')" aria-expanded="false" aria-controls="formCodeHydraModuleBody" title="Mostrar ou ocultar conteúdo">OFF</button>
+            <span class="section-label-heading">POST código<span class="section-label-subline">(hydra / diff)</span></span>
+            <span class="section-label-rule" aria-hidden="true"></span>
+          </div>
+          <div id="formCodeHydraModuleBody" class="sidebar-module-body">
+        <label class="checkbox-item"><input type="checkbox" class="mod" value="hydraFormCodeProbe" id="modHydraFormCode"><div class="checkbox-box"></div><span class="checkbox-text">Brute campo código (cadastro.php, etc.) — wordlist em disco</span><span class="tag tag-med">OFF</span></label>
+        <textarea id="hydraFormCodeUrlsInput" placeholder="URLs (opcional — uma por linha). Ex.:&#10;http://imobiliarians.solyd:8081/cadastro.php" style="width:100%;min-height:52px;margin:4px 0;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:8px;resize:vertical"></textarea>
+        <input id="hydraFormCodeFieldInput" type="text" value="code" placeholder="Nome do campo POST" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="hydraFormCodeExtraInput" type="text" value="validar=validar" placeholder="Pares extra (&amp; opcional)" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="hydraFormCodeWordlistPathInput" type="text" placeholder="Caminho wordlist (ex.: /usr/share/seclists/Passwords/Common-Credentials/4-digit-pin.txt)" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="hydraFormCodeMaxPwInput" type="number" min="10" max="500" value="200" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px" title="Máx. linhas da wordlist">
+        <input id="hydraFormCodeFailInput" type="text" placeholder="Substring falha (F=) para hydra — opcional" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <input id="hydraFormCodeSuccessInput" type="text" placeholder="Substring sucesso (S=) para hydra — opcional" style="width:100%;margin:0 0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px">
+        <label style="display:flex;gap:8px;align-items:center;margin:0 0 6px;font-size:9px;color:var(--text-dim);cursor:pointer;user-select:none"><input type="checkbox" id="hydraFormCodeDiffOnlyChk"> Só modo diff (sem binário hydra; compara corpo da resposta ao baseline)</label>
+        <label style="display:flex;gap:8px;align-items:center;margin:0 0 10px;font-size:9px;color:var(--text-dim);cursor:pointer;user-select:none"><input type="checkbox" id="hydraFormCodeSkipAutoChk"> Sem auto-recon (não analisa HTML do curl nem infere F=; só URLs da caixa + paths heurísticos)</label>
           </div>
         </div>
         <div id="langflowCveModuleCard" class="sidebar-payload-card sidebar-module-off" style="margin-top:10px;padding:10px;border:1px solid var(--border);background:var(--bg2);border-radius:2px">
@@ -2840,6 +2967,7 @@
           Podes correr só Solyd ou só automático deixando o subset manual vazio, desde que ligues as opções certas e o <strong>SSH brute</strong> base.
         </li>
         <li><strong>WP brute (hydra)</strong> — <code>http(s)-post-form</code> em <code>wp-login.php</code>; precisa de users + wordlist e URLs WP descobertos.</li>
+        <li><strong>POST código (hydra / diff)</strong> — a partir do <strong>HTML já obtido no recon</strong> (curl) deteta <code>&lt;form method=&quot;post&quot;&gt;</code> com campo código; opcionalmente compara GET vs POST(sentinel) para inferir <code>F=</code> e chamar o Hydra; senão usa diff ou F/S que indicares.</li>
         <li><strong>Langflow CVE-2025-3248</strong> — exploração de validate/code e opcional vértices / reverse shell; extremamente sensível — só em lab.</li>
       </ul>
 
@@ -3116,6 +3244,44 @@
   </div>
 </div>
 
+<button
+  type="button"
+  class="ghost-fab"
+  id="ghostFabBtn"
+  title="Abrir Ghost Intelligence (chat IA local Ollama). Clique: janela reutilizável. Shift+clique: nova aba."
+  aria-label="Abrir Ghost Intelligence — chat IA local"
+  onclick="openGhostAssistantUi(event)"
+>
+  <span class="ghost-fab-tip">Ghost IA</span>
+  <svg viewBox="0 0 48 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="ghostFabGradCtf" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#e8fbff" />
+        <stop offset="45%" stop-color="#5ee0ff" />
+        <stop offset="100%" stop-color="#00a8d4" />
+      </linearGradient>
+      <linearGradient id="ghostFabSheenCtf" x1="15%" y1="0%" x2="75%" y2="85%">
+        <stop offset="0%" stop-color="rgba(255,255,255,0.38)" />
+        <stop offset="45%" stop-color="rgba(255,255,255,0)" />
+        <stop offset="100%" stop-color="rgba(0,45,70,0.22)" />
+      </linearGradient>
+    </defs>
+    <path
+      fill="url(#ghostFabGradCtf)"
+      stroke="rgba(0,212,255,0.45)"
+      stroke-width="0.55"
+      d="M 24 5 C 13 5 5 13.5 5 24.5 V 40 Q 8.5 36.5 12 40 Q 15.5 36.5 19 40 Q 22.5 36.5 26 40 Q 29.5 36.5 33 40 Q 36.5 36.5 40 40 Q 43.5 36.5 43 40 V 24.5 C 43 13.5 35 5 24 5 Z"
+    />
+    <path
+      fill="url(#ghostFabSheenCtf)"
+      d="M 24 8 C 15 8 9 15 9 23.5 V 33 Q 16 28 24 32 Q 32 28 39 33 V 23.5 C 39 15 33 8 24 8 Z"
+      opacity="0.88"
+    />
+    <ellipse cx="17" cy="22" rx="3.2" ry="4.2" fill="#050709" />
+    <ellipse cx="31" cy="22" rx="3.2" ry="4.2" fill="#050709" />
+  </svg>
+</button>
+
 <script>
 // ─── STATE ────────────────────────────────────────────────
 let findings = [];
@@ -3147,6 +3313,40 @@ function apiUrl(path) {
   const base = getApiBase();
   const p = path.startsWith('/') ? path : `/${path}`;
   return base ? `${base}${p}` : p;
+}
+
+/** UI Ghost Intelligence (FastAPI + Ollama). URL completa: localStorage `ghostctf_ghost_ui_url` ou legado `ghostrecon_ghost_ui_url`. */
+function resolveGhostAssistantUrl() {
+  try {
+    const raw = String(
+      localStorage.getItem('ghostctf_ghost_ui_url') || localStorage.getItem('ghostrecon_ghost_ui_url') || '',
+    ).trim();
+    if (raw) return new URL(raw, window.location.href).href;
+  } catch (_) {}
+  const proto = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  const host = window.location.hostname || '127.0.0.1';
+  return `${proto}//${host}:8000/gui/`;
+}
+
+function openGhostAssistantUi(ev) {
+  const url = resolveGhostAssistantUrl();
+  const popupFeatures = 'popup=yes,noopener,noreferrer,width=1320,height=900';
+  let w = null;
+  if (!(ev && ev.shiftKey)) {
+    w = window.open(url, 'ghostctf_ghost_ui', popupFeatures);
+  }
+  if (!w) {
+    w = window.open(url, '_blank', 'noopener,noreferrer');
+  }
+  if (!w) {
+    if (typeof addLog === 'function') addLog('Ghost Intelligence: popup bloqueado — abre manualmente: ' + url, 'warn');
+    else console.warn('Ghost Intelligence:', url);
+    return;
+  }
+  if (typeof addLog === 'function') {
+    if (ev && ev.shiftKey) addLog('Ghost Intelligence aberto em nova aba.', 'info');
+    else addLog('Ghost Intelligence (chat IA) aberto — janela reutilizável.', 'info');
+  }
 }
 
 // ─── Ghostmap (MITRE ao vivo) + Cortex + Reporte ──────────
@@ -3700,6 +3900,24 @@ setInterval(() => {
 // ─── LOG SYSTEM ──────────────────────────────────────────
 let logStarted = false;
 
+const INTRANET_SWEEP_PRESETS = {
+  sycp: {
+    ports: '22,80,443,5005,7575,61613,61616,5672,1883',
+    maxHosts: 96,
+    timeoutMs: 1200,
+  },
+  broker: {
+    ports: '61613,61614,61616,5672,1883,8161,5005',
+    maxHosts: 64,
+    timeoutMs: 1400,
+  },
+  light: {
+    ports: '22,80,443,3306',
+    maxHosts: 48,
+    timeoutMs: 1000,
+  },
+};
+
 function addLog(msg, type = 'info') {
   const el = document.getElementById('termContent');
   if (!logStarted) { el.innerHTML = ''; logStarted = true; }
@@ -3713,6 +3931,58 @@ function addLog(msg, type = 'info') {
   const ts = document.getElementById('termScroll');
   if (ts) ts.scrollTop = ts.scrollHeight;
   else if (el.parentElement) el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+
+function formatPipelineLogLine(rawMsg) {
+  const m = String(rawMsg || '');
+  if (m.startsWith('[intranet-sweep] open ')) {
+    const tail = m.replace('[intranet-sweep] open ', '').trim();
+    return `🧭 SWEEP OPEN ${tail}`;
+  }
+  if (m.startsWith('[jdwp]')) return `☕ ${m.replace('[jdwp]', 'JDWP').trim()}`;
+  if (m.startsWith('[activemq]')) return `📨 ${m.replace('[activemq]', 'ActiveMQ').trim()}`;
+  return m;
+}
+
+function formatIntelLineForUi(rawLine) {
+  const line = String(rawLine || '').trim();
+  if (!line) return line;
+  if (/^Pivot interno:/i.test(line)) return `🧭 ${line}`;
+  if (/^PLAYBOOK\+?/i.test(line)) return `📌 ${line}`;
+  if (/^WP summary/i.test(line)) return `📰 ${line}`;
+  if (/^JDWP /i.test(line) || /\bActiveMQ\b/.test(line)) return `⚠️ ${line}`;
+  if (line.startsWith('☐') || line.startsWith('🔎')) return line;
+  return `⚡ ${line}`;
+}
+
+function applyIntranetSweepPreset() {
+  const sel = document.getElementById('intranetSweepPresetSelect');
+  const key = String(sel?.value || 'custom').trim().toLowerCase();
+  if (!INTRANET_SWEEP_PRESETS[key]) {
+    addLog('Intranet preset: modo custom (alvo e orçamento manuais).', 'info');
+    return;
+  }
+  const p = INTRANET_SWEEP_PRESETS[key];
+  const portsEl = document.getElementById('intranetSweepPortsInput');
+  const maxEl = document.getElementById('intranetSweepMaxHostsInput');
+  const tmoEl = document.getElementById('intranetSweepTimeoutMsInput');
+  if (portsEl) portsEl.value = p.ports;
+  if (maxEl) maxEl.value = String(p.maxHosts);
+  if (tmoEl) tmoEl.value = String(p.timeoutMs);
+  const mod = document.getElementById('modIntranetSweep');
+  if (mod && !mod.checked) {
+    mod.checked = true;
+    syncModulesFullFromMods();
+  }
+  const label =
+    key === 'sycp'
+      ? 'Pivot SyCP'
+      : key === 'broker'
+        ? 'Broker Focus'
+        : key === 'light'
+          ? 'Light Pivot'
+          : key;
+  addLog(`Intranet preset aplicado: ${label} | portas=${p.ports} | hosts=${p.maxHosts} | timeout=${p.timeoutMs}ms`, 'info');
 }
 
 // ─── PIPELINE CONTROL ────────────────────────────────────
@@ -4674,6 +4944,7 @@ async function startRecon() {
     v === 'sqlmapWsProbe' ||
     v === 'tinyFmProbe' ||
     v === 'activeMqProbe' ||
+    v === 'jdwpProbe' ||
     v === 'vhostSitemapProbe' ||
     v === 'uploadSurfaceProbe' ||
     v === 'disclosureProbe' ||
@@ -4683,12 +4954,14 @@ async function startRecon() {
     v === 'etcHostsProbe' ||
     v === 'extendedServiceProbe' ||
     v === 'secondaryMysqlProbe' ||
+    v === 'intranetSweepProbe' ||
     v === 'openapiProbe' ||
     v === 'vhostPrefixFuzz' ||
     v === 'sshBruteProbe' ||
     v === 'sshBruteAutoHydra' ||
     v === 'sshBruteSolydWordlists' ||
     v === 'hydraWpBruteProbe' ||
+    v === 'hydraFormCodeProbe' ||
     v === 'langflowExploitProbe');
 
   addLog(`Iniciando GHOSTCTF para: ${targetDomain}`, 'section');
@@ -4708,6 +4981,14 @@ async function startRecon() {
     if (hostsOnly && extraHostsList.length) {
       addLog('Modo só hostnames ON: sem curl inicial em http(s)://IP — só nos hostnames listados.', 'info');
     }
+  }
+  if (selectedMods.includes('intranetSweepProbe')) {
+    const tg = String(document.getElementById('intranetSweepTargetsInput')?.value || '').trim();
+    const pp = String(document.getElementById('intranetSweepPortsInput')?.value || '').trim();
+    addLog(
+      `Intranet sweep ON: targets=${tg ? tg.slice(0, 120) : '(vazio)'} | ports=${pp || '(default)'}`,
+      tg ? 'info' : 'warn',
+    );
   }
   addLog('Conectando ao pipeline local (servidor Node)...', 'info');
 
@@ -4744,6 +5025,18 @@ async function startRecon() {
               .map((s) => s.trim())
               .filter(Boolean)
           : [],
+        intranetSweepTargets: selectedMods.includes('intranetSweepProbe')
+          ? String(document.getElementById('intranetSweepTargetsInput')?.value || '').trim()
+          : '',
+        intranetSweepPorts: selectedMods.includes('intranetSweepProbe')
+          ? String(document.getElementById('intranetSweepPortsInput')?.value || '').trim()
+          : '',
+        intranetSweepMaxHosts: selectedMods.includes('intranetSweepProbe')
+          ? Number(document.getElementById('intranetSweepMaxHostsInput')?.value) || 48
+          : 48,
+        intranetSweepTimeoutMs: selectedMods.includes('intranetSweepProbe')
+          ? Number(document.getElementById('intranetSweepTimeoutMsInput')?.value) || 1200
+          : 1200,
         vhostBaseDomain: selectedMods.includes('vhostPrefixFuzz')
           ? String(document.getElementById('vhostBaseDomainInput')?.value || '').trim()
           : '',
@@ -4777,6 +5070,33 @@ async function startRecon() {
         hydraWpBruteMaxPasswords: selectedMods.includes('hydraWpBruteProbe')
           ? Number(document.getElementById('hydraWpBruteMaxPwInput')?.value) || 150
           : 150,
+        hydraFormCodeUrls: selectedMods.includes('hydraFormCodeProbe')
+          ? String(document.getElementById('hydraFormCodeUrlsInput')?.value || '').trim()
+          : '',
+        hydraFormCodeField: selectedMods.includes('hydraFormCodeProbe')
+          ? String(document.getElementById('hydraFormCodeFieldInput')?.value || 'code').trim() || 'code'
+          : 'code',
+        hydraFormCodeExtra: selectedMods.includes('hydraFormCodeProbe')
+          ? String(document.getElementById('hydraFormCodeExtraInput')?.value ?? 'validar=validar').trim()
+          : 'validar=validar',
+        hydraFormCodeWordlistPath: selectedMods.includes('hydraFormCodeProbe')
+          ? String(document.getElementById('hydraFormCodeWordlistPathInput')?.value || '').trim()
+          : '',
+        hydraFormCodeMaxPasswords: selectedMods.includes('hydraFormCodeProbe')
+          ? Number(document.getElementById('hydraFormCodeMaxPwInput')?.value) || 200
+          : 200,
+        hydraFormCodeFail: selectedMods.includes('hydraFormCodeProbe')
+          ? String(document.getElementById('hydraFormCodeFailInput')?.value || '').trim()
+          : '',
+        hydraFormCodeSuccess: selectedMods.includes('hydraFormCodeProbe')
+          ? String(document.getElementById('hydraFormCodeSuccessInput')?.value || '').trim()
+          : '',
+        hydraFormCodeDiffOnly:
+          selectedMods.includes('hydraFormCodeProbe') &&
+          Boolean(document.getElementById('hydraFormCodeDiffOnlyChk')?.checked),
+        hydraFormCodeSkipAutoDetect:
+          selectedMods.includes('hydraFormCodeProbe') &&
+          Boolean(document.getElementById('hydraFormCodeSkipAutoChk')?.checked),
         langflowHostHeader: selectedMods.includes('langflowExploitProbe')
           ? String(document.getElementById('langflowHostHeaderInput')?.value || '').trim()
           : '',
@@ -4824,7 +5144,7 @@ async function startRecon() {
         let ev;
         try { ev = JSON.parse(line); } catch { continue; }
 
-        if (ev.type === 'log') addLog(ev.msg, ev.level || 'info');
+        if (ev.type === 'log') addLog(formatPipelineLogLine(ev.msg), ev.level || 'info');
         if (ev.type === 'progress') setProgress(ev.pct);
         if (ev.type === 'pipe') {
           setPipe(ev.name, ev.state);
@@ -4865,9 +5185,7 @@ async function startRecon() {
           });
         }
         if (ev.type === 'intel' && ev.line) {
-          const raw = ev.line;
-          const line = (raw.startsWith('☐') || raw.startsWith('🔎')) ? raw : `⚡ ${raw}`;
-          addLog(line, 'find');
+          addLog(formatIntelLineForUi(ev.line), 'find');
         }
         if (ev.type === 'error') {
           mitreLivePost({ type: 'run_end' });
@@ -5166,7 +5484,7 @@ document.getElementById('domainInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') startRecon();
 });
 
-const SIDEBAR_PAYLOAD_MODULE_KEYS = ['decodeQuick', 'pty', 'httpServe', 'msfvenom', 'wandenreich', 'sshBrute', 'wpBruteHydra', 'langflowCve', 'crackMode'];
+const SIDEBAR_PAYLOAD_MODULE_KEYS = ['decodeQuick', 'pty', 'httpServe', 'msfvenom', 'wandenreich', 'sshBrute', 'wpBruteHydra', 'formCodeHydra', 'langflowCve', 'crackMode'];
 
 function toggleSidebarPayloadModule(moduleId) {
   const card = document.getElementById(`${moduleId}ModuleCard`);

@@ -53,6 +53,10 @@ export function inferOwaspTags(f) {
   if (t === 'security' || t === 'waf' || (t === 'nuclei' && !set.has('A05'))) add(set, 'A02');
   if (t === 'nmap' && /default|anonymous|misconfig/i.test(blob)) add(set, 'A02');
   if (t === 'tls' && /weak|expired|self-?signed|deprecated/i.test(blob)) add(set, 'A02');
+  if (/jdwp|java debug wire protocol|activemq|openwire|stomp|amqp|mqtt|xml-rpc endpoint exposto/i.test(blob)) {
+    add(set, 'A02');
+    add(set, 'A10');
+  }
 
   if (['secret', 'secret_validation'].includes(t)) add(set, 'A04');
   if (t === 'tls' && !set.has('A02')) add(set, 'A04');

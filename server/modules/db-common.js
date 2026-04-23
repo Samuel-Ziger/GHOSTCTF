@@ -71,6 +71,21 @@ export function fingerprintFinding(target, f) {
   return crypto.createHash('sha256').update(raw).digest('hex');
 }
 
+/** Hash estável do material do segredo (antes de mascarar na UI) — correlação entre alvos no mesmo projeto. */
+export function secretMaterialFingerprint(kind, rawMaterial) {
+  const k = norm(String(kind || 'unknown'));
+  const raw = String(rawMaterial ?? '').trim();
+  const slice = raw.length > 16384 ? raw.slice(0, 16384) : raw;
+  return crypto.createHash('sha256').update(`v1|${k}|${slice}`).digest('hex');
+}
+
+const VALUE_FP_RE = /value_fp=([a-f0-9]{64})/i;
+
+export function extractSecretValueFpFromMeta(meta) {
+  const m = String(meta || '').match(VALUE_FP_RE);
+  return m ? m[1].toLowerCase() : null;
+}
+
 /**
  * A tabela `findings` deve persistir apenas domínio e subdomínios.
  * Mantém um registro explícito do domínio raiz e deduplica subdomínios.

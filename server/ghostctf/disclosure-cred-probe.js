@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 import { curlWebSingle } from './web-curl-single.js';
 import { ftpPortsFromNmap, probeFtpCredentials } from './ftp-anonymous-probe.js';
+import { sshPortsFromNmap } from './ssh-probe.js';
+import { mysqlPortsFromNmap } from './mysql-probe.js';
 import { ghostctfPositiveIntEnv } from './env-budgets.js';
 
 const DISCLOSURE_PATHS = [
@@ -209,6 +211,90 @@ function runCurlWpLogin(loginUrl, username, password, timeoutMs = 12000) {
   });
 }
 
+function runProc(cmd, args, timeoutMs = 12000) {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = [];
+    const err = [];
+    let done = false;
+    const finish = (o) => {
+      if (done) return;
+      done = true;
+      resolve(o);
+    };
+    const t = setTimeout(() => {
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        // ignore
+      }
+      finish({ code: -1, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(err).toString('utf8'), timeout: true });
+    }, Math.max(2000, timeoutMs));
+    child.stdout.on('data', (d) => out.push(d));
+    child.stderr.on('data', (d) => err.push(d));
+    child.on('error', (e) => {
+      clearTimeout(t);
+      finish({ code: -2, stdout: Buffer.concat(out).toString('utf8'), stderr: `${Buffer.concat(err).toString('utf8')}\n${e?.message || String(e)}` });
+    });
+    child.on('close', (code) => {
+      clearTimeout(t);
+      finish({ code, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(err).toString('utf8') });
+    });
+  });
+}
+
+async function hasCommand(cmd) {
+  const finder = process.platform === 'win32' ? 'where' : 'which';
+  const r = await runProc(finder, [cmd], 4000);
+  return Number(r.code) === 0;
+}
+
+async function trySshPasswordWithSshpass({ host, port, username, password, timeoutMs = 10000 } = {}) {
+  const args = [
+    '-p',
+    String(password ?? ''),
+    'ssh',
+    '-o',
+    'StrictHostKeyChecking=no',
+    '-o',
+    'UserKnownHostsFile=/dev/null',
+    '-o',
+    'PreferredAuthentications=password',
+    '-o',
+    'PubkeyAuthentication=no',
+    '-o',
+    'NumberOfPasswordPrompts=1',
+    '-o',
+    `ConnectTimeout=${Math.max(3, Math.floor(timeoutMs / 1000))}`,
+    '-p',
+    String(port),
+    `${String(username || '')}@${String(host || '')}`,
+    'exit',
+  ];
+  const r = await runProc('sshpass', args, timeoutMs + 4000);
+  return Number(r.code) === 0;
+}
+
+async function tryMysqlLoginCli({ host, port, username, password, timeoutMs = 10000 } = {}) {
+  const args = [
+    '--protocol=TCP',
+    '-h',
+    String(host || ''),
+    '-P',
+    String(port),
+    '-u',
+    String(username || ''),
+    `-p${String(password ?? '')}`,
+    '--connect-timeout',
+    String(Math.max(3, Math.floor(timeoutMs / 1000))),
+    '-e',
+    'SELECT 1;',
+  ];
+  const r = await runProc('mysql', args, timeoutMs + 4000);
+  if (Number(r.code) !== 0) return false;
+  return /\b1\b/.test(`${r.stdout}\n${r.stderr}`);
+}
+
 export async function runCredentialReuseProbe({
   ip,
   nmapRows,
@@ -219,12 +305,16 @@ export async function runCredentialReuseProbe({
   const logger = typeof log === 'function' ? log : () => {};
   const creds = Array.isArray(credentials) ? credentials.slice(0, 10) : [];
   const hits = [];
+  const maxAttempts = ghostctfPositiveIntEnv('GHOSTCTF_MAX_CRED_REUSE_ATTEMPTS', 36);
+  let attempts = 0;
 
   // FTP reuse
   const ftpPorts = ftpPortsFromNmap(nmapRows || []);
   for (const c of creds) {
     for (const p of ftpPorts.slice(0, 2)) {
+      if (attempts >= maxAttempts) break;
       try {
+        attempts += 1;
         const r = await probeFtpCredentials({ host: ip, port: p, username: c.username, password: c.password, timeoutMs: 10000 });
         if (r.ok) {
           hits.push({ kind: 'ftp', port: p, username: c.username, password: c.password, evidence: r.summary || '230 login ok' });
@@ -235,6 +325,7 @@ export async function runCredentialReuseProbe({
         // ignore
       }
     }
+    if (attempts >= maxAttempts) break;
   }
 
   // HTTP Basic reuse (somente URLs 401 / primeiros endpoints)
@@ -244,7 +335,9 @@ export async function runCredentialReuseProbe({
     .slice(0, 6);
   for (const c of creds) {
     for (const u of webTargets) {
+      if (attempts >= maxAttempts) break;
       try {
+        attempts += 1;
         const rr = await runCurlBasic(u, c.username, c.password, 9000);
         const low = `${rr.stdout}\n${rr.stderr}`.toLowerCase();
         if (low.includes(' 401 ') || low.includes('unauthorized')) continue;
@@ -257,9 +350,82 @@ export async function runCredentialReuseProbe({
         // ignore
       }
     }
+    if (attempts >= maxAttempts) break;
   }
 
-  return { attempts: creds.length, hits };
+  // SSH reuse (opcional): usa sshpass se existir no host.
+  const sshPorts = sshPortsFromNmap(nmapRows || []);
+  const sshpassOk = sshPorts.length ? await hasCommand('sshpass') : false;
+  if (sshpassOk) {
+    for (const c of creds.slice(0, 8)) {
+      for (const p of sshPorts.slice(0, 2)) {
+        if (attempts >= maxAttempts) break;
+        try {
+          attempts += 1;
+          const ok = await trySshPasswordWithSshpass({
+            host: ip,
+            port: p,
+            username: c.username,
+            password: c.password,
+            timeoutMs: 10000,
+          });
+          if (!ok) continue;
+          hits.push({
+            kind: 'ssh',
+            port: p,
+            username: c.username,
+            password: c.password,
+            evidence: 'sshpass/ssh autenticou com password',
+          });
+          logger(`[cred-reuse] SSH OK ${c.username}@${ip}:${p}`, 'success');
+          break;
+        } catch {
+          // ignore
+        }
+      }
+      if (attempts >= maxAttempts) break;
+    }
+  } else if (sshPorts.length) {
+    logger('[cred-reuse] SSH skip: sshpass não está no PATH', 'info');
+  }
+
+  // MySQL reuse (opcional): usa cliente mysql se existir no host.
+  const mysqlPorts = mysqlPortsFromNmap(nmapRows || []);
+  const mysqlCliOk = mysqlPorts.length ? await hasCommand('mysql') : false;
+  if (mysqlCliOk) {
+    for (const c of creds.slice(0, 10)) {
+      for (const p of mysqlPorts.slice(0, 2)) {
+        if (attempts >= maxAttempts) break;
+        try {
+          attempts += 1;
+          const ok = await tryMysqlLoginCli({
+            host: ip,
+            port: p,
+            username: c.username,
+            password: c.password,
+            timeoutMs: 10000,
+          });
+          if (!ok) continue;
+          hits.push({
+            kind: 'mysql',
+            port: p,
+            username: c.username,
+            password: c.password,
+            evidence: 'mysql client autenticou (SELECT 1)',
+          });
+          logger(`[cred-reuse] MySQL OK ${c.username}@${ip}:${p}`, 'success');
+          break;
+        } catch {
+          // ignore
+        }
+      }
+      if (attempts >= maxAttempts) break;
+    }
+  } else if (mysqlPorts.length) {
+    logger('[cred-reuse] MySQL skip: cliente mysql não está no PATH', 'info');
+  }
+
+  return { attempts, hits };
 }
 
 export async function runWordpressCredentialReuse({

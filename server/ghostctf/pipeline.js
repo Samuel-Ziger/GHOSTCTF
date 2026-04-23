@@ -32,7 +32,10 @@ import { runLangflowExploitProbe } from './langflow-exploit-probe.js';
 import { runTinyFileManagerProbe } from './tinyfilemanager-probe.js';
 import { runSqlmapWsProbe } from './sqlmap-ws-probe.js';
 import { runWpHydraBrute } from './hydra-wp-brute-probe.js';
+import { runFormCodeAccessBrute, runFormCodeDiffBrute, prepareFormCodeBruteFromRecon } from './hydra-form-code-probe.js';
 import { runActiveMqProbe } from './activemq-probe.js';
+import { runJdwpProbe } from './jdwp-probe.js';
+import { runIntranetSweepProbe } from './intranet-sweep-probe.js';
 import { runUploadSurfaceProbe } from './upload-surface.js';
 import { ghostctfPositiveIntEnv } from './env-budgets.js';
 
@@ -185,6 +188,14 @@ export async function runGhostCtfPipeline({
   tcpAllPorts = false,
   /** IPv4 extra com MySQL (ex.: CTF9 DB noutro EC2) — requer módulo `secondaryMysqlProbe`. */
   secondaryMysqlHosts = [],
+  /** Sweep interno para pivot (IPs e/ou CIDRs separados por vírgula/linha) — módulo `intranetSweepProbe`. */
+  intranetSweepTargets = '',
+  /** Portas do sweep (csv) — ex.: 22,80,443,5005,7575,61613,61616 */
+  intranetSweepPorts = '',
+  /** Orçamento de hosts no sweep interno. */
+  intranetSweepMaxHosts = 48,
+  /** Timeout por socket no sweep interno (ms). */
+  intranetSweepTimeoutMs = 1200,
   /** Domínio apex para fuzz `prefix.<domínio>` no IP (ex.: projects-blogo.sy) — módulo `vhostPrefixFuzz`. */
   vhostBaseDomain = '',
   /** Prefixos extra (vírgula ou linha) para vhost fuzz. */
@@ -211,6 +222,18 @@ export async function runGhostCtfPipeline({
   hydraWpBruteUsers = '',
   hydraWpBruteWordlistPath = '',
   hydraWpBruteMaxPasswords = 150,
+  /** POST campo único (ex. code) — módulo `hydraFormCodeProbe`; wordlist + URLs ou auto cadastro.php. */
+  hydraFormCodeUrls = '',
+  hydraFormCodeField = 'code',
+  hydraFormCodeExtra = 'validar=validar',
+  hydraFormCodeWordlistPath = '',
+  hydraFormCodeMaxPasswords = 200,
+  hydraFormCodeFail = '',
+  hydraFormCodeSuccess = '',
+  /** Se true: só compara corpo HTTP (sem chamar o binário hydra). */
+  hydraFormCodeDiffOnly = false,
+  /** Se true: não analisa HTML das respostas curl nem infere F= (só URLs da UI + paths heurísticos). */
+  hydraFormCodeSkipAutoDetect = false,
   emit,
   saveRun,
 }) {
@@ -665,21 +688,52 @@ export async function runGhostCtfPipeline({
 
   /** @type {{ enabled: boolean; hits: number }} */
   let activeMqSummary = { enabled: false, hits: 0 };
+  /** @type {{ enabled: boolean; tried: number; hits: number; errors: string[] }} */
+  let jdwpSummary = { enabled: false, tried: 0, hits: 0, errors: [] };
+
+  if (Array.isArray(modules) && modules.includes('jdwpProbe')) {
+    jdwpSummary.enabled = true;
+    try {
+      log('JDWP probe: handshake em portas Java debug descobertas no nmap...', 'info');
+      const jd = await runJdwpProbe({ ip, nmapRows, log, timeoutMs: 7000 });
+      jdwpSummary.tried = Number(jd?.tried || 0);
+      jdwpSummary.hits = Array.isArray(jd?.hits) ? jd.hits.length : 0;
+      jdwpSummary.errors = Array.isArray(jd?.errors) ? jd.errors.slice(0, 10) : [];
+      for (const h of jd?.hits || []) {
+        addFinding(
+          {
+            type: 'endpoint',
+            prio: 'high',
+            score: 92,
+            value: `JDWP remoto exposto @ ${ip}:${h.port}`,
+            meta: h.evidence || 'JDWP handshake aceite',
+            url: null,
+          },
+          'endpoints',
+        );
+        if (h.intel) intel(h.intel);
+      }
+      if (!jdwpSummary.hits) log('JDWP probe: sem confirmação de handshake.', 'info');
+    } catch (e) {
+      log(`JDWP probe: ${e?.message || String(e)}`, 'warn');
+    }
+  }
+
   if (Array.isArray(modules) && modules.includes('activeMqProbe')) {
     activeMqSummary.enabled = true;
     try {
-      log('ActiveMQ probe: HTTP porta 8161 (e indícios no banner)...', 'info');
-      const am = await runActiveMqProbe({ ip, log, timeoutMs: 8000 });
+      log('ActiveMQ probe: HTTP 8161 + transportes 61616/61613/5672/1883...', 'info');
+      const am = await runActiveMqProbe({ ip, nmapRows, log, timeoutMs: 8000 });
       const hh = Array.isArray(am?.hits) ? am.hits : [];
       activeMqSummary.hits = hh.length;
       for (const h of hh) {
         addFinding(
           {
-            type: 'tech',
+            type: 'endpoint',
             prio: 'high',
-            score: 78,
-            value: 'Possível Apache ActiveMQ / consola 8161',
-            meta: h.evidence || '8161',
+            score: 83,
+            value: 'Serviço ActiveMQ/mensageria exposto',
+            meta: h.evidence || 'broker exposto',
             url: h.url || null,
           },
           'endpoints',
@@ -738,6 +792,75 @@ export async function runGhostCtfPipeline({
           log(`MySQL secundário ${mh}: ${msg}`, 'warn');
         }
       }
+    }
+  }
+
+  /** @type {{ enabled: boolean; hostsScanned: number; portsScanned: number; attempts: number; openHits: number; summary: Array<{host:string,ports:number[]}> }} */
+  let intranetSweepSummary = {
+    enabled: false,
+    hostsScanned: 0,
+    portsScanned: 0,
+    attempts: 0,
+    openHits: 0,
+    summary: [],
+  };
+  if (Array.isArray(modules) && modules.includes('intranetSweepProbe')) {
+    intranetSweepSummary.enabled = true;
+    try {
+      const targetsRaw = String(intranetSweepTargets || '').trim();
+      if (!targetsRaw) {
+        log(
+          'Intranet sweep: módulo ON — indica IPs/CIDRs na caixa dedicada (ex.: 10.15.38.0/24, 10.15.38.36).',
+          'warn',
+        );
+      } else {
+        log(
+          `Intranet sweep: hosts/CIDR => ${targetsRaw.slice(0, 140)}${targetsRaw.length > 140 ? '…' : ''}`,
+          'info',
+        );
+        const sw = await runIntranetSweepProbe({
+          targetsRaw,
+          portsRaw: intranetSweepPorts,
+          maxHosts: Math.min(512, Math.max(1, Number(intranetSweepMaxHosts) || 48)),
+          timeoutMs: Math.min(8000, Math.max(250, Number(intranetSweepTimeoutMs) || 1200)),
+          log,
+        });
+        intranetSweepSummary = {
+          enabled: true,
+          hostsScanned: Number(sw?.hostsScanned || 0),
+          portsScanned: Number(sw?.portsScanned || 0),
+          attempts: Number(sw?.attempts || 0),
+          openHits: Number(sw?.openHits || 0),
+          summary: Array.isArray(sw?.summary) ? sw.summary.slice(0, 40) : [],
+        };
+        for (const hostRow of intranetSweepSummary.summary.slice(0, 24)) {
+          const portList = (hostRow.ports || []).slice(0, 12);
+          addFinding(
+            {
+              type: 'endpoint',
+              prio: portList.some((p) => [22, 3306, 5005, 61613, 61616, 5672, 1883].includes(Number(p)))
+                ? 'high'
+                : 'med',
+              score: portList.some((p) => [22, 3306, 5005, 61613, 61616, 5672, 1883].includes(Number(p)))
+                ? 86
+                : 69,
+              value: `Intranet sweep hit: ${hostRow.host}`,
+              meta: `ports=${portList.join(',')} · source=intranet-sweep`,
+              url: null,
+            },
+            'endpoints',
+          );
+          intel(`Pivot interno: ${hostRow.host} -> portas abertas ${portList.join(', ')}`);
+        }
+        if (!intranetSweepSummary.openHits) {
+          log(
+            `Intranet sweep: sem portas abertas no orçamento (hosts=${intranetSweepSummary.hostsScanned}, ports=${intranetSweepSummary.portsScanned}).`,
+            'info',
+          );
+        }
+      }
+    } catch (e) {
+      log(`Intranet sweep: ${e?.message || String(e)}`, 'warn');
     }
   }
 
@@ -1613,6 +1736,7 @@ export async function runGhostCtfPipeline({
   let lastWpTargetsForHydra = [];
   /** @type {{ enabled: boolean; cracked: boolean; username?: string; password?: string; error?: string }} */
   let wpHydraBruteSummary = { enabled: false, cracked: false };
+  let hydraFormCodeSummary = { enabled: false, cracked: false, mode: '', reconAuto: null };
   if (Array.isArray(modules) && modules.includes('wpFocusProbe')) {
     wpFocusSummary.enabled = true;
     try {
@@ -1623,11 +1747,15 @@ export async function runGhostCtfPipeline({
       const ff = Array.isArray(wp?.findings) ? wp.findings : [];
       wpFocusSummary.findings = ff.length;
       for (const f of ff.slice(0, 40)) {
+        const v = String(f?.value || '').toLowerCase();
+        const isXmlrpc = v.includes('xml-rpc endpoint exposto');
+        const isUserEnum = v.includes('wp user enum');
+        const isVersion = v.includes('wordpress versão provável') || v.includes('wordpress version hint');
         addFinding(
           {
-            type: 'tech',
-            prio: /plugin detectado|version/i.test(String(f.value || '')) ? 'med' : 'low',
-            score: /plugin detectado|version/i.test(String(f.value || '')) ? 62 : 42,
+            type: isXmlrpc || isUserEnum ? 'endpoint' : 'tech',
+            prio: isXmlrpc ? 'high' : isUserEnum || /plugin detectado|version/i.test(String(f.value || '')) || isVersion ? 'med' : 'low',
+            score: isXmlrpc ? 79 : isUserEnum ? 70 : /plugin detectado|version/i.test(String(f.value || '')) || isVersion ? 62 : 42,
             value: f.value,
             meta: `${f.meta || 'wp-focus'}${f.status ? ` · status=${f.status}` : ''}`,
             url: f.url || null,
@@ -1759,6 +1887,84 @@ export async function runGhostCtfPipeline({
     }
   }
 
+  if (Array.isArray(modules) && modules.includes('hydraFormCodeProbe')) {
+    hydraFormCodeSummary.enabled = true;
+    log(
+      'Form code: recon automático (HTML das respostas curl) + inferência opcional de F=; depois hydra ou diff.',
+      'warn',
+    );
+    try {
+      const wl = String(hydraFormCodeWordlistPath || '').trim();
+      if (!wl) {
+        hydraFormCodeSummary.error = 'no-wordlist';
+        log('Form code: indica caminho da wordlist.', 'warn');
+      } else {
+        const prepared = await prepareFormCodeBruteFromRecon({
+          webResponses,
+          userUrlsRaw: hydraFormCodeUrls,
+          userField: hydraFormCodeField,
+          userExtra: hydraFormCodeExtra,
+          userFail: hydraFormCodeFail,
+          userSuccess: hydraFormCodeSuccess,
+          skipAutoDetect: hydraFormCodeSkipAutoDetect,
+          diffOnly: hydraFormCodeDiffOnly,
+          log,
+        });
+        hydraFormCodeSummary.reconAuto = {
+          discovered: prepared.discoveredCount,
+          inferredFail:
+            !String(hydraFormCodeFail || '').trim() && prepared.failSubstring ? prepared.failSubstring : null,
+        };
+        if (!prepared.targetUrls.length) {
+          hydraFormCodeSummary.error = 'no-urls';
+          log(
+            'Form code: sem alvo — nenhum form POST+código no HTML do recon; cola URL na UI ou desmarca «sem auto-recon».',
+            'warn',
+          );
+        } else {
+          const maxPw = Math.min(500, Math.max(10, Number(hydraFormCodeMaxPasswords) || 200));
+          const common = {
+            targetUrls: prepared.targetUrls,
+            fieldName: prepared.fieldName,
+            extraPost: prepared.extraPost,
+            wordlistPath: wl,
+            maxPasswords: maxPw,
+            failSubstring: prepared.failSubstring,
+            successSubstring: prepared.successSubstring,
+            log,
+            timeoutMs: 300000,
+          };
+          const hr = hydraFormCodeDiffOnly
+            ? await runFormCodeDiffBrute(common)
+            : await runFormCodeAccessBrute(common);
+          hydraFormCodeSummary.mode = hr.mode || (hr.hydra ? 'hydra' : '');
+          if (hr.cracked && hr.password) {
+            hydraFormCodeSummary.cracked = true;
+            hydraFormCodeSummary.password = hr.password;
+            hydraFormCodeSummary.pageUrl = hr.pageUrl || prepared.targetUrls[0];
+            addFinding(
+              {
+                type: 'secret',
+                prio: 'high',
+                score: 94,
+                value: `Código POST (${hr.mode || 'hydra'}): candidato`,
+                meta: `code=${hr.password} · ${hr.pageUrl || prepared.targetUrls[0]}`,
+                url: hr.pageUrl || prepared.targetUrls[0] || null,
+              },
+              'secrets',
+            );
+            intel(`FORM CODE: candidato code=${hr.password} (${hydraFormCodeSummary.mode || '?'}) — confirma no browser`);
+          } else if (hr.error) {
+            hydraFormCodeSummary.error = hr.error;
+          }
+        }
+      }
+    } catch (e) {
+      hydraFormCodeSummary.error = e?.message || String(e);
+      log(`Form code: ${hydraFormCodeSummary.error}`, 'warn');
+    }
+  }
+
   log('Scan de flags Solyd{...} e validação do formato (com base64/base32 decoding)...', 'info');
 
   ingestFlagFindingsFromFindingsArtifacts({
@@ -1878,13 +2084,16 @@ export async function runGhostCtfPipeline({
     sqlmapWsProbe: sqlmapWsSummary,
     tinyFmProbe: tinyFmSummary,
     activeMqProbe: activeMqSummary,
+    jdwpProbe: jdwpSummary,
     hydraWpBruteProbe: wpHydraBruteSummary,
+    hydraFormCodeProbe: hydraFormCodeSummary,
     vhostSitemapProbe: vhostSitemapSummary,
     disclosureProbe: disclosureSummary,
     credReuseProbe: credReuseSummary,
     wpFocusProbe: wpFocusSummary,
     extendedServiceProbe: extendedSvcSummary,
     secondaryMysqlProbe: secondaryMysqlSummary,
+    intranetSweepProbe: intranetSweepSummary,
     openapiProbe: openapiSummary,
     vhostPrefixFuzz: vhostFuzzSummary,
     sshBruteProbe: sshBruteSummary,

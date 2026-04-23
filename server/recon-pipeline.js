@@ -1,6 +1,6 @@
 /**
- * Recon completo (código migrado de GHOSTRECON), **sem** Shannon nem PentestGPT.
- * Regenerar: `node server/scripts/build-recon-pipeline.mjs`
+ * Recon completo (código derivado do servidor recon legado), **sem** Shannon nem PentestGPT.
+ * Regenerar: `node server/scripts/build-recon-pipeline.mjs` (fonte: vendor/recon-pipeline-regen/ghostrecon-server-index.js)
  */
 import 'dotenv/config';
 import path from 'path';
@@ -10,7 +10,9 @@ import { fileURLToPath } from 'url';
 import { fetchCrtShSubdomains } from './modules/subdomains.js';
 import { resolves } from './modules/dns.js';
 import { probeHttp, mapPool } from './modules/probe.js';
+import { extractSuspiciousHtmlComments } from './modules/html-surface.js';
 import { analyzeSecurityHeaders } from './modules/security-headers.js';
+import { analyzeSuspiciousResponseHeaders } from './modules/header-intel.js';
 import { peekTlsCertificate } from './modules/tls-cert.js';
 import { crawlRobotsAndSitemapsForOrigin } from './modules/robots-sitemap.js';
 import {
@@ -24,7 +26,7 @@ import { fetchCommonCrawlUrls } from './modules/commoncrawl.js';
 import { fetchRdapSummary } from './modules/rdap.js';
 import { fetchVirustotalSubdomains } from './modules/virustotal.js';
 import { compareRuns } from './modules/db-compare.js';
-import { postReconWebhook, postAiReportWebhook } from './modules/webhook-notify.js';
+import { postReconWebhook, postAiReportWebhook, postReconDeltaFullWebhook } from './modules/webhook-notify.js';
 import { fetchWaybackUrls, filterInterestingUrls, extractJsUrls } from './modules/wayback.js';
 import { extractParamsFromUrls } from './modules/params.js';
 import { analyzeJsUrl } from './modules/js-analyzer.js';
@@ -41,6 +43,8 @@ import { extractCveHintsFromTechStrings } from './modules/cve-hints.js';
 import { fetchDnsEnrichment } from './modules/dns-enrichment.js';
 import { fetchWellKnownSecurityTxt, fetchWellKnownOpenIdConfiguration } from './modules/wellknown.js';
 import { runEvidenceVerification, runMicroExploitVariants } from './modules/verify.js';
+import { runWebshellHeuristicProbe } from './modules/webshell-probe.js';
+import { buildMysqlConfigSurfaceCorrelationFindings } from './modules/mysql-config-correlation.js';
 import { runSqlmapModule } from './modules/sqlmap-runner.js';
 import { harvestOpenApiFromOrigins, tryGraphqlMinimalProbe } from './modules/openapi-harvest.js';
 import { dedupeBySemanticFamily } from './modules/semantic-dedupe.js';
@@ -71,6 +75,8 @@ import {
   listBrainLinksForCategory,
   storageLabel,
   fingerprintFinding,
+  listProjectSecretDuplicates,
+  sanitizePathSegment,
 } from './modules/db.js';
 import { collectUniqueIpv4, shodanHostSummary } from './modules/ip-intel.js';
 import { googleCseSearch } from './modules/google-cse.js';
@@ -82,12 +88,19 @@ import {
 } from './modules/tool-path.js';
 import {
   runDualAiReports,
+  callOpenRouter,
   aiKeysConfigured,
   pickAiReportForWebhook,
   probeLmStudioConnection,
   normalizeOpenrouterOnlyFlag,
-  ghostctfAiPolicyDisableGemini,
 } from './modules/ai-dual-report.js';
+import {
+  getShannonCapabilities,
+  shannonPullUpstreamWorkerImage,
+} from './modules/shannon-capabilities.js';
+import { runShannonOnClone, shannonMaxClonesPerRun } from './modules/shannon-runner.js';
+import { runPentestGptValidation, pentestGptHealthUrl, resolvePentestGptUrl } from './modules/pentestgpt-local.js';
+import { getPentestGptCapabilities } from './modules/pentestgpt-capabilities.js';
 import { enumerateSubdomainsWithSubfinder, enumerateSubdomainsWithAmass } from './modules/kali-subdomain-tools.js';
 import { withProvenance } from './modules/finding-provenance.js';
 import { serializeFindingsForRunSnapshot } from './modules/finding-serialize.js';
@@ -96,12 +109,15 @@ import { runHighPrioHttpRecheck } from './modules/recheck-high.js';
 import { runOptionalPlaywrightXssProbe } from './modules/browser-xss-verify.js';
 import { applyOwaspTagsToFindings, inferOwaspTags } from './modules/owasp-top10.js';
 import { applyMitreTagsToFindings, inferMitreTechniqueIds } from './modules/mitre-recon.js';
+import { parseReconTarget, hostLiteralForUrl, targetIsIp } from './modules/recon-target.js';
+import { secretMaterialFingerprint } from './modules/db-common.js';
+import { syncValidatedCortexFindingToGhostKb } from './modules/ghost-kb-sync.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 
 function aiAutoReportsServerAllowed() {
-  const v = String(process.env.GHOSTCTF_AI_AUTO ?? process.env.GHOSTRECON_AI_AUTO ?? '1').trim().toLowerCase();
+  const v = String(process.env.GHOSTRECON_AI_AUTO ?? '1').trim().toLowerCase();
   return v !== '0' && v !== 'false' && v !== 'no';
 }
 
@@ -112,8 +128,9 @@ function emitIaProximosPassosToLog(aiOut, log) {
   const parts = [];
   const order = Array.isArray(aiOut._reportCascadeOrder)
     ? aiOut._reportCascadeOrder
-    : ['gemini', 'openrouter', 'claude', 'lmstudio'];
+    : ['ghostLocal', 'gemini', 'openrouter', 'claude', 'lmstudio'];
   const labels = {
+    ghostLocal: 'Ghost Intelligence (Ollama) — próximos passos',
     gemini: 'Gemini — próximos passos',
     openrouter: 'OpenRouter — próximos passos',
     claude: 'Claude (Anthropic) — próximos passos',
@@ -216,6 +233,7 @@ function buildPipelineExportPayloadForAi({
   };
 }
 
+
 async function runPipeline(ctx) {
   const {
     domain,
@@ -236,6 +254,8 @@ async function runPipeline(ctx) {
     manualGithubReposRaw = null,
     bountyContext: bountyContextBody = null,
   } = ctx;
+  const apexHostIsIp = targetIsIp(domain);
+
   let bountyCtx =
     bountyContextBody && typeof bountyContextBody === 'object' ? bountyContextBody : null;
   if (!bountyCtx && process.env.GHOSTRECON_BOUNTY_CONTEXT?.trim()) {
@@ -274,6 +294,8 @@ async function runPipeline(ctx) {
   /** Marcos extra no Ghostmap quando a fase Kali não corre (emitidos por `kali-scan.js` durante o scan). */
   const KALI_SUB_PIPE_STEPS = [
     'nmap',
+    'nmap_udp',
+    'smb_null',
     'whois',
     'ffuf',
     'nuclei',
@@ -295,8 +317,16 @@ async function runPipeline(ctx) {
   const seenEp = new Set();
   let vtHostnames = [];
   let tlsSanHosts = [];
+  /** FQDN (lower) → primeiro IPv4 (A) visto no recon — para sugestões /etc/hosts no módulo header_intel. */
+  const dnsAForHost = new Map();
 
   log(`Alvo: ${domain} | Módulos: ${modules.join(', ')} | Perfil: ${runtimeProfile.name}`, 'info');
+  if (apexHostIsIp) {
+    log(
+      'Alvo é endereço IP — enumeração por CT/VirusTotal/subfinder e arquivo web por wildcard de domínio não se aplicam; HTTP/TLS/Kali seguem no IP.',
+      'info',
+    );
+  }
   log(exactMatch ? 'Modo: exact match (aspas nos dorks)' : 'Modo: broad match', 'info');
   const outOfScopeFromEnv = parseOutOfScopeEnv(process.env.GHOSTRECON_OUT_OF_SCOPE);
   let outOfScopeList = [...outOfScopeFromEnv];
@@ -314,7 +344,7 @@ async function runPipeline(ctx) {
   pipe('input', 'done');
 
   // ── SUBDOMAINS ──────────────────────────────
-  if (modules.includes('virustotal')) {
+  if (!apexHostIsIp && modules.includes('virustotal')) {
     const vt = await fetchVirustotalSubdomains(domain, process.env.VIRUSTOTAL_API_KEY);
     if (vt.ok && vt.items?.length) {
       vtHostnames = vt.items;
@@ -332,46 +362,53 @@ async function runPipeline(ctx) {
   if (runCrtSubdomains || runKaliSubfinderAmass) {
     pipe('subdomains', 'active');
     progress(12);
-    if (runCrtSubdomains) {
-      log('Consultando crt.sh (Certificate Transparency)...', 'info');
-      try {
-        allSubs = await fetchCrtShSubdomains(domain);
-        log(`${allSubs.length} nomes únicos em CT logs`, 'success');
-      } catch (e) {
-        log(`crt.sh: ${e.message}`, 'warn');
-      }
-      if (vtHostnames.length) {
-        const before = allSubs.length;
-        allSubs = [...new Set([...allSubs, ...vtHostnames])];
-        if (allSubs.length > before) log(`VirusTotal fundido em enum: +${allSubs.length - before} nome(s)`, 'info');
-      }
+    if (apexHostIsIp) {
+      log(
+        'Alvo é endereço IP — Certificate Transparency, VirusTotal (subdomínios), subfinder e amass são omitidos nesta fase.',
+        'info',
+      );
     } else {
-      log('crt.sh (subdomains) desativado — usando enum Kali (se selecionado).', 'info');
-    }
-
-    if (runKaliSubfinderAmass) {
-      if (modules.includes('subfinder')) {
+      if (runCrtSubdomains) {
+        log('Consultando crt.sh (Certificate Transparency)...', 'info');
         try {
-          const extra = await enumerateSubdomainsWithSubfinder(domain, log);
-          for (const h of extra) {
-            const hn = String(h).trim().toLowerCase();
-            if (hn) subfinderHostsNorm.add(hn);
-          }
-          if (extra.length) {
-            allSubs = [...new Set([...allSubs, ...extra])];
-          }
+          allSubs = await fetchCrtShSubdomains(domain);
+          log(`${allSubs.length} nomes únicos em CT logs`, 'success');
         } catch (e) {
-          log(`subfinder: ${e.message}`, 'warn');
+          log(`crt.sh: ${e.message}`, 'warn');
         }
+        if (vtHostnames.length) {
+          const before = allSubs.length;
+          allSubs = [...new Set([...allSubs, ...vtHostnames])];
+          if (allSubs.length > before) log(`VirusTotal fundido em enum: +${allSubs.length - before} nome(s)`, 'info');
+        }
+      } else {
+        log('crt.sh (subdomains) desativado — usando enum Kali (se selecionado).', 'info');
       }
-      if (modules.includes('amass')) {
-        try {
-          const extra = await enumerateSubdomainsWithAmass(domain, log);
-          if (extra.length) {
-            allSubs = [...new Set([...allSubs, ...extra])];
+
+      if (runKaliSubfinderAmass) {
+        if (modules.includes('subfinder')) {
+          try {
+            const extra = await enumerateSubdomainsWithSubfinder(domain, log);
+            for (const h of extra) {
+              const hn = String(h).trim().toLowerCase();
+              if (hn) subfinderHostsNorm.add(hn);
+            }
+            if (extra.length) {
+              allSubs = [...new Set([...allSubs, ...extra])];
+            }
+          } catch (e) {
+            log(`subfinder: ${e.message}`, 'warn');
           }
-        } catch (e) {
-          log(`amass: ${e.message}`, 'warn');
+        }
+        if (modules.includes('amass')) {
+          try {
+            const extra = await enumerateSubdomainsWithAmass(domain, log);
+            if (extra.length) {
+              allSubs = [...new Set([...allSubs, ...extra])];
+            }
+          } catch (e) {
+            log(`amass: ${e.message}`, 'warn');
+          }
         }
       }
     }
@@ -409,7 +446,7 @@ async function runPipeline(ctx) {
               score,
               value: host,
               meta: `DNS: ${r.records.join(', ')}${viaSubfinder ? ' · tool=subfinder' : ''}`,
-              url: `https://${host}`,
+              url: `https://${hostLiteralForUrl(host)}/`,
             },
             { how, relation },
           ),
@@ -417,6 +454,8 @@ async function runPipeline(ctx) {
         );
         subdomainsAlive.push(host);
         probedHosts.add(host);
+        const ipv4 = firstIpv4FromDnsRecords(r.records);
+        if (ipv4) dnsAForHost.set(String(host).trim().toLowerCase(), ipv4);
       } else {
         log(`✗ ${host} (sem A/AAAA)`, 'warn');
       }
@@ -443,28 +482,50 @@ async function runPipeline(ctx) {
   }
 
   if (modules.includes('rdap')) {
-    pipe('rdap', 'active');
-    progress(18);
-    log('Consultando RDAP (registo de domínio)...', 'info');
-    try {
-      const rd = await fetchRdapSummary(domain);
-      addFinding(
-        {
-          type: 'rdap',
-          prio: 'low',
-          score: 24,
-          value: rd.handle || domain,
-          meta: `Estado: ${rd.statuses || '—'} · NS: ${(rd.nameservers || []).slice(0, 10).join(', ') || '—'}`,
-        },
-        null,
-      );
-      if (rd.events?.length) log(`RDAP: ${rd.events.join(' | ')}`, 'info');
-    } catch (e) {
-      log(`RDAP: ${e.message}`, 'warn');
+    if (apexHostIsIp) {
+      log('RDAP omitido — alvo é endereço IP (este módulo consulta registo de domínio por FQDN).', 'info');
+      emit({ type: 'pipe', name: 'rdap', state: 'skip' });
+    } else {
+      pipe('rdap', 'active');
+      progress(18);
+      log('Consultando RDAP (registo de domínio)...', 'info');
+      try {
+        const rd = await fetchRdapSummary(domain);
+        addFinding(
+          {
+            type: 'rdap',
+            prio: 'low',
+            score: 24,
+            value: rd.handle || domain,
+            meta: `Estado: ${rd.statuses || '—'} · NS: ${(rd.nameservers || []).slice(0, 10).join(', ') || '—'}`,
+          },
+          null,
+        );
+        if (rd.events?.length) log(`RDAP: ${rd.events.join(' | ')}`, 'info');
+      } catch (e) {
+        log(`RDAP: ${e.message}`, 'warn');
+      }
+      pipe('rdap', 'done');
     }
-    pipe('rdap', 'done');
   } else {
     emit({ type: 'pipe', name: 'rdap', state: 'skip' });
+  }
+
+  if (apexHostIsIp) {
+    dnsAForHost.set(String(domain).trim(), String(domain).trim());
+  } else {
+    const hn = String(domain).trim().toLowerCase();
+    if (!dnsAForHost.has(hn)) {
+      try {
+        const rApex = await resolves(domain);
+        if (rApex.ok) {
+          const ipv4 = firstIpv4FromDnsRecords(rApex.records);
+          if (ipv4) dnsAForHost.set(hn, ipv4);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   // ── ALIVE / PROBE ───────────────────────────
@@ -476,7 +537,8 @@ async function runPipeline(ctx) {
   ].slice(0, runtimeProfile.maxHostsToProbe);
   const urlsToProbe = [];
   for (const h of hostsToProbe) {
-    urlsToProbe.push(`https://${h}/`, `http://${h}/`);
+    const hl = hostLiteralForUrl(h);
+    urlsToProbe.push(`https://${hl}/`, `http://${hl}/`);
   }
   log(`HTTP probing em ${hostsToProbe.length} hosts (GET, timeout ${limits.probeTimeoutMs}ms)...`, 'info');
 
@@ -486,6 +548,7 @@ async function runPipeline(ctx) {
   });
 
   const seenTech = new Set();
+  const seenHtmlCommentIntel = new Set();
   for (const { r } of probeResults) {
     if (!r.ok) continue;
     const host = new URL(r.url).hostname;
@@ -527,6 +590,24 @@ async function runPipeline(ctx) {
             meta: 'waf=cloudflare',
             url: r.url,
           });
+        }
+      }
+      if (r.htmlSample && hostInReconScope(host, domain, outOfScopeList)) {
+        for (const h of extractSuspiciousHtmlComments(r.htmlSample)) {
+          const key = `${host}::${h.slice(0, 48)}`;
+          if (seenHtmlCommentIntel.has(key)) continue;
+          seenHtmlCommentIntel.add(key);
+          addFinding(
+            {
+              type: 'intel',
+              prio: 'med',
+              score: 52,
+              value: `Comentário HTML suspeito @ ${host}`,
+              meta: `html_comment • ${h.slice(0, 280)}`,
+              url: r.url,
+            },
+            null,
+          );
         }
       }
     }
@@ -607,6 +688,41 @@ async function runPipeline(ctx) {
     }
   }
 
+  if (modules.includes('header_intel')) {
+    for (const { r } of probeResults) {
+      if (!r.ok || !r.responseHeadersFlat?.length) continue;
+      if (r.status <= 0 || r.status >= 500) continue;
+      let pageHost = '';
+      try {
+        pageHost = new URL(r.url).hostname;
+      } catch {
+        continue;
+      }
+      const pickIp =
+        dnsAForHost.get(pageHost.toLowerCase()) ||
+        dnsAForHost.get(String(domain).trim().toLowerCase()) ||
+        (apexHostIsIp ? String(domain).trim() : '');
+      for (const hit of analyzeSuspiciousResponseHeaders(r.responseHeadersFlat, {
+        pageUrl: r.url,
+        pageHost,
+        apexDomain: domain,
+        primaryIpv4: pickIp || '',
+      })) {
+        addFinding(
+          {
+            type: 'intel',
+            prio: hit.prio,
+            score: hit.score,
+            value: hit.value,
+            meta: hit.meta,
+            url: r.url,
+          },
+          null,
+        );
+      }
+    }
+  }
+
   const originByHost = new Map();
   for (const { r } of probeResults) {
     if (!r.ok || r.status <= 0 || r.status >= 500) continue;
@@ -645,7 +761,7 @@ async function runPipeline(ctx) {
               score: soon ? 52 : 28,
               value: `${hostname} — cert válido até ${cert.validTo || '?'}`,
               meta: `Assunto: ${cert.subject || '—'} · Emissor: ${cert.issuer || '—'}${cert.daysLeft != null ? ` · ~${cert.daysLeft}d` : ''}`,
-              url: `https://${hostname}/`,
+              url: `https://${hostLiteralForUrl(hostname)}/`,
             },
             null,
           );
@@ -829,12 +945,16 @@ async function runPipeline(ctx) {
   let waybackUrls = [];
   pipe('urls', 'active');
   if (modules.includes('wayback')) {
-    log('Coletando URLs do Wayback Machine (CDX)...', 'info');
-    try {
-      waybackUrls = await fetchWaybackUrls(domain);
-      log(`${waybackUrls.length} URLs únicas (200) no escopo *.${domain}`, 'success');
-    } catch (e) {
-      log(`Wayback: ${e.message}`, 'warn');
+    if (apexHostIsIp) {
+      log('Wayback (CDX) omitido — índice *.domínio não se aplica a alvo só-IP.', 'info');
+    } else {
+      log('Coletando URLs do Wayback Machine (CDX)...', 'info');
+      try {
+        waybackUrls = await fetchWaybackUrls(domain);
+        log(`${waybackUrls.length} URLs únicas (200) no escopo *.${domain}`, 'success');
+      } catch (e) {
+        log(`Wayback: ${e.message}`, 'warn');
+      }
     }
   } else {
     log('Wayback desativado', 'info');
@@ -842,27 +962,36 @@ async function runPipeline(ctx) {
 
   let ccUrls = [];
   if (modules.includes('common_crawl')) {
-    log('Common Crawl (índice CDX)...', 'info');
-    try {
-      ccUrls = await fetchCommonCrawlUrls(domain);
-      log(`${ccUrls.length} URLs únicas (200) no Common Crawl`, 'success');
-    } catch (e) {
-      log(`Common Crawl: ${e.message}`, 'warn');
+    if (apexHostIsIp) {
+      log('Common Crawl omitido — padrão *.domínio não se aplica a alvo só-IP.', 'info');
+    } else {
+      log('Common Crawl (índice CDX)...', 'info');
+      try {
+        ccUrls = await fetchCommonCrawlUrls(domain);
+        log(`${ccUrls.length} URLs únicas (200) no Common Crawl`, 'success');
+      } catch (e) {
+        log(`Common Crawl: ${e.message}`, 'warn');
+      }
     }
   }
 
   let archiveCliUrls = [];
   if (runtimeProfile.includeCliArchives || modules.includes('gau') || modules.includes('waybackurls')) {
-    try {
-      archiveCliUrls = await fetchArchiveToolUrls(domain, log);
-    } catch (e) {
-      log(`Archive CLI: ${e.message}`, 'warn');
+    if (apexHostIsIp) {
+      log('gau / waybackurls (CLI) omitidos — arquivo por domínio não se aplica a alvo só-IP.', 'info');
+    } else {
+      try {
+        archiveCliUrls = await fetchArchiveToolUrls(domain, log);
+      } catch (e) {
+        log(`Archive CLI: ${e.message}`, 'warn');
+      }
     }
   }
 
   let urlCorpus = [...new Set([...waybackUrls, ...ccUrls, ...archiveCliUrls])];
   if (runtimeProfile.name === 'deep') {
-    const seeds = [`https://${domain}/`, `http://${domain}/`];
+    const apexLit = hostLiteralForUrl(domain);
+    const seeds = [`https://${apexLit}/`, `http://${apexLit}/`];
     for (const seed of seeds) {
       try {
         const k = await crawlWithKatana(seed, { depth: 3 });
@@ -1058,13 +1187,14 @@ async function runPipeline(ctx) {
     }
     const sec = scanSecrets(a.body || '');
     for (const s of sec) {
+      const fpMeta = s.correlationFp ? `value_fp=${s.correlationFp}` : '';
       addFinding(
         {
           type: 'secret',
           prio: 'high',
           score: 92,
           value: `[${s.kind}] ${s.masked}`,
-          meta: `Possível segredo em JS (verificar falso positivo)`,
+          meta: ['Possível segredo em JS (verificar falso positivo)', fpMeta].filter(Boolean).join(' • '),
           url: jsUrl,
         },
         'secrets',
@@ -1159,11 +1289,11 @@ async function runPipeline(ctx) {
 
   // ── GITHUB API (opcional) ───────────────────
   pipe('secrets', 'active');
-  /** Clones bem-sucedidos neste run (repos manuais / GitHub leaks). */
+  /** Clones bem-sucedidos neste run (para Shannon white-box). */
   let githubClonedItems = [];
   const manualGithubRepos = parseGithubManualRepoList(manualGithubReposRaw);
   if (manualGithubRepos.length) {
-    log(`GitHub: ${manualGithubRepos.length} repositório(s) indicado(s) manualmente (payload manualGithubRepos)`, 'info');
+    log(`GitHub: ${manualGithubRepos.length} repositório(s) indicado(s) manualmente (UI Shannon)`, 'info');
   }
 
   const recordClonedFindings = (clonedList) => {
@@ -1184,13 +1314,15 @@ async function runPipeline(ctx) {
     const gh = await githubCodeSearch(domain, process.env.GITHUB_TOKEN);
     if (gh.ok && gh.items?.length) {
       for (const it of gh.items) {
+        const ghMat = `${it.repo || ''}|${it.path || ''}`;
+        const ghf = secretMaterialFingerprint('github_code_hit', ghMat);
         addFinding(
           {
             type: 'secret',
             prio: 'high',
             score: 78,
             value: `${it.repo || ''}/${it.path || ''}`,
-            meta: 'Resultado GitHub Code Search — revisar manualmente',
+            meta: `Resultado GitHub Code Search — revisar manualmente • value_fp=${ghf}`,
             url: it.html_url,
           },
           'secrets',
@@ -1273,7 +1405,7 @@ async function runPipeline(ctx) {
     }
   } else if (manualGithubRepos.length) {
     log(
-      'Repos GitHub na caixa manual ignorados: activa «GitHub leaks» para clonar.',
+      'Repos GitHub na caixa manual ignorados: activa «GitHub leaks» ou «Shannon white-box» para clonar.',
       'info',
     );
   }
@@ -1324,6 +1456,42 @@ async function runPipeline(ctx) {
       log(`Micro-exploit: ${e.message}`, 'warn');
     }
   }
+
+  if (modules.includes('webshell_probe')) {
+    pipe('webshell_probe', 'active');
+    try {
+      const origins = [];
+      const seenO = new Set();
+      for (const [, v] of originByHost) {
+        const o = String(v?.origin || '').trim();
+        if (!o || seenO.has(o) || origins.length >= 11) continue;
+        seenO.add(o);
+        origins.push(o.endsWith('/') ? o : `${o}/`);
+      }
+      try {
+        const hl = hostLiteralForUrl(domain);
+        for (const scheme of ['https', 'http']) {
+          const o = `${scheme}://${hl}/`;
+          if (!seenO.has(o) && origins.length < 12) {
+            seenO.add(o);
+            origins.push(o);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      const ws = await runWebshellHeuristicProbe({ origins, auth, modules, log, maxOrigins: 10 });
+      for (const w of ws) addFinding(w, null);
+      if (ws.length) log(`Webshell heurístico: ${ws.length} achado(s) — rever manualmente`, 'warn');
+      else log('Webshell heurístico: sem sinais fortes (cmd=id)', 'info');
+    } catch (e) {
+      log(`Webshell heurístico: ${e.message}`, 'warn');
+    }
+    pipe('webshell_probe', 'done');
+  } else {
+    pipe('webshell_probe', 'skip');
+  }
+
   // Param discovery ativo (fase 2): tentar em endpoints sem query
   try {
     const candidates = findings
@@ -1392,7 +1560,8 @@ async function runPipeline(ctx) {
         .map((h) => {
           const origin = originByHost.get(h)?.origin;
           if (origin) return origin;
-          return [`https://${h}/`, `http://${h}/`];
+          const hl = hostLiteralForUrl(h);
+          return [`https://${hl}/`, `http://${hl}/`];
         })
         .flat()
         .filter(Boolean);
@@ -1427,6 +1596,10 @@ async function runPipeline(ctx) {
 
       const runKaliNuclei = Boolean(modules.includes('kali_nuclei'));
       const runKaliFfuf = Boolean(modules.includes('kali_ffuf'));
+      const runKaliNmapAggressive = Boolean(modules.includes('kali_nmap_aggressive'));
+      const runKaliNmapUdp = Boolean(modules.includes('kali_nmap_udp'));
+      const runMysql3306Intel = Boolean(modules.includes('mysql_3306_intel'));
+      const runSmbNullEnum = Boolean(modules.includes('smb_null_enum'));
 
       await runKaliAggressiveScan({
         domain,
@@ -1440,6 +1613,10 @@ async function runPipeline(ctx) {
         sqliSignals,
         runNuclei: runKaliNuclei,
         runFfuf: runKaliFfuf,
+        runNmapAggressive: runKaliNmapAggressive,
+        runNmapUdp: runKaliNmapUdp,
+        runMysql3306Intel: runMysql3306Intel,
+        runSmbNullEnum,
         auth,
         emit,
       });
@@ -1471,7 +1648,8 @@ async function runPipeline(ctx) {
         if (!prov) continue;
         let body = '';
         try {
-          const res = await fetch(`https://${h}/`, { redirect: 'follow', signal: AbortSignal.timeout(9000) });
+          const hl = hostLiteralForUrl(h);
+          const res = await fetch(`https://${hl}/`, { redirect: 'follow', signal: AbortSignal.timeout(9000) });
           body = await res.text();
         } catch {}
         const match = matchProviderBody(prov, body);
@@ -1482,7 +1660,7 @@ async function runPipeline(ctx) {
             score: match ? 82 : 60,
             value: `Takeover ${match ? 'CONFIRMED' : 'candidate'}: ${h} → ${prov.name}`,
             meta: `cname_chain=${chain.join(' > ').slice(0, 160)} • body_match=${match ? 'yes' : 'no'}`,
-            url: `https://${h}/`,
+            url: `https://${hostLiteralForUrl(h)}/`,
           },
           null,
         );
@@ -1515,6 +1693,13 @@ async function runPipeline(ctx) {
     if (cveHints.length && f.type === 'tech') {
       f.meta = [f.meta, 'cve_hint=true'].filter(Boolean).join(' • ');
     }
+  }
+  try {
+    const mysqlCorr = buildMysqlConfigSurfaceCorrelationFindings(findings, { max: 16 });
+    for (const c of mysqlCorr) addFinding(c, null);
+    if (mysqlCorr.length) log(`Correlação MySQL 3306 + ficheiros de config: ${mysqlCorr.length} achado(s)`, 'info');
+  } catch (e) {
+    log(`Correlação MySQL + config: ${e.message}`, 'warn');
   }
   applyPrioritizationV2(findings, bountyCtx);
 
@@ -1663,6 +1848,13 @@ async function runPipeline(ctx) {
         'info',
       );
     }
+    if (saved.projectSecretDuplicates?.length) {
+      emit({ type: 'project_secret_peers', duplicates: saved.projectSecretDuplicates });
+      log(
+        `Correlação de segredos (mesmo projeto): ${saved.projectSecretDuplicates.length} valor(es) aparecem em 2+ alvos — Ghostmap / GET /api/project-secret-peers`,
+        'warn',
+      );
+    }
     try {
       const runs = await listRuns(120);
       const nt = domain.trim().toLowerCase();
@@ -1716,17 +1908,13 @@ async function runPipeline(ctx) {
 
   if (autoAiReports && aiAutoReportsServerAllowed() && aiKeysConfigured().any) {
     emit({ type: 'ai_report', phase: 'start', target: domain });
-    const noGemini = ghostctfAiPolicyDisableGemini();
     const pri =
-      noGemini || String(aiPrimaryCloud || '').toLowerCase() === 'openrouter' || normalizeOpenrouterOnlyFlag(aiOpenrouterOnly)
+      String(aiPrimaryCloud || '').toLowerCase() === 'openrouter' || normalizeOpenrouterOnlyFlag(aiOpenrouterOnly)
         ? 'OpenRouter'
         : 'Gemini';
-    const alt = noGemini ? '—' : pri === 'OpenRouter' ? 'Gemini' : 'OpenRouter';
-    const iaOrder = noGemini
-      ? aiUseOpenrouter === false
-        ? 'OpenRouter omitido (sem cobrança) → LM Studio → Claude se configurado'
-        : 'OpenRouter (primeiro) → LM Studio → Claude se configurado (sem Gemini no GHOSTCTF)'
-      : aiUseOpenrouter === false
+    const alt = pri === 'OpenRouter' ? 'Gemini' : 'OpenRouter';
+    const iaOrder =
+      aiUseOpenrouter === false
         ? 'Gemini (sem OpenRouter) → LM Studio → Claude se configurado'
         : `${pri} (primeiro) → LM Studio → ${alt} → Claude se configurado`;
     log(`IA: recon concluído — a gerar relatórios (${iaOrder}) com o JSON deste run…`, 'info');
@@ -1755,7 +1943,6 @@ async function runPipeline(ctx) {
         aiOpenrouterOnly,
         aiPrimaryCloud,
         onStatus: (message, level = 'info') => log(message, level),
-        aiDisableGemini: noGemini,
       });
       pipelineAiOut = aiOut;
       emit({
@@ -1781,33 +1968,21 @@ async function runPipeline(ctx) {
     }
   }
 
-  const whUrl = (process.env.GHOSTCTF_WEBHOOK_URL || process.env.GHOSTRECON_WEBHOOK_URL)?.trim();
-  if (whUrl && runId != null) {
-    const findingsByType = {};
-    for (const f of findings) {
-      const t = f?.type || 'unknown';
-      findingsByType[t] = (findingsByType[t] || 0) + 1;
-    }
-    let runDiffSummary = null;
-    try {
+  let reconDeltaForWebhook = null;
+  try {
+    if (runId != null) {
       const runs = await listRuns(120);
       const nt = domain.trim().toLowerCase();
       const prev = runs.find((r) => String(r.target).trim().toLowerCase() === nt && r.id < runId);
       if (prev) {
         const diff = await compareRuns(prev.id, runId);
         if (!diff.error) {
-          runDiffSummary = {
+          reconDeltaForWebhook = {
             baselineId: diff.baselineId,
-            newerId: diff.newerId,
             baselineCreatedAt: diff.baselineCreatedAt,
             newerCreatedAt: diff.newerCreatedAt,
-            addedCount: diff.addedCount,
+            added: diff.added,
             removedCount: diff.removedCount,
-            addedSample: diff.added.slice(0, 10).map((x) => ({
-              type: x.type,
-              prio: x.prio,
-              value: String(x.value ?? '').slice(0, 240),
-            })),
             removedSample: diff.removed.slice(0, 10).map((x) => ({
               type: x.type,
               prio: x.prio,
@@ -1816,9 +1991,43 @@ async function runPipeline(ctx) {
           };
         }
       }
-    } catch (e) {
-      console.warn('[GHOSTRECON webhook diff]', e?.message || e);
     }
+  } catch (e) {
+    console.warn('[GHOSTRECON webhook diff]', e?.message || e);
+  }
+
+  const whUrl = process.env.GHOSTRECON_WEBHOOK_URL?.trim();
+  if (whUrl && runId != null) {
+    const findingsByType = {};
+    for (const f of findings) {
+      const t = f?.type || 'unknown';
+      findingsByType[t] = (findingsByType[t] || 0) + 1;
+    }
+    let runDiffSummary = null;
+    if (reconDeltaForWebhook) {
+      const d = reconDeltaForWebhook;
+      runDiffSummary = {
+        baselineId: d.baselineId,
+        newerId: runId,
+        baselineCreatedAt: d.baselineCreatedAt,
+        newerCreatedAt: d.newerCreatedAt,
+        addedCount: d.added.length,
+        removedCount: d.removedCount,
+        addedSample: d.added.slice(0, 10).map((x) => ({
+          type: x.type,
+          prio: x.prio,
+          value: String(x.value ?? '').slice(0, 240),
+        })),
+        removedSample: d.removedSample || [],
+      };
+    }
+    const shannonSummary =
+      findings
+        .filter((f) => f?.type === 'intel' && /shannon/i.test(`${f.value || ''} ${f.meta || ''}`))
+        .map((f) => `${String(f.value || '').slice(0, 140)} — ${String(f.meta || '').slice(0, 120)}`)
+        .slice(0, 4)
+        .join(' | ') || null;
+
     void postReconWebhook(whUrl, {
       target: domain,
       runId,
@@ -1829,10 +2038,11 @@ async function runPipeline(ctx) {
       highCount: findings.filter((f) => f.prio === 'high').length,
       findingsByType,
       runDiffSummary,
+      
     });
   }
 
-  const whAi = (process.env.GHOSTCTF_WEBHOOK_URL || process.env.GHOSTRECON_WEBHOOK_URL)?.trim();
+  const whAi = process.env.GHOSTRECON_WEBHOOK_URL?.trim();
   if (whAi) {
     const picked = pickAiReportForWebhook(pipelineAiOut);
     if (picked) {
@@ -1842,6 +2052,27 @@ async function runPipeline(ctx) {
         provider: picked.provider,
         relatorio: picked.relatorio,
         proximos_passos: picked.proximos_passos,
+      });
+      if (reconDeltaForWebhook) {
+        void postReconDeltaFullWebhook(whAi, {
+          target: domain,
+          runId,
+          baselineId: reconDeltaForWebhook.baselineId,
+          baselineCreatedAt: reconDeltaForWebhook.baselineCreatedAt,
+          newerCreatedAt: reconDeltaForWebhook.newerCreatedAt,
+          added: reconDeltaForWebhook.added,
+          removedCount: reconDeltaForWebhook.removedCount,
+        });
+      }
+    } else if (reconDeltaForWebhook) {
+      void postReconDeltaFullWebhook(whAi, {
+        target: domain,
+        runId,
+        baselineId: reconDeltaForWebhook.baselineId,
+        baselineCreatedAt: reconDeltaForWebhook.baselineCreatedAt,
+        newerCreatedAt: reconDeltaForWebhook.newerCreatedAt,
+        added: reconDeltaForWebhook.added,
+        removedCount: reconDeltaForWebhook.removedCount,
       });
     }
   }
