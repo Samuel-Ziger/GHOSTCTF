@@ -1,0 +1,133 @@
+Seguindo aí para a segunda flag, eu já sei que tem um site WordPress no ar e que tem um plugin ali que não deveria estar.
+Então a gente tem que achar onde é que está esse plugin.
+Eu posso manualmente tentar achar o site aqui, né?
+E aqui é melhor a gente automatizar esse processo.
+Então eu vou abrir aqui o DirBuster para a gente fazer um BootForce diretórios.
+HTTP e o IP, né?
+Show.
+E vou aumentar o número de thread.
+Vou entrar aqui na nossa pasta de WordList.
+E o DirBuster vai pegar isso mal.
+Show Start.
+Aqui ele deve achar rapidinho o que a gente precisa, né?
+Vamos só esperar.
+Ok, ele achou aqui um diretório chamado WordPress.
+Vamos entrar nele.
+WordPress.
+Ok.
+Aqui, né, ele já tem uns posts aqui do site.
+Falando até sobre SQL Injection, né?
+Já uma dica aí.
+Aqui.
+Os posts aqui.
+Raquel.
+Daniel.
+Post teste, estagiário.
+Ok.
+Aqui a gente já sabe também que o estagiário tem acesso à conta de mim, né?
+Ele fez um post pela conta de mim.
+Já é uma informação.
+E como amor de pressa, a gente precisa, né?
+A gente tem como, né?
+Você usar o famoso WP Scan.
+E é a ferramenta de análise aí de site WordPress.
+Então, vamos usar ela.
+WP Scan.
+Opa.
+WP Scan.
+URL.
+Tipe.
+Pum, pum, pum, pum.
+E é isso.
+Né?
+A gente vai usar aí o WP Scan pra saber aí qual é esse plugin que não deveria estar ali.
+Ah tá, porque eu esqueci de passar o diretório que tá, que tá o site do WordPress.
+A gente, né?
+Precisa saber aí qual plugin aí que não deveria estar ali, né?
+Pra ver se a gente consegue usar esse plugin pra conseguir nossa segunda flag.
+Ok.
+Aqui, ele identificou um plugin chamado Simplipo.
+Né?
+Já vamos copiar o nome dele aqui.
+Qual a versão dele.
+A versão dele é 1.4.1.
+Ele tem 100% de confiança que é essa versão.
+Então, vamos pesquisar aqui, né?
+Vamos...
+Vamos ver se esse plugin tem algum exploit, alguma vulnerabilidade que a gente pode explorar.
+Ok.
+As duas primeiras aqui já são, né?
+Exploit, né?
+Exploit DB sobre esse plugin nessa versão.
+Aqui a gente já vê que o plugin é vulnerável a CSRF e storage XSS.
+Storage XSS.
+Né?
+Process Scripting.
+Só que não é tão importante isso aqui pra gente, né?
+No cenário que a gente tá.
+Então, a gente quer algo mais crítico, né?
+Tipo, um SQL injection, como é essa, esse...
+Essa vulnerabilidade aqui.
+Esse exploit.
+Aqui ele dá um proof of concept pra gente.
+Ele traz um comando do SQL map que vai explorar essa falha pra gente.
+Então, a gente já pode...
+Não vou colar ali direto não, senão vai bugar o terminal.
+Deixa eu limpar a tela.
+Vou colar aqui.
+Eu vou trocar umas coisinhas aqui da tela.
+Vou tirar o level e o risk.
+Né?
+A gente não sabe o nome do database ainda, então a gente vai tirar esse aqui.
+Vamos trocar também o nome...
+Deixa eu ver o que eu faço aqui.
+O nome do...
+A URL, né?
+172.18...
+Opa.
+172.18.2.3
+Barra wordpress.
+A gente pode botar o parâmetro batch aqui pra ele aceitar os...
+As opções automaticamente.
+E a gente vai pedir aqui pra ele retornar pra gente o nome do banco de dados.
+Os bancos de dados, né?
+Aqui eu já fiz o SQL injection antes e ele já retornou aqui.
+O banco de dados chamado hook.
+Eu não consegui...
+Aqui no...
+Na página aqui do exploit ele fala que é vulnerável a boolean-based blind e union carry.
+Mas eu só consegui explorar com time-based, né?
+Que é bem ruim, né?
+Porque demora pra caramba.
+Mas eu já fiz o SQL injection antes pra já deixar tudo rápido aqui.
+Deixa eu minimizar isso aqui.
+Ok, a gente já tem o nome aqui do banco de dados que a gente precisa.
+Vamos botar ele aqui.
+Então, normalmente o que...
+Você faria agora, né?
+É usar o tracinho tracinho tables aqui pra numerar as tabelas.
+Mas como eu já sei...
+Que vai ter uma tabela wp-users ali...
+Eu já vou botar aqui wp-users e vou dampá-la toda.
+Eu já fiz esse ataque antes, né?
+Pra...
+Ser mais rápido aqui.
+Da gravação.
+Aqui ele já deve retornar pra gente tudo...
+Certinho.
+Escrevi errado da wp-users.
+Pronto, agora vai.
+Tá, aqui ele já tá retornando o nome das colunas.
+E já tá retornando os valores.
+Ok.
+Aqui ele já retornou os nomes dos usuários.
+As hashes.
+As senhas desses usuários.
+E também...
+A gente vê aqui que tem um usuário chamado flag2.
+Que o display name dele é a nossa segunda flag.
+.
+.
+.
+.
+.

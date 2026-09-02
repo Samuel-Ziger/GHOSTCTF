@@ -1,0 +1,71 @@
+Fala aí pessoal, tranquilo? Vou resolver aí com vocês o primeiro desafio do CTF 2019 da Solid
+Deixa eu minimizar aqui
+Começando suas aventuras, que no total tem aí 550 pontos, 4 flags
+Então vamos lá, ele fala aqui que é preciso estar conectado, eu já conectei aqui pela UPVPN do terminal mesmo
+Só usar a UPVPN, o arquivo de configuração que você baixou lá na Solid, usuário, senha, conectou na VPN
+Vamos lá, aqui ele dá a descrição do desafio e dá pra gente também o IP alvo
+Primeira coisa que você faz, IP em teste, bug bounty, CTF, é você buscar informações sobre o seu alvo
+No caso ali, a gente vai tentar achar que portas estão abertas nesse IP, que serviços estão rodando nessas portas
+Então vamos usar nosso famoso Nmap aí pra fazer um port scan nesse IP
+Vamos salvar isso aqui num arquivo de texto
+E dar um cat aqui no arquivo de texto
+E vamos ver aqui, então aqui a gente já vê que tem um serviço FTP rodando na porta 21, serviço SSH na porta 22
+E um serviço HTTP na porta 80, vamos tentar entrar aqui nessa porta 80
+Pro navegador, 18.2.3, 80
+E ele retorna aqui pra gente num site de construção, que aparentemente não tem nada de importante pra gente
+No source aqui também não
+Então vamos prosseguir né
+Aqui a gente sabe que tem um serviço FTP rodando na porta 21
+A gente pode aqui pelo navegador mesmo, conectar nesse serviço
+Vou tentar dar salvo aqui
+E a gente já tem acesso aqui a uma pasta chamada comunicados
+Entrando nela, aparentemente não tem nada dentro
+Mas pode ser que tenha algum arquivo escondido aqui né
+Que são aqueles arquivos que tem um pontozinho na frente
+Então vamos entrar pelo terminal pra ver se a gente consegue ver esse arquivo
+Eu vou criar uma outra tab aqui no terminal
+Apertando CTRL SHIFT T você cria outra tabzinha aqui no terminal
+Entrar na pastazinha aqui que eu criei pra salvar as informações desse desafio
+Enquanto a gente estiver resolvendo
+E vamos conectar né
+FTP e o IP
+Pra conectar
+Bom, aqui a gente vai conectar com o IP, né?
+Então aqui a gente vai conectar com o usuário Anonymous
+Que é basicamente o usuário público que todo mundo pode conectar
+Anonymous
+E a gente consegue conectar com o usuário Anonymous
+Ou seja, ele permite né
+Esse acesso público
+Aqui você pode colocar qualquer senha ou senha nenhuma que ele vai conectar
+A gente não consegue dar um DIR aqui
+Porque por padrão o FTP vem com a conexão do tipo ativa
+A gente tem que trocar pra conexão passiva
+Passive Mode ON
+Que é basicamente o cliente FTP que vai conectar numa porta randômica do servidor FTP lá
+E agora a gente consegue né
+Passar os comandos certinhos
+Ali ele já mostra a pasta comunicados
+Que é a pasta que a gente viu aqui pelo navegador
+Vamos entrar nessa pasta
+Comunicados
+E dando um LS não aparece nada
+Igual a gente viu no navegador
+Um LS-LA ele mostra o arquivo escondido aqui
+Que é esse aviso
+Dá pra gente dar um CAT nele
+Aviso
+Não dá pra gente dar um CAT
+Porque a gente tá no terminal do FTP
+A gente tem que dar um GET nele primeiro
+Ou seja, baixar esse arquivo
+E vir aqui na nossa pastinha que a gente criou
+Ele vai tá aqui provavelmente né
+Aí show, ele tá ali
+Agora a gente consegue dar um CAT nele
+E a gente conseguiu aí a nossa primeira flag
+Do primeiro desafio
+E também ele fala aqui né
+Dá uma dica pra gente que tem um site WordPress no ar
+E que né, tem um plugin ali que não deveria tá né
+E aí que a gente vai pra nossa segunda flag
