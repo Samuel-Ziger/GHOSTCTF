@@ -1,0 +1,94 @@
+indo agora para a terceira flag
+a gente sabe
+que tem um usuário aqui chamado estagiário
+e a gente também sabe
+que provavelmente vai ser mais fácil
+quebrar a senha do estagiário
+então a gente vai criar aqui
+o arquivo de hash
+para a gente salvar a hash do estagiário
+e a gente vai usar o john
+para quebrar
+essa hash
+vou usar o wordlist rocku.txt
+descompactei ela aqui na pasta
+e vamos ver aí
+a senha dele
+retornou aí para a gente
+a senha do tiktok
+a gente pode conectar
+até
+se a gente botar aqui na pdmin
+ele vai redirecionar a gente
+para a página de login
+a gente pode até
+conectar aqui no
+no painel do wordpress
+tiktok
+tiktok
+show
+conectamos aqui no painel
+do wordpress
+mas né
+não é
+não é nosso foco agora
+o que que a gente
+pode fazer agora
+a gente sabe também né
+vamos dar um cat aqui
+no nosso
+anemap.txt
+que tem um serviço
+SSH aberto
+se tiver um usuário
+ali naquela máquina
+com o nome de estagiário
+e com a mesma senha
+do
+do
+wordpress
+vamos testar
+vamos dar um
+da
+SSH
+aqui
+estagiário
+como login
+estagiário
+o arroba
+e o p
+do nosso host
+alvo
+show
+parece que está
+tentando conectar
+então
+show
+pediu a senha
+vamos então
+botar o tiktok né
+vamos ver se conecta
+opa
+errei aqui
+tiktok
+conectou
+estamos acesso
+estamos dentro da máquina né
+vamos dar um LSTACIMOLEA
+aqui
+opa
+flag 3 ali
+cat flag 3
+conseguimos aí
+a terceira flag
+vou copiar aqui
+e pontuar na plataforma
+e pontuar na plataforma
+a terceira 이미
+rata
+n
+a
+e
+rata
+Romans
+V

@@ -1,0 +1,409 @@
+prosseguindo então pra
+quarta e última flag
+eu já salvei as informações aqui
+no nosso arquivo de informações
+e aqui
+nesse textinho ele fala
+que salvou as
+hashes no zip
+que acompanha o executável
+e esse zip aqui
+se fizer a engenharia
+reversa nele, virou essa mensagem
+a gente conseguiu lá, a gente
+achou a chave
+e conseguiu
+essa mensagem aqui e ele deu a senha
+pro arquivo de zip
+e ele fala aqui também pra gente
+investigar os irmãos Galagher
+e aqui em cima a gente vê
+esses irmãos
+são o Lion e o Noel
+então
+vamos fazer o
+descompactar aqui o
+arquivo zip
+colocar a senha
+aqui a gente
+pegou o pswd
+e o shadow
+vamos dar um unshadow
+então
+nesses dois arquivos
+unshadow
+pswd
+shadow
+vamos botar em
+hashes.txt
+como a gente só quer
+as senhas dos irmãos
+então vamos
+apagar
+a dos outros
+apagando aqui
+ok
+ficou só eles ali
+e vamos usar o John
+pra quebrar
+aqui em cima ele fala
+ifs são importantes
+rock costuma
+ir bem
+rock costuma ir bem
+em muitos momentos
+né
+pra quem manja das
+wordlists
+sabe né
+que tem uma wordlist aí
+muito famosa
+chamada
+rocku.txt
+e é exatamente ela
+que a gente vai usar
+só que
+ela é gigante
+fantasticamente gigante
+dá um rocku.txt
+wc.l ali
+ela tem aí
+14 milhões e 300 mil
+senhas
+então pra agilizar
+eu criei uma wordlistzinha
+menor aqui
+com a senha que a gente vai
+quebrar
+a hash
+só pra ir mais rápido
+né
+então aqui eu vou usar o John
+pra quebrar
+vou passar
+a wordlist
+igual
+wordlist.txt
+e vamos quebrar aí a senha
+ok
+ele acabou de achar aí
+uma senha
+que é da conta Lion
+do Lion
+né
+então
+vamos entrar
+no sh
+Lion
+a senha
+ela viu Shakira
+ok
+e aqui
+vamos entrar
+no watcher
+help.txt
+esqueça
+a rocku
+e outras wordlists
+por aí
+crie a sua
+né
+com as informações
+que você tem
+ou seja
+a gente vai ter que
+quebrar a senha
+do Noel
+com as informações
+que a gente tem
+a gente vai ter que
+criar a nossa própria
+wordlist
+vamos dar um catch
+nesse diário aqui
+e mais informações
+então vamos copiar
+pra
+pra
+cadê?
+aqui
+pro nosso
+arquivo de informações
+o que que ele fala aqui?
+28 de outubro
+de 2018
+hoje fazem
+33 anos
+que perdemos
+o contato
+com o nosso pai
+e tal
+foi algo
+que marcou ele
+profundamente
+espero
+que ele tenha
+parado
+de usar esse número
+pra tudo
+ou seja
+esse número aqui
+é muito importante
+né
+da forma
+como ele fala aqui
+então que número
+né
+vai ser
+2018
+menos
+33
+né
+deixa eu abrir aqui
+um python
+2018
+menos
+opa
+18
+menos
+33
+vai ser
+1985
+então vamos salvar
+isso aqui
+como é pra gente
+criar nossa própria
+wordlist
+a gente vai criar
+nossa própria
+wordlist
+né
+já vou vir aqui
+eu vou criar aqui
+word.txt
+e vou colocar aqui
+informações que a gente tem
+né
+o nome dele
+o sobrenome
+g
+eu posso colocar aqui
+a data de nascimento dele
+cadê
+deixa eu ver se tem aqui
+nasceu no ano
+de 1967
+vou botar a data lá
+debaixo do pai dele
+que morreu né
+1985
+e
+se você perceber aqui também
+ó
+em todas as senhas
+os ais
+opa
+aquele ali é flag
+deixa eu voltar aqui
+em todas as senhas
+a letra i
+é substituída pelo 3
+a letra a
+é substituída pelo 4
+e por aí vai
+então vamos colocar aqui
+dessa forma
+o nome dele aqui
+galaga
+no
+show
+a gente criou ali
+algumas
+palavras né
+pra nossa wordlist
+e vamos usar o mentalist
+pra criar nossa wordlist
+de fato
+espero que ele abra aqui
+tá abrindo
+aí abriu
+mentalist é uma ferramentazinha
+pra criar o wordlist
+eu vou
+adicionar aqui
+nossa listazinha
+de 6
+palavras que a gente
+colocou lá né
+e aqui a gente
+consegue
+ir mudando essas palavras
+a gente consegue colocar
+aqui
+todas elas com
+letra minúscula
+todas elas com letra maiúscula
+vou botar com letra minúscula
+letra maiúscula no começo
+e minúscula no resto
+e ao contrário né
+letra minúscula no começo
+e o resto maiúscula
+posso botar aqui pra ele
+no início da palavra
+ele concatenar com
+a própria wordlist
+né
+aqui
+wordlist
+e pra ele não concatenar
+com nada
+também
+no começo
+e no final
+também
+posso botar aqui
+pra ele não concatenar
+com nada
+no final
+e concatenar
+com a própria wordlist
+word.txt
+ok
+no final aí
+a gente tem
+mil
+é
+cento e setenta e seis
+palavras né
+senhas
+possíveis senhas
+acho que tá bom
+vamos tentar quebrar
+a senha dele
+com essa wordlist
+aqui
+vou salvar com
+wordlist
+.txt
+vai substituir
+aquela que já tá ali
+ok
+clear
+e vamos quebrar a senha
+deixa eu só entrar aqui
+no arquivo de senhas
+e apagar a hash do lion
+e vamos lá
+john né
+hash .txt
+wordlist
+igual a wordlist
+.txt
+vamos ver se ele consegue quebrar
+ok
+quebrou
+aqui
+essa aqui é a senha
+né
+deixa eu dar
+um zoom aqui
+essa aqui é a senha
+então vamos entrar
+com ssh
+é
+no usuário dele
+sh
+no
+vamos colar a senha
+ok
+entramos aqui
+temos mais informações
+vamos entrar no lote
+no catch no help
+use informações que você tem em mãos
+fotos etc
+ok
+vamos dar um catch no mydadger.txt
+aqui
+nunca esquecerei de você
+você nasceu em um ano bem louco
+e essa foto não me deixa mentir
+né
+vamos copiar isso aqui
+e colocar na nossa
+no nosso arquivo de informações aqui
+e vamos baixar
+esses dados
+vou voltar aqui
+vou fechar aqui
+vou botar aqui
+vou criar uma pasta pra ele
+noel
+cd noel
+scp
+noel
+arroba
+cp alvo
+chome
+noel
+e vamos baixar tudo pra cá
+vamos usar a senha dele
+acho que já tá
+eu fechei né
+ela não tá aqui em cima
+vamos baixar
+essa imagem aí
+então vamos dar um
+vamos abrir aqui a pastinha
+assim que já tá aberto aqui
+do lado
+isso aqui é a imagem né
+a gente tem que saber
+qual ano é dessa imagem
+porque ele fala aqui ó
+você nasceu um ano bem louco
+e essa foto não me deixa mentir
+e aqui a gente tem outro zip
+né
+vamos tentar achar o ano
+dessa imagem aí
+então a gente vai entrar aqui no google image
+imagens
+vamos pesquisar por essa imagem
+ver se a gente consegue alguma informação aqui
+e auto conferência
+né
+ok
+mas não é essa imagem aqui
+lendo aqui a gente
+vê que teve essa outra conferência aqui
+que é a mesma imagem
+que aparece aqui
+e aqui fala que foi no ano né
+de 1943
+então
+vamos tentar usar isso
+esse ano pra
+descompactar
+o zip
+mil
+novecentos e quarenta e três
+conseguimos
+ele
+deu pra gente aqui
+esse arquivo
+plans.txt
+vamos dar um cat nele
+show
+conseguimos aí
+nossa última flag
+é isso aí
+valeu
+são
+as
+as
+t
+o
+o
+o

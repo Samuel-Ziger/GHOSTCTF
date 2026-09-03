@@ -1,0 +1,720 @@
+Fala aí pessoal, tranquilo, vamos resolver o desafio Hacker Rock Story do CTF 2019 da Solid, valendo aí 900 pontos
+Então show, ele dá aqui o IP pra gente atacar, então vamos direto já fazer o nosso animap, nosso port scan
+Vamos salvar isso aqui no arquivo de texto
+Ele retornou aqui pra gente o serviço SSH na porta 22, o serviço que a gente não sabe o que é na porta 5000
+Se a gente dá um netcat nessa porta 5000, ele vai dar uma introdução aqui do desafio pra gente
+E falar pra gente enviar ok pra começar o desafio
+Basicamente esse desafio aqui, ele fala que a gente vai mexer com processamento de imagens e QR Code
+Então vamos lá, se a gente enviar ok aqui pelo netcat ele não vai enviar nada
+Mas a gente pode criar um script em Python que vai funcionar certinho
+Vamos usar o Python 3 aqui, então vou importar aqui biblioteca socket, né, e criar aqui nosso socket
+Deixa eu só botar a variable IP aqui
+.4.3
+Port, né, 5000
+E vamos criar nosso socket
+.4.3
+E conectar
+.4.3
+.4.3
+Depois de conectar, a gente vai receber, vou dar um print já, esse de dados que ele vai receber
+Está aqui em 1024 e vou dar um decode, como a gente está usando o python3, ele vem em byte
+Python script, vou botar python3 aqui e ele já está lendo aí a introdução do desafio e fala para a gente enviar o ok
+Então a gente vai enviar o ok para começar o desafio
+Então vamos botar com s do acende
+Tem que colocar o b aqui na frente também, porque a gente vai enviar bytes
+Ok, e depois de enviar o ok, a gente vai receber
+Vou criar aqui uma variável data, né, s.receive
+Vou colocar um valor bem alto aqui, 100 mil
+Botei, está certo, 100 mil
+E vou dar um decode nela
+E vou dar um print
+Então aqui a gente recebeu os nossos dados
+Depois de mandar o ok, ele manda isso aqui
+Como no desafio ele fala, né, que a gente vai mexer com o processamento de imagens e QR Code
+Isso aqui provavelmente é uma imagem, né, um QR Code que a gente vai fazer o decode depois
+Essa tupla aqui, cada tupla dessa aqui é um pixel, né, é um RGB
+No caso aqui é um pixel preto, aqui é um pixel branco
+E por aí vai
+Aqui a gente não tá recebendo, né, os nossos dados completos
+Por quê? Porque a gente não tá dando tempo pro servidor, né, enviar
+A gente importar a biblioteca time aqui em cima
+Time
+E time.sleep
+Sleep
+Vou botar aqui meio segundo
+Só pra ele esperar um tempinho
+E depois ele pega os dados
+Aqui ele tá pegando tudo
+Show
+Se a gente dá um grip aqui
+Um grip
+Um ponto e vírgula
+Vou botar color aqui
+Pra ficar mais fácil de enxergar
+A gente vai ver, né, que esses pixels estão sendo separados por ponto e vírgula
+E a cada separação dessa indica uma linha, né, então
+Aqui a gente tem uma linha da imagem, a primeira linha de pixels
+Daqui até aqui a gente tem a segunda linha de pixels
+E por aí vai, né
+Então se a gente dá um split
+Se a gente dá um split
+Vamos ser igual
+Data.split
+Eu vou dar um replace aqui nos espaços
+Antes
+E dar um split
+No ponto e vírgula
+Se a gente printar data
+Vamos printar também o tamanho de data
+Então aqui
+Opa
+Deixa eu tirar esse grip
+Então aqui
+Ele já tá me retornando uma lista
+Com todas as linhas da imagem
+Né
+Só que aqui no final tem esse valorzinho
+Vazio aqui que a gente vai tirar depois
+E o tamanho da imagem é 43
+Ou seja, ela é 43 por 43
+Então já dá pra gente criar a nossa imagem
+Usando uma biblioteca pillow
+Import
+Melhor
+Vou botar aqui
+FromPill
+Import
+Image
+Tá, você pode fazer o download da biblioteca com o pip install pillow
+Assim
+E
+Né, vamos criar a nossa imagem
+Aqui eu vou colocar
+Aqui eu vou colocar QR Code
+Né, nossa imagem vai ser um QR Code
+Image
+.new
+Aqui é o modo da imagem
+É um RGB
+Né, porque a gente tá recebendo um RGB ali
+Tuplas em RGB
+E pra criar a imagem
+A gente precisa de tuplas em RGB, né
+Com os elementos ali
+Dentro
+Né, os números
+Inteiros
+Que vão ser os valores ali
+Da, da cor da imagem, né
+Red, blue e green
+Agora a gente coloca o tamanho
+Né, da imagem
+A gente já sabe que é
+Len
+Data
+Né, que vai ser 43 por 43
+No caso dessa imagem aqui
+E agora
+Como tem aquele espacinho vazio lá
+A gente pode dar um pop
+Menos um
+Da lista
+Pra gente tirar aquele último
+Espacinho vazio lá
+Depois daqui
+A gente
+Vai ter uma lista, né
+Das linhas
+Da imagem
+Então a gente tem que pegar
+Cada pixel
+Dentro
+Primeiro a gente vai ter que pegar
+Cada linha
+Dentro dessa lista
+E depois a gente vai pegar
+Cada pixel
+Dentro de cada linha
+Da
+Da imagem
+Vamos por parte
+Agora a gente vai começar
+Vendo a parte da linha
+Né
+E em
+Range
+Len
+Data
+Data
+Né
+Ele vai pegar
+Data
+Data
+I
+Vai ser igual
+Se a gente
+Prentar aqui
+Data
+I
+Ó
+Vamos ver
+O que a gente recebe
+Peraí que ele tá vindo
+Embaixo
+Ah não, tá vindo não
+A gente vai ver, né
+Aqui
+Cada linha
+Dessa aqui
+É uma linha da imagem
+Né
+A gente
+Mas é uma string
+Isso aqui
+Isso aqui é uma string
+A gente quer, né
+Cada
+Pixel
+Dentro de cada linha
+Então a gente pode dar um split
+Em
+Fecha parêntese
+Vírgula
+Abre parêntese
+Então
+A gente vai, né
+Separar isso aqui
+Disso aqui
+Isso aqui
+Isso aqui
+E aí
+A gente vai, né
+Ter
+Todos os pixels
+De cada linha
+Vamos fazer isso aqui
+Data
+I
+Vai ser
+Igual
+A data
+I
+Ponto
+Split
+Fecha parêntese
+Vírgula
+Abre parêntese
+Se a gente dar um print
+Na data
+I agora
+A gente vai ter
+Todos os pixels
+Separadinhos
+Numa lista
+Aqui
+Se você ver aqui
+O último pixel
+Da linha
+Sempre vai ter
+Esse fecha parêntese
+E o primeiro
+Sempre vai ter
+O abre parêntese
+Então a gente tem
+Que tirar isso aqui
+E
+A gente tem que também
+Né
+Para cada
+Elemento
+Desse aqui
+A gente tem que transformar
+Numa tupla
+De inteiros
+Então
+A gente já vai fazer
+Isso aqui direto
+A gente tem uma lista
+Ali
+De cada
+Pixel, né
+Então
+For
+J
+InRange
+Length
+Data
+Né
+Vamos
+Criar um for
+Em toda
+Todos os pixels
+Ali
+Data
+I
+J
+Ou seja
+Para cada
+Pixel
+Em cada linha
+Ele vai
+Transformar em
+Tupla
+Vou dar um
+Map
+Aqui
+Essa função
+Tupla
+Transforma
+Uma lista
+Por exemplo
+Uma lista
+Deixa eu pegar aqui
+Python
+Vai ser igual
+A
+1
+2
+3
+Se eu pegar
+Um tupla
+Aqui
+Eu transformei
+Nessa lista
+Aqui
+Em uma tupla
+É basicamente
+Isso que faz
+E a função
+Map
+Ela
+Para todo
+Item
+Dentro de uma lista
+Ela executa
+Uma função
+Que
+Essa função
+Aqui
+Que eu vou
+Botar
+É para
+Transformar
+Em
+Inteira
+Porque
+A gente
+Só
+Usar
+A função
+Tupla
+Aqui
+A gente
+Vai ter
+Uma
+Tupla
+De
+Strings
+Né
+E a gente
+Quer
+Tupla
+De
+Inteiros
+Para
+Construir
+Nossa
+Imagem
+E
+Aqui
+A gente
+Vai
+Passar
+Nossa
+Lista
+Né
+E
+J
+A gente
+Vai
+Dar
+Um
+Replace
+No
+É
+Abre
+Parêntese
+Né
+Fazer
+O
+Replace
+Dele
+Para
+Nada
+Né
+A gente
+Vai
+Tirar
+Ele
+Do
+Pixel
+Né
+Dar
+Um
+Replace
+Também
+Fecha
+Parêntese
+Né
+Aquele
+Que fica
+No
+Final
+E
+A gente
+Vai
+Tirar
+Ele
+Da
+Da
+String
+Agora
+A gente
+Vai
+Ter
+Uma
+String
+Né
+Vai
+Ser
+Tipo
+0,0
+0,0
+0,0
+0,0
+Então
+Se
+A gente
+Dar
+Um
+Split
+Nisso
+Aqui
+Na
+Vírgula
+A gente
+Vai
+Ter
+Uma
+Lista
+Que vai
+Ser
+A
+Lista
+Com
+Elemento
+0
+Outro
+Elemento
+0
+E
+Outro
+Elemento
+0
+A gente
+Vai
+Ter
+Uma
+Lista
+Cada
+Pixel
+Vai
+Ser
+Uma
+Lista
+E
+A gente
+Vai
+Transformar
+Em
+Tupla
+Basicamente
+Isso
+Espero
+Que tenha
+Dado
+Para
+Entender
+Aqui
+Se
+A gente
+Dar
+Um
+Print
+Vou
+Transformar
+Isso
+Aqui
+Num
+Pixel
+Que é
+Uma
+Variável
+Pixel
+Aqui
+Vou
+Dar
+Um
+Print
+No
+Pixel
+E
+Executar
+Aqui
+Nos
+Script
+Pronto
+A gente
+Separou
+Todos
+Os
+Pixels
+Aqui
+Em
+Tupla
+Depois
+Disso
+A gente
+Pode
+Usar
+O
+Método
+Put
+Pixel
+Na
+Imagem
+Que é
+Code
+Aqui
+Nossa
+Imagem
+Aqui
+Em
+Cima
+P
+P
+P
+P
+P
+P
+Pixel
+E
+Aqui
+A gente
+Vai
+Passar
+A
+Posição
+A
+Posição
+Vai
+Ser
+I
+J
+Né
+Antes
+De
+Botar
+Aqui
+Eu
+Vou
+Até
+Printar
+Para
+Ficar
+Melhor
+Para
+Você
+Entender
+Ó
+I
+J
+Né
+Uma
+Tupla
+Ali
+Com
+I
+J
+E
+Aqui
+Eu
+Vou
+Só
+Passar
+O
+Pixel
+Aqui
+Essa
+Aqui
+É a
+Posição
+E
+Esse
+Aqui
+É o
+Pixel
+O
+Que
+Ele
+Tá
+Fazendo
+Aqui
+Na
+Posição
+41
+41
+Ele
+Vai
+Colocar
+Esse
+Pixel
+Na
+E
+Por
+Aí
+Vai
+Ele
+Tá
+Só
+Colocando
+Cada
+Pixel
+Em
+Sua
+Posição
+Corretinha
+Na
+Imagem
+Aqui
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+A
+E
+A
+Cิ Ghost
+A
+I
+.
+Save
+D
+Cri
+O
+D
+Png
+Aqui
+Ok
+A
+A
+A
+Gente
+Vai
+Criar
+Nossa
+Imagem
+Vai
+Software
+V
+O
+Img
+Png
+Aqui
+A
+A
+Gente
+A
+A
+Já
+img.png aqui, vamos abrir essa imagem, xdg open, vamos abrir aqui a nossa pastinha e a gente construiu o QR Code, olha que bonitinho
+agora a gente tem que fazer o decode dele, automaticamente, a gente vai usar a biblioteca install pyzbar, assim que se instalar ela, eu já instalei
+deixa eu editar o arquivo lá, script.py, e vou importá-la aqui, import.fizbar.fond.fizbar, e para fazer o decode aqui eu uso
+pyzbar.decode, e só passar o QR Code aqui, ele vai fazer o decode, só que aqui ele não vai retornar nada, vou dar um print aqui,
+vou tirar a imagem aqui, escrevi errado aqui, é from pyzbar import pyzbar, aqui, ele fez o decode, mas não retornou nada, né, por quê?
+porque nosso, nosso QR Code ele não tem borda, então ele não consegue fazer o decode, o que a gente vai fazer?
+a gente vai usar uma outra função aqui, que vai ser image.ops, e a gente vai criar uma borda na nossa imagem,
+uma borda, tamanho 3 ali, e fio, que vai ser a cor, a gente vai botar aqui, white, branco, antes de eu fazer o decode aqui eu vou salvar a imagem,
+save.ing.ing. show, vamos executar aqui, ele salvou já, né, olha aí, ele criou uma bordinha no nosso QR Code, e agora ele consegue já fazer o decode
+dele automaticamente, né, vamos usar aqui, deixa eu dar um print aqui, pyzbar.decode.decode, ele fez o decode aqui e o...
+vou só separar isso aqui e pegar só o valor que ele achou, aqui, lamento das coisas, né, é o valor daquele pixel.
+se agora a gente enviar, vamos enviar isso aqui pro servidor de novo, né, vamos dar um s.send aqui,
+e vamos dar um s.receive de novo, depois do send, né, de 100 mil, tamanho aqui, show, vamos executar, vamos ver que a gente tem que printar, né,
+print, print, a gente recebeu mais dados, ou seja, a gente tem mais QR Code pra fazer o decode, então, o que a gente pode fazer,
+é, é, entrar num loop, deixa eu só botar isso aqui pra frente,
+ok, isso aqui também, isso aqui também, isso aqui também, eu vou criar um loop aqui em cima,
+e pra cada dado que ele receber, ele vai fazer o decode, se ele receber alguma coisa que não é uma imagem,
+ele vai dar erro e vai fechar o programa, basicamente isso.
+Vamos ver se a gente consegue, aí então, a flag executando esse script.
+Ok, tá executando.
+Ok, ele deu erro, só que ele não printou nada na tela,
+porque a gente não colocou pra ele printar, né.
+Vamos botar aqui pra ele, sempre que ele receber,
+sempre que ele receber aqui, ele printa
+os dados.
+Está executando, chegou no final aqui, a gente conseguiu a nossa primeira flag, isso aí.
+vamos lá, van áść, dá eu ver.
+Melhor aqui.
+Vamos lá.
+Vamos lá.
+Vamos lá.
+Vamos lá.

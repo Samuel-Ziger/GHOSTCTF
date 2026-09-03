@@ -1,0 +1,15 @@
+Prosseguindo aí para a segunda flag, então, se a gente dar um
+cat etc barra shadow, a gente vai ver que a gente tem permissão, né,
+para dar esse cat. Então, vamos quebrar essas hashes, né? No
+caso, a hash do usuário do GitHub. Vamos dar um cat em
+peça WD, né?
+Vamos copiar isso aqui e colar aqui na nossa máquina.
+E agora vamos copiar o shadow.
+Vamos dar um unshadow aqui, né?
+Peça WD, shadow e salvar esse aqui no hash.txt
+Vamos editar isso aqui, né? Porque a gente não vai querer quebrar
+a hash do root, nem do exploited. Vamos usar o John, né? Deixa eu só...
+Descompactar a hotql aqui nessa pasta. Vamos usar o John para quebrar.
+Ok. Ok, quebramos aí a senha do GitHub. Essa senha aqui. Então, vamos logar.
+Su GitHub. Colar a senha. Conseguimos aí a segunda flag.
+Olha já.

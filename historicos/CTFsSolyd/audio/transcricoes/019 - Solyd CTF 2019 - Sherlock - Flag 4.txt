@@ -1,0 +1,80 @@
+Então, vamos para a resolução da quarta flag, se a gente dá um lsla aqui, a gente vê que já tem a flag 4 aqui e ela só pode ser lida pelo root.
+A gente vê também que tem um arquivo muriart.rb, que tem esse szinho aqui, do soid, que fala que usando o sudo você vai executar ele como root, no caso.
+E se a gente dá um sudo tracinho l, a gente vê que a gente consegue usar sudo sem a senha do root com esse arquivo aqui.
+Se a gente dá um sudo cat flag 4, a gente consegue pegar a flag.
+Mas esse desafio aqui é para ser resolvido usando a variável path de ambiente.
+Como?
+Então, se eu der um executar esse arquivo muriart.rb, e aqui ele fala, enquanto o sistema ainda não está completo, fizemos esse script para que o senhor possa acompanhar os arquivos que havia requisitado.
+E aqui ele tem as opções, né, de apertar 1 aqui, ele vai abrir o arquivo de senhas, no caso, etc.bar shadow, só que a gente não tem permissão para executar aquilo ali.
+Se a gente usar o sudo, né, que a gente tem permissão para usar o sudo com esse arquivo, não era para a gente ter permissão para usar o sudo para dar um cat nessa flag.
+Então, vamos executar o sudo com o muriart.rb, e botar a opção 1, ele vai abrir o arquivo de senha, né, a gente poderia fazer um brute force nessa senha aqui, só que a gente não ia conseguir quebrar.
+Poderia até deixar rodar aí no hashcash por trás, enquanto a gente busca outra forma de fazer a escalação de privilégios.
+O que a gente pode fazer aqui?
+Se a gente dá um cat aqui no muriart.rb, a gente vê que ele dá um comando de sistema usando cat no barra tc barra shadow.
+O cat, né, ele não especifica qual cat é, ele só dá um cat.
+Esse cat aqui, independente de qual área do sistema ele está, ele vai pesquisar, né, ele vai procurar na variável de ambiente path.
+Por quê? Porque ela vai entrar aqui, né, e vai ver os binários aqui dentro desses diretórios, e vai achar, ó, o primeiro cat que ele achar dentro desses diretórios aqui, ele vai executar.
+Então, o que a gente pode fazer? A gente pode trocar, né, aonde que ele vai pesquisar, onde é que tem esse executável cat,
+e criar o nosso próprio cat para burlar isso aqui, né, como esse muriart.rb é executado como root.
+Então, vamos criar aqui um cat.
+Então, no cat, a gente pode escrever aqui barra...
+barra...
+barra... bin barra bash, né,
+para abrir uma shell.
+Então, salvou,
+ok, salvou um cat aqui,
+tem que a gente executar...
+deixa eu só deixar ele executável,
+cgmod mais x cat,
+se a gente executar esse cat aqui,
+a gente abre uma shell.
+Como aqui eu estou executando,
+tanto que se eu dá um exit aqui, eu não vou sair do ssh, né,
+como eu estou executando como muriart,
+eu vou abrir uma shell como muriart,
+só que esse arquivo aqui vai executar como root.
+Então, né, vamos modificar essa variável do ambiente
+para ele achar esse cat aqui primeiro.
+A gente pode dar o export,
+export path igual a ponto,
+e a gente vai só executar o comando aqui,
+um sudo,
+e eu quebrei a variável path,
+ele não vai achar o sudo,
+deixa eu só ver aqui,
+ponto, ou seja,
+ele vai procurar primeiro,
+o ponto significa o diretório que eu estou agora,
+ele vai procurar primeiro no diretório que eu estou agora,
+depois aqui,
+peraí que tem que ter um,
+tem que separar aqui com
+dois pontos.
+Ele vai procurar no ponto,
+depois vai procurar aqui,
+depois vai procurar aqui,
+depois vai procurar aqui,
+o primeiro executável cat que ele achar,
+ele vai executar.
+Então, show.
+A gente alterou,
+dá um eco aqui na variável path,
+a gente vê que ele vai procurar primeiro aqui.
+Então, se a gente executar com o sudo aqui,
+o moriart.rb,
+e independente da opção aqui que a gente escolher,
+a gente vai pegar uma shell como root,
+porque ele vai executar aquele comando bash como root,
+e a gente vai,
+opa,
+a gente está na...
+e a gente consegue dar um cat.
+Ah,
+agora ele está usando esse cat aqui que a gente criou
+e está criando outra shell de root.
+Então, vamos apagar esse cat dali,
+que a gente criou,
+agora a gente consegue dar um cat na nossa flag 4,
+e resolvi aí todo o desafio.
+Sherlock,
+valeu.

@@ -1,0 +1,166 @@
+Prosseguindo então para a segunda flag, a gente recebeu aqui essas informações, então vamos salvar ela, vou abrir aqui um editor de texto, vamos deixar aqui tudo salvo, a gente recebeu aqui credenciais SSH, então vamos conectar,
+vamos abrir uma tabzinha aqui, julian mesmo, 4.3, colocar a senha, ok, aqui dentro a gente tem uma pasta watcher,
+vou entrar nela, dar um cache nesse arquivo aqui, e mais informações, vamos copiar isso aqui, e colar aqui no nosso arquivo de informações.
+Aqui ele dá informações sobre 4 professores, depois a gente volta aqui, ele dá credenciais SSH de outro usuário, então vamos conectar.
+Colocar a senha.
+Aqui a gente já tem alguns outros arquivos, vou aumentar na watcher.
+Mais informações, vamos copiar.
+O Alex simplesmente ama base 16, base 32 e base 64. Lembre-se, na criptografia cada detalhe faz a diferença.
+Então, a gente vai provavelmente mexer com criptografia, e aqui ele já está dando dica de base 16, base 32 e base 64.
+Voltando aqui, a gente tem outros arquivos, a gente pode baixar eles.
+Vou voltar aqui.
+Vou baixar usando o SCP.
+Deixa eu passar home.
+Deixa eu só criar uma pasta Alex aqui, para a gente separar as informações certinhas, Alex, e vou colocar aqui.
+Vou fazer o download, né?
+Vou só botar a senha aqui de novo.
+Ok, baixou um PDF e um zip.
+Já vou fechar isso aqui.
+Eu não consigo dar um zip aqui, né?
+Não consigo porque eu não tenho a senha.
+Então, vamos dar uma olhada nesse PDF aqui.
+Ok.
+Ok, aqui abriu um PDF.
+Logo de cara, isso aqui é uma criptografia de substituição.
+Um hot 13.
+Aqui ele fala as bases 30, 32, 16, 32.
+Então, se a gente dá uma olhada aqui embaixo, a gente tem o texto, né?
+Deixa eu traduzir isso aqui também, que também é uma criptografia de substituição, hot 13.
+A lista de palavras.
+Ok.
+Então, a gente vai ter que fazer o decode dessa lista de palavras aqui.
+Vou pegar essa aqui primeiro.
+A primeira que ele diz aqui é 32.
+Então, vou abrir aqui base 32 decode.
+Vou abrir aqui base 16 decode.
+E base 64 decode.
+Primeiro ele fala base 32, né?
+E ele já dá aqui.
+O mesmo retorno do primeiro desafio lá.
+Lamento das coisas.
+Vamos abrir aqui outro arquivo de texto.
+Para a gente ir colando isso aqui.
+Ok.
+Um pdf.
+Outra linha aqui.
+O segundo que ele fala é 16.
+Então, vamos no base 16 aqui fazer o decode.
+Ok.
+Outra linha.
+Se a gente copiar isso aqui, se precisar no Google,
+né?
+Você vai achar aqui um texto.
+Provavelmente é o mesmo texto que está ali.
+Para a gente ter certeza, a gente pode pegar o último aqui, ó.
+A última frase.
+Vou pegar aqui a última frase.
+No último aqui ele fala o quê?
+16.
+Então, vamos aqui no 16.
+É, no rudimentarismo do desejo.
+E aqui também.
+Então, né?
+Esse texto aqui.
+Traduzido.
+É esse texto aqui.
+É esse texto aqui.
+Show.
+Isso aqui.
+Aqui embaixo.
+Tem mais coisas para a gente traduzir aqui.
+A carta.
+Rick Sanchez e Friedrich Nietzsche ficarão felizes
+quando você finalmente descobrir qual é a cifra.
+Ok?
+Então, aqui é provavelmente alguma dica, né?
+Vamos pesquisar isso aqui no Google.
+Ok.
+Vão ter coisas escritas literalmente.
+Substitua elas por seus valores e coloque o resultado na primeira base utilizada.
+O desafio.
+O jogo, né?
+Perdemos.
+E aqui tem o que a gente vai precisar fazer o decode.
+Primeiro a gente tem que saber, né?
+Qual criptografia a gente vai usar.
+Pesquisando aqui, né?
+Rick Sanchez e Friedrich Nietzsche no Google.
+Você vai achar coisas relacionadas a nilismo.
+Se você pesquisar nilist
+Pfeiffer no Google, né?
+Criptografia nilista.
+Você vai achar que existe uma criptografia com esse nome, né?
+Aqui no decode.fr
+A gente tem um lugar aqui que a gente faz o decode dessa criptografia.
+E é exatamente isso aqui que a gente vai precisar fazer o decode.
+Vamos copiar.
+Vou colar aqui.
+Aqui ele pede um alfabeto, né?
+Aqui em cima ele dá esse alfabetozinho.
+Deixa eu colar ali.
+Ok.
+E ele pede uma chave.
+A gente não tem uma chave.
+A gente dá um decrypt aqui.
+Ele vai fazer o decrypt para algo que a gente não quer.
+Porque essa aqui não é a chave.
+Correto?
+A gente tem que achar uma chave.
+Aqui ele dá um número 28.
+Se a gente pegar esse texto aqui
+e contar as palavras
+a gente vai chegar na palavra 28, dor.
+ou se a gente usar dor
+como chave aqui
+a gente vai conseguir fazer o decode
+Deixa eu apagar isso aqui
+e colocar aqui
+E nesse texto aqui
+você vai ver que tem um...
+os números, né?
+escritos em inglês
+aqui, 6, né?
+6, 5, 7
+Então
+aqui, né?
+Nos PDF ele fala
+vão ter coisas escritas literalmente
+substitua elas
+por seus valores
+e coloque no resultado
+da primeira base utilizada.
+A primeira base utilizada aqui
+foi base32
+Então a gente vai abrir aqui o base32
+Vamos colar
+aqui
+o que
+aqui já dá pra ver aqui
+que tem um pedaço da flag
+Então vamos arrumar aqui
+trocando, né?
+os números
+escritos
+pelos números mesmos
+6
+tem um 5
+aqui tem um 7
+outro 5 aqui
+outro 5 aqui
+outro aqui
+e aqui tem um 3
+no final
+Ok
+Conseguimos aí
+nossa segunda flag
+Estão
+Agora
+vou
+Doc
+Tá
+Corpo
+Mandina
+Adem
+قة
+Adem
+Adem

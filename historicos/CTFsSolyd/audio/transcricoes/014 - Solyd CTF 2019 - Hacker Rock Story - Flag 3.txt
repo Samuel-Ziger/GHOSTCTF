@@ -1,0 +1,122 @@
+Indo agora para a terceira flag, a gente conseguiu aqui uma chave.
+Essa chave aqui, deixa eu copiar aqui, colocar dentro do nosso arquivo de informações.
+Essa chave aqui, eu vou fechar isso aqui tudo.
+A gente vai usar para descompactar o arquivo private.zip.
+Deu erro para ele, colar a senha.
+Ele fez, ele descompactou e ele deu aqui para a gente o arquivo infus.txt.
+Que ele dá mais informações aqui e mais uma credencial.
+Vamos colar aqui as informações no nosso arquivo de informações.
+Aqui ele fala, espero que quem encontrou essa mensagem faça bom uso dela.
+O professor Brandon alterou o software que faz os cálculos das integrais do sistema de navegação de nosso foguete.
+Suspeito que ele esteja tentando sabotar o projeto.
+Se você conseguiu chegar até aqui, tenho certeza que eu tenho conhecimento para ajudar.
+Preciso que você investisse em qualquer coisa suspeita nos binários.
+Ou seja, agora a gente vai mexer com o executável, com o binário.
+Gerado pelo professor Brandon.
+Por sorte, eu consegui suas credenciais.
+Então, vamos usar os credenciais dele aqui para se conectar no SSH.
+Arroba 172.18.4.3
+E usar a senha.
+Ok, conectamos.
+Temos ali o watcher.
+Não catch no help.
+Ifs são importantes.
+Rock costuma ir bem em muitos momentos.
+Ok.
+Vamos salvar isso aqui também.
+E cada informação é importante.
+Aqui a gente tem um executável e um zip.
+Vamos baixar ele usando o scp.
+Já usei aqui em cima.
+Mudar para o Brandon.
+E o Brandon aqui.
+Se bem que eu vou criar outra pasta aqui.
+Para não confundir.
+Agora sim.
+Ok.
+Colocar a senha do Brandon.
+Escrevi errado aqui o nome do usuário.
+Ok.
+Fizemos o download dos arquivos.
+A gente não tem como descompactar o zip.
+Porque a gente não tem senha, né?
+E a gente tem um executável aqui.
+Vamos executar ele.
+Integral solver.
+Beta.
+E aqui ele tem as opções, né?
+Setar integral.
+Resolver integral por partes.
+E resolver integral por substituição.
+Colocando qualquer valor aqui.
+Ele vai dar segmentation fault.
+Se colocar zero, ele fecha, ele também dá segmentation fault.
+Vamos ver o assemble desse código usando o gdb.
+gdb executable.
+O gdb executable.
+E aqui dentro eu consigo rodar o programa normalmente, né?
+E quando eu executo aqui o programa, ele chama uma função, né?
+Troublemaker, que é a que dá a segmentation fault.
+Se eu dar um desassemble aqui, eu consigo dar um desassemble na função main, né?
+Que é o do código.
+E aqui ele printa, né?
+É o primeiro print aqui.
+Ele daí printa o...
+O menuzinho lá, né?
+Que ele pede as opções.
+E aqui ele lê o que a gente está escrevendo para o programa.
+Vamos colocar um breakpoint ali.
+Naquele endereço.
+E rodar o programa.
+Ele parou no primeiro breakpoint, ou seja, se eu dar o next aqui, ele vai pedir para a gente escrever algo na tela.
+Pediu.
+Vamos escrever um, dois, três.
+E vamos ver o que acontece.
+Aqui ele está botando o valor em ex.
+ex e ele está comparando o ex com esse valor aqui, né?
+Em ex decimal.
+E depois ele fala, se o valor de ex não for igual a esse valor aqui, você pula para main mais 317.
+No disassemble main aqui, esse main 317 é exatamente a função troublemaker.
+Então, se a gente pular aquilo ali, a gente vai conseguir continuar o programa e não vai dar o segmentation fault.
+Então, vamos ver qual o valor que ele está comparando aqui, né?
+Ele compara o ex com esse zero.
+ex, 539.
+A gente vem aqui no browser, hex to decimal.
+Vou copiar aqui.
+E decimal number, 1337, né?
+Então, ele está comparando.
+Se o ex, ou seja, se o valor que a gente colocou ali não for igual a 1,337, ele puxa o troublemaker.
+Se for igual, ele continua o programa.
+Então, vamos quitar aqui.
+1,337.
+A gente conseguiu aqui um base64.
+Vamos fazer o decode dele.
+Está demorando ali.
+Vou dar, fazer por aqui mesmo.
+Bugou o terminal todo.
+Por quê?
+Porque ele deu quebra de linha, né?
+Vou tentar achar outro aqui.
+Aqui, aqui que entrou.
+Fazer o decode e conseguimos a terceira flag.
+E conseguimos a terceira flag.
+Fazer o decode.
+Precisamos.
+Saber o circuito.
+E Schwitely.
+Fazer o decode.
+E fa sven plus docent docent docento.
+Ah!
+Fazer o decode.
+Vamos lá.
+Fazer o decode.
+Talvez.
+Usar.
+Tela.
+Toma.
+스민cel.
+E assim.
+оз veulent!
+Salve.
+Tela.
+Acabem ai eraser.

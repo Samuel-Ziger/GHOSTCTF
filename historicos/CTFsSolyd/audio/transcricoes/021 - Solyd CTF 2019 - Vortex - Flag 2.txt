@@ -1,0 +1,77 @@
+Então vamos resolver aí nossa segunda flag
+A gente achou, a gente fez o unzip desse arquivo zip aqui, secret.zip
+E a gente conseguiu a nossa primeira flag e esse arquivo de imagem
+Já dá pra ver que é um arquivo de imagem com um texto dentro
+É um texto que a gente não consegue manipular, não consegue copiar ele
+E é um texto que parece estar criptografado
+Primeiramente, vamos tentar tirar esse texto daí de dentro
+Usar alguma ferramenta que vai pegar a imagem desse texto
+E transformar pra texto que a gente consegue manipular
+Eu já achei uma, né?
+Que é o acr new, se eu não me engano
+Isso aí, new acr.com
+Ela vai pegar aquela imagem, vai pegar o texto dela
+E vai retornar pra gente o texto dela
+Só que o texto mesmo, não vai ser na imagem, né?
+O acr
+Aqui, ó
+Retornou pra gente o texto
+Ela não é 100%, tá?
+Algumas letras aqui ela vai errar
+Mas ela vai ajudar a gente
+A criptografia que tá ali dentro
+De cara, às vezes já dá pra perceber que é uma criptografia de substituição
+No caso, o hot13
+Que é basicamente, você vai pegar uma letra
+E vai substituir por outra no alfabeto
+Vai pegar uma letra, vai pular 5 posições
+E vai substituir por aquela letra
+Depois daquelas 5 posições
+E por assim vai
+Aqui, né?
+Ele tá pulando 13 posições
+Se a gente botar o que o A
+Ele vai substituir pelo N
+Se a gente botar o N
+Ele vai substituir provavelmente pelo A
+Exatamente
+Ele faz isso aí
+Ele faz isso em todo o texto
+E o texto fica aí, né?
+Criptografado, entre aspas
+Bom, aqui a gente já vê que ele fala aqui
+Que o login de qualquer funcionário
+É a FunkVortex e a senha Vortex dados seguros
+E ele já dá aqui, né?
+A nossa segunda flag
+Nossa segunda flag aqui
+Ela não tá certa, tá?
+Ela tá errada
+Porque aqui
+Não é um M
+Se a gente vir aqui na screenshot
+Dar um zoom
+A gente vai perceber que aqui é um RN
+E não um M
+Né?
+O próprio
+Ferramenta que faz essa
+Análise
+Ela errou
+Então
+Botando um RN ali
+Ele vai retornar
+Aqui pra gente
+O texto certo
+EasyCypher
+EasyHotCypher
+Né?
+Aí seria só
+A gente pegar aqui
+E colocar
+No formato
+Das flags
+E tá aí
+Nossa segunda flag
+Vamos pra terceira
+E aí

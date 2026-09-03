@@ -1,0 +1,438 @@
+E aí
+Every October for the last 4 years, I have traveled to Portland, Oregon to attend the
+Portland Retro Gaming Expo.
+It takes place in the Oregon Convention Center.
+This convention is like mecca for the retro gaming enthusiasts.
+The vendor area alone is truly amazing.
+People come from all over to shop for games or look for that special vintage computer
+or gaming console that they've been wanting to find.
+People often run into me and want to show me the cool thing that they managed to scoop
+up.
+They also have gaming competitions here, multiplayer games of all kinds, and of course lots and
+lots of original stand-up arcade machines.
+These are all set to free play, so there's no need to insert a quarter or a token.
+They also have an enormous number of pinball machines.
+Of course, one of the most popular machines in the place is actually the ATM.
+It always has a line.
+Myself, I don't usually get a chance to play much since I'm running a booth and doing a
+much, but I do sneak away for a little bit here and there to play something.
+There are more Ataris than you can shake a stick at.
+I also love the traditional 1980s living rooms they have set up.
+This one has an Atari 2600, and over here is a Nintendo.
+They also have tabletop systems.
+And when people get tired there's an area with bean bags you can take a break and relax
+some.
+And much like any gaming convention, there's a lot of cosplay going on.
+I tried to capture some of it.
+So...
+Now they watch TV.
+There have to be kids here in the Manhattan Zone...
+So that's it, though.
+I don't like the iPad W films.
+Make sure to make sure I miss this.
+And this may be the only place you'll ever see Darth Vader riding a unicycle and playing
+the bagpipes.
+They also host the Tetris World Championships here, which I didn't get to see.
+And there's a video game history museum.
+So for example, if you've ever wondered how big a complete set of Gameboy games is,
+well, now you know.
+Likewise there was a complete set of boxed Genesis games, which is what's in all of
+these clear display cases.
+And here's one of the original Gameboy display units that has the larger screen so people
+can see what you're playing.
+And here's a display of everything that would have been in a Nintendo tech support cubicle
+back in the day.
+Myself, I found the telephone most interesting because it's the exact same model that I
+used to do tech support on at AST, as I've discussed previously.
+There were also dozens of celebrities at the event, such as Pat the NES Punk here selling
+his books, and Metal Jesus.
+But I wasn't able to meet up with most of them because I was too busy.
+People often ask me to autograph a variety of interesting objects, and this year I tried
+to capture some of those.
+A lot of people bring me cartridges, whether they be Nintendo cartridges, or Gameboy cartridges,
+etc.
+But it isn't uncommon for people to ask me to sign things like this Commodore VIC-20.
+However, this is the first time I've ever signed a MacBook Air, and looks like quite a few
+other people have signed it already, and I'm the only one that signed it in black.
+I also signed one of those Hummer DTV games from back in the day.
+And one of the neatest things was this Laserdisc.
+I was also asked to sign a pornographic anime magazine.
+And now it's time for the main event here for this video, which was my presentation on
+telephone-freaking of the past.
+Okay people, we're going to get started here, even though people are still filing in just
+a little bit, but we're running a little bit behind schedule.
+So every time I come to this convention, I'm a little bit bad about getting the topic of
+my presentation given to the expo so that they can print it on the materials and on the
+website and whatnot.
+So it's always interesting how you guys come in having absolutely no idea what I'm going
+to talk about, but you usually like it, so this year we're going to be talking about
+phone-freaking.
+Now I told some people a few days ago that I was going to be talking about phone-freaking
+in the Portland Retro Gaming Expo, and I was surprised a lot of people didn't even know
+what that was.
+In fact, a lot of people thought I was talking about telephone-pranking, which is not the same
+thing.
+They're entirely different.
+However, back in the 1980s, before the advent of caller ID, I did my, probably more than my
+fair share of telephone-pranking, however, that's not actually what we're going to be talking
+about, although you can use freaking to accomplish pranking, which we can talk about later.
+So what is telephone-freaking?
+That is basically where you hack the telephone system in order to make long-distance calls
+for free, among other things, and I will preface this by saying it is highly illegal.
+However, before anybody gets worried about me teaching their kids about doing illegal things,
+I will preface this entire presentation by saying everything I'm going to be talking
+about is obsolete, no longer works, it's just being presented for historical purposes.
+Freaking's been around for quite a while, probably not quite that long, but it started in like
+the 1960s, became particularly popular in the 1970s.
+And I'll talk about how the first method was using a 2600-hertz tone.
+And I'll explain a little bit about how that works.
+So this is your typical, well, I wouldn't say typical, but this is a DTMF keypad.
+Now the original ones actually had these ABCD letters down the side, but most of your consumer
+telephones never had these, but the operator phones did, as well as the military phones had
+these, and they had their own set of tones.
+Now the way a DTMF tone works, for those who don't know, is you basically have particular
+frequencies across horizontally and then particular frequencies vertically.
+And so when you push a button, it actually combines these two tones, and that creates the
+sounds you hear when you push buttons on the phone.
+Now a lot of people thought and still think that those buttons on the phone actually directly
+control the phone system.
+But they don't.
+They just make sounds.
+When I was a kid, I thought, yeah, there must be some kind of direct connection between these
+buttons and the phone company so they know which button I'm pushing, and that the sounds
+I heard was just like a byproduct of how they work.
+But in reality, I had it exactly opposite.
+The tones is all the phone company cares about, and you can actually generate these tones externally.
+For example, you could record the DTMF tones to a cassette tape, and then hold the cassette
+player up to your phone, and it would actually dial the phone number.
+And the phone company doesn't care where the tones come from as long as it hears tones that
+it recognizes.
+And so this is kind of important for what we're going to be talking about here in just a minute.
+So imagine this is your local neighborhood phone company here.
+Now there's going to be anywhere from dozens, hundreds, maybe thousands of telephone lines
+going into your local phone exchange.
+And those phones could be home phones, business phones, pay phones, you know, whatever.
+Now these phones can call each other without incurring any long-distance charges and without
+even going outside of your local phone company.
+But if you needed to make a long-distance call, that's where things changed, and you would
+go over these other special lines that linked phone exchanges together, and they were called
+trunk lines.
+Now trunk lines don't actually work all that different from a regular telephone line in
+that they also are controlled by tones, or at least they used to be.
+And the trunk lines, they had their own dial tone, or their own ready tone, and that tone
+was a 2600 hertz tone, which is really high-pitched sound.
+Not normally the type of sound that you would hear like in nature, so it wouldn't necessarily
+be a problem.
+The offshoot of this is that if you were to place a long-distance phone call, your local
+exchange would pick up a trunk line and dial a phone number for that trunk line to connect
+to.
+Now you would not typically have been aware of this, it would happen right after you dialed
+your number.
+But if a 2600 hertz tone was introduced during the course of the call, it would cause the trunk
+line to hang up and go back into ready mode and wait for you to dial the number of where
+you want to connect to.
+So the offshoot of this was that if you were to call a 1-800 number, it's a toll-free number,
+your local exchange says, oh, well, this is a long-distance call, so we're going to need
+to use a trunk line.
+But it's a toll-free call, so we're not going to bill the customer for this call.
+So you would call the 1-800 number, and then as soon as it starts ringing, you could play
+the 2600 hertz tone, and the trunk line would hang up and wait for you to now enter a new
+number because it's back in ready mode again.
+And then you could call whoever you wanted to, and your local exchange still believes you're
+talking to a toll-free number, so you didn't get billed for it.
+And in the early 1970s, one of the early pioneers of this method was John Draper, and he went
+by the codename of Captain Crunch.
+Now, you might wonder how a person would get a codename like Captain Crunch.
+It was a little bit more straightforward than you might think.
+It actually came from this little whistle that was included as a toy in the Captain Crunch
+cereal box back around 1971 or so.
+And what Draper figured out was that there's two little ports on the side of that, and if
+you covered one of them up, it actually produced a 2600 hertz tone, perfect for causing trunk
+lines to hang up.
+In fact, one of the interesting offshoots he would talk about was that if he were to walk
+through an airport, there would be banks of pay phones back then, and people would be
+on the phones.
+And of course, you can imagine in an airport, most of those calls are probably long distance
+calls, so they're probably using trunk lines.
+And he could just walk by a bank of pay phones and blow his little Captain Crunch whistle, and
+it would hang up every pay phone that people were talking on, and they wouldn't know why.
+They would think there's something wrong with the phone company.
+But yeah, you could use that for literally making free telephone calls if you knew how.
+So that was the 70s.
+Now when the computer age came in, in the 80s, things changed quite a bit.
+I'm going to play you this little 60 second clip from the movie War Games.
+Many of you have probably already seen this, but it'll be just a little refresher here.
+What's it doing?
+Oh, styling numbers.
+You're calling every number in Sunnyvale?
+Isn't that expensive?
+There's ways around that.
+You can go to jail for that.
+Only if you're over 18.
+She asks, isn't that expensive?
+And his reply is that there's ways around that.
+And in the movie, they never really go into any particular detail as to how he's getting
+around it, and so we really don't know exactly which method he was using.
+But there's actually a lot of different things happening in the scene, and I wanted to go
+ahead and talk about some of that.
+First, I want a little refresher on how telephone numbers work.
+And for most of the guys in this audience that are my age or older, this is going to be old
+news.
+But for a lot of the younger kids who've grown up with cell phones, they may not understand
+how the anatomy of a telephone number works.
+So I want to start by talking about the first three digits, which is of course the area code.
+And this typically refers to a particular geographical area, typically like a county, something like that.
+Now, back in my day, we actually didn't even have to dial the area code.
+We just dialed the seven digits.
+And the only reason you would ever dial an area code back then was if you were making
+a long distance phone call.
+So that was one way you always knew whether your call was going to be local or long distance,
+was whether or not you were dialing the area code.
+Now, I grew up in the Dallas-Fort Worth area, and we had primarily two area codes.
+If you lived in Tarrant County, where I did, we had the area code of 817.
+And if you lived in Dallas County, then it was 214.
+Actually, we've got like 10 different area codes there now.
+But back in the 80s, this was all we had.
+And actually, one particularly unfortunate scenario was it was really expensive to call from Fort Worth
+to Dallas or Dallas to Fort Worth.
+And I, to this day, do not really understand why that was.
+Because like, I want to say that I could call like Dallas and it was like 85 cents a minute
+or something like that, where I could call Los Angeles and it would be like 11 cents a minute.
+Or New York and it would be like 11 cents a minute or something.
+But for some bizarre reason, it was like four or five times more expensive to call between these two counties
+than to make an actual like really long distance call.
+And if you were really unfortunate and you lived along this dividing line,
+your next door neighbor could actually be like a really expensive phone call to make, which is really crazy.
+Anyway, the next three digits is the prefix.
+And again, this had particular significance back in the 80s.
+The prefix would actually narrow down a very specific geographical area.
+So back in the 80s, the 473 prefix was the city of Mansfield, which is where I lived.
+So you knew if you saw a telephone number, you could actually narrow down almost like a zip code.
+You could narrow down a particular geographic area where that telephone number was.
+And unlike cell phones and stuff today, you know, they can have any number and there's really not any significance to them.
+But back then, you know, you could you could tell a lot by looking at a phone number.
+So if you wanted to be like David on War Games, you wanted to hack into your school computer and change your grade.
+Well, before you could even start to hack the computer, you'd have to find it first.
+You'd have to, you know, not likely to tell the students what the number was to the modem for the school computer.
+But you could probably make several assumptions in that the area code and prefix you could probably figure out just by the geographic location of your school.
+In fact, it would probably be the same as the main office number that would be advertised for to call the school.
+So all you would have to figure out is the line number, which is the last four digits.
+So there's still 10,000 combinations.
+But how could you narrow that down even more?
+Well, you could do what they were doing in the movie, which is called war dialing.
+And so the way that works is you would have your computer and you would tell it probably before you go to bed at night to start calling phone numbers.
+Now, you would go ahead and tell it a specific area code and prefix.
+And then you just started off at like zero or one.
+And it would just it would just start calling probably in the middle of night.
+And probably some irritated person is going to wake up in the middle of night answering a call and there's not going to be anybody there.
+And the computer, of course, can't tell who answered the phone, especially back then.
+They couldn't even detect busy signals or ringtones or operator recordings or if a human being answered and said hello.
+They couldn't tell. All they knew is that there was no computer answering.
+So they would just time out. And then after a moment later, the computer would try again.
+It would call the next number in the sequence.
+And again, you'd probably wind up with irritating some other person in the middle of the night.
+But eventually, after a certain time, you would call a number and another computer would answer.
+And when this would happen, the computer would mark that number as being significant.
+It would either print it to your printer or it would save it to a disk for a file you could look at.
+So when you get up in the morning after you woke up half the town, you could look and see there'd probably be about, I know from experience, about 20 or 30 computers that it would have found.
+And those could be, you know, one of them is probably your school computer.
+They could be banks or any number of things back in the time and you could attempt to hack into them.
+But, you know, at least you've narrowed it down now to 20 or 30 different phone numbers.
+So that would give you a head start.
+But let's talk about the second part about that, which is how do you do it for free?
+Now, we already talked about one way, which was using a blue box.
+Now, that was using...
+When they call a blue box, it's because back then they actually had to construct a box back in the 70s to do this kind of stuff.
+And there were all these different kinds of boxes that do different things.
+Now, when the computer age came around, we ended up doing a lot of these things with our personal computers.
+So we didn't really need a box, but we still called it blue boxing or black boxing, red boxing or whatever.
+And I'm not going to go through all these because it would take like two hours.
+I'm just going to briefly tell you what some of these different ones did.
+The blue box we already talked about, which was the 2600 hertz tone on an 800 number.
+The black box actually kind of does the exact opposite.
+You modify your own phone line so that when somebody calls you long distance, it would trick the phone company into thinking that you haven't actually answered your phone yet.
+The phone company on the other end would actually think that your phone was still ringing.
+So they wouldn't actually charge the person calling you, but you would actually be able to answer and talk to them.
+Didn't always work. It only worked in certain geographical areas, but that was called a black box.
+The red box, this was used for pay phones. So just like trunk lines and regular phones, pay phones made very specific tones that they sent to the phone company to tell them how many quarters, dimes or nickels that you've inserted.
+And so you could actually take a red box and take it to a pay phone and just hold it up to the microphone and, you know, push the button and it would create the sounds for quarters.
+And the phone company would think you've inserted quarters. You could put $10 worth of quarters in there, for example, and then make whatever call you wanted to, to, to wherever.
+Uh, you had to be a little bit careful though, not to put, I think there was a certain number. I want to say it was like $200.
+If you ever put more than $200 of fake quarters in a pay phone, uh, they would immediately send the police to investigate because the phones actually couldn't hold more than that amount of money.
+And so they had like a flag that says, Hey, if any phone ever says you've inserted like $300, send the police immediately to investigate that pay phone.
+Um, so you had to be a little bit careful how much money you told that you, you were putting in there.
+Um, but, uh, the silver box adds the ABCD functions that the operators had, which you could do multiple different things with adding.
+And, uh, military phone lines also had the ABCD buttons.
+And there's a lot of information that could be talked about there, but that would be a whole separate discussion.
+Oh, and then there's the blotto box. Has anybody ever heard of a blotto box?
+I see a few hands. Yeah. You know how you people, you always say, Oh, we used to sit around campfires and talk about this or that.
+Well, you know, us hackers, when we were 12, we'd sit around campfires and talk about building blotto boxes.
+And we believed, seriously believed this actually existed.
+Although we found out later it was, it was just a hoax. It was mythical. It didn't really exist.
+But the idea was you would take like a Honda generator or Tesla coil or something like that and hook it up to your phone line and it would paralyze the entire city's phone.
+All the phones would ring constantly and nobody would be able to place or receive any calls.
+And we thought that would be like the pinnacle of hacking to do that.
+But it actually, you know, knowing what I know about electronics today, you can immediately know this.
+This would never work because those little copper wires.
+I mean, how much amperage could you possibly put down before they'd melt? I mean, come on.
+But yeah, we believed this back in the time. It was quite a fable.
+So I want to talk about another way of getting free phone calls.
+And that was by using these calling cards.
+Now, the way these worked, these are ancient history as well, but they looked very much like a credit card.
+And they would have a code, access code printed on the front.
+And what you would do is if you had one of these cards, you would call a local number or 1-800 number.
+And then it would a little recording would come on saying, please enter your access code.
+And you would type in the code on the card and then you would get another dial tone.
+And then you would type in the long distance number you wanted to call.
+Now, the purpose behind this was actually a lot for like traveling businessmen, for example, because if you needed to place your long distance business calls, you could do it from a pay phone.
+You could do it from a relative's house.
+You could do it from a hotel room, wherever you happen to be.
+And you would make sure the calls got billed to your company's long distance card instead of, you know, wherever you happen to be.
+But all you had to do was find some access codes if you wanted to hack these.
+So how would you do that?
+It would actually be surprisingly similar to war dialing.
+You could set up your computer to call whatever access code or whatever the phone number was for the long distance company.
+And then it would dial a random access code.
+And then you would need to give the computer a known good modem number.
+And it didn't matter what it was as long as it was a known good phone number that was guaranteed to be answered by a modem.
+It could be a BBS, it could be your school's computer, it could be whatever, as long as a modem would answer that line.
+And so what the computer would do, it would do this entire sequence and it would call that.
+And then most likely it would time out because the code probably doesn't work.
+And so it would just repeat the same thing again and it would use another random number for the code and probably still wouldn't work.
+But eventually it would, another computer would answer the other line.
+And what this would tell the program you're using is bingo, that code worked.
+And it would save that code to either print it to your printer or save it to your floppy disk.
+And you would do this before going to bed at night.
+At least you don't wake up half the town doing it.
+But you get up the next morning and bam, you've got like five or six long distance codes available.
+And you would use those codes throughout the day.
+Now, what you would do is you would do this every night because you wouldn't want to really use the same code over and over again
+because then you'd probably get caught because they'd be like,
+well, this code is being abused all the time and it's coming from the same house.
+So you just want to use new codes every day and that would keep the phone companies guessing as to what was going on there.
+So that was another way of freaking that didn't involve any particularly special hardware.
+So this is a little program that a lot of us Commodore guys used back in the day.
+And this is just an emulation, of course, so I'm not going to be able to completely demonstrate this,
+but I think you'll definitely get the idea of how it worked.
+So this is called Teleclone. It was made by Sergeant Pepper.
+This is one of the later versions. He made it all throughout the 1980s.
+And this program actually does a lot of different things.
+And I'm not even going to begin to show them all, but I wanted to show a few of them.
+So I'm going to go to the phone in freak box mode.
+And you'll notice there's all these different colors of boxes in here that do all kinds of different things.
+So I'm going to show you the blue box.
+This is one we talked about at the very beginning where we did the 1-800 number and then the 2,600 hertz tone on the trunk line.
+And so you could do this all from your computer.
+So do you need the 2,600 hertz tone? Yes. We don't need the pink noise.
+This would be like the phone number, like the long distance number you actually wanted to call.
+So you could put in like 214 and then, you know, whatever.
+And then you would want a 1-800 number.
+It doesn't matter what the number is as long as it's a valid number.
+Actually, interesting, this is the default number that the program includes.
+I actually looked this up the other day. This was, I think, like the customer service number to GTE, which is kind of ironic.
+I actually tried calling it a few days ago to see what it was.
+And it's actually some scam company now.
+So I don't remember what it was, like auto warranty scams or something like that.
+But anyway, yeah. So, yeah, at this point, it's ready to go.
+Now, you actually don't even need a modem to use this program.
+What you could actually do is take the handset for your telephone and hold it up to your monitor or television screen or whatever right next to the speaker.
+And it would dial the number and then it would wait. As soon as you hear it ringing, you would press enter.
+There's your tone.
+And now I've got a free telephone call to wherever it is that I wanted.
+It was that easy. And I mean, I literally just hold it up to the monitor and then bring it back to my...
+I didn't even have to touch the phone to do it.
+And that's how easy it became to do this in the computer age when we had these things.
+And it became quite popular.
+And it's obvious why the phone company eventually had to change the way everything worked so that these things didn't work anymore.
+So let me show you a couple other little things.
+So here's the red box.
+So you probably couldn't use this, you know, computers weren't terribly portable at the time.
+But what you would probably do is just record these tones like onto a cassette tape.
+And like, so here's the quarter tone, the dime, or nickel.
+And yeah, you could just record those like onto a cassette tape and then just go to like a payphone and then hold it up and you've got free calling on your payphone.
+Now I want to show you the cracker box.
+So here's how this works.
+This is for those long distance calling cards that I was talking about.
+So you would type in the phone number to whatever the long distance company was.
+And then you would say whether you want random or sequential numbers.
+It doesn't really matter.
+I would just say random numbers.
+You could set a particular time interval between the calls.
+And then you would tell how many digits the particular long distance company card, like the calling card, how many digits they used for their access code.
+So let's just say six digits.
+You could type in a code, you know, like whatever you wanted to start with.
+And then this would be the number you would expect a modem to answer so it could test the code with.
+So this would be any number that you would expect a modem to answer.
+And then you'd want to know do you want to do you want to put your codes to a printer or disk?
+So you just say printer if you wanted to just print them out as it finds them.
+And if everything looks correct, then you go yes.
+And then you go to bed and it starts its thing.
+And it would, of course, we're not going to be able to see anything on here.
+It's emulator.
+But yeah, in the morning you'd wake up and it'd show you on the screen number of good codes found and be like five or six.
+And, you know, they'd be ready there waiting for you.
+So that's how that worked.
+So the next thing I was going to talk about is why people did it.
+And there's actually more reasons than you might think.
+Sergeant Pepper and people like Steve Wozniak have talked about this.
+And a lot of the reason they did it was not necessarily because they wanted to cheap the phone company,
+but simply because it was challenging.
+It was hacking.
+It was fun.
+It was a way of trying to challenge themselves to see what they could figure out next.
+And like Steve Wozniak said, for example, you know, this was back before he was wealthy, right?
+He said that he did it for the fun of it, but when he called his own personal family and friends that he always paid for the calls,
+he only did freaking when he was simply trying to figure out how stuff worked.
+And he said once he figured it all out, he got bored of it and didn't do it anymore.
+But that's one element.
+But in the 80s, particularly a lot of us teenagers did it because it was our only way of transferring files on computers with our friends,
+because back then long distance calls were extremely expensive.
+So if you, for example, even if I wanted to transfer a file to a friend who lived in Dallas, which is only like a 30 minute drive, it would be, well, just to do the math.
+Back then, I mean, just one disc used to take like five or six hours to transfer over a modem.
+So if you multiply that by like 89 cents a minute, that was a heck of a lot of money you'd have to pay.
+It'd be much cheaper just to mail it to them or get in a car and drive over there.
+But particularly if they lived in Germany or Australia or the UK or something like that, it could be insanely expensive.
+And so the way we looked at it is it was especially we were teenagers, we were broke, we didn't have jobs.
+It was kind of like piracy.
+It's, you know, the way we kind of tended to think of piracy back then was, you know, we copied games from each other because we couldn't afford them.
+Some people could, but most of us teenagers were broke.
+And so you'd say, oh, well, you're cheating the game companies, the publishers that made the games.
+And well, there's a certain amount of truth to that.
+But one way of looking at it is that we wouldn't have had the games regardless.
+I mean, like if we had to buy them, we just wouldn't have had them.
+So the game company still wouldn't have gotten any money from us because we were broke.
+But so we looked at it from a standpoint of, I mean, I mean, I'm going to copy this game because that's literally the only way I can get it.
+And so we looked at telephone freaking kind of the same way.
+We're going to do the freaking because it's it was the only way we could make these long distance phone calls.
+Because, yeah, if our parents found out that we were, you know, calling and charging, you know, hundreds of dollars for our phone bill, that wouldn't last very long.
+So that's that's two of the main reasons why freaking was done.
+And we are exactly on time at 430.
+So I guess I'm ready for questions.
+All right, I'll start with you.
+I'll start with you by watching.
+All right.
+Let's go.
+Let's go.
+All right.
+There you go.
+All right.
+Here we go.
+Bye.
+I'll start with you.
+Thanks again.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.
+Bye.

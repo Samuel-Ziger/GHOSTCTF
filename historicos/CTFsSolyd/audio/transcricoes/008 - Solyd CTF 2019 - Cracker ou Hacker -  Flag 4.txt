@@ -1,0 +1,251 @@
+Então, pessoal, vamos prosseguir aí, vamos terminar aí o desafio, vamos fazer a nossa quarta flag.
+Então, vamos lá. Eu criei aqui uma pasta com um binário que a gente extraiu lá do Zip, né, que a gente conseguiu a terceira flag.
+E, de alguma forma, a gente vai ter que craquear esse binário ou conseguir a flag dentro desse binário aí.
+Se a gente executar ele aqui, ele vai pedir para o usuário uma chave.
+Passar no usuário uma chave qualquer, né, e dar aqui wrong license.
+Então, né, como é que a gente vai fazer para conseguir essa flag?
+A gente pode tentar um strings para saber se a nossa flag está lá em texto plano, que a gente consiga ver por aqui, mas aparentemente não.
+Tem como sim, né, a verdade é pegar a flag e usar uma strings, mas a gente vai complicar um pouco e vamos usar a engenharia reversa.
+Vamos usar um programinha aqui chamado Ltrace, né, você pode instalar assim, não sei se ele já vem no Kali.
+Que ele, basicamente, né, ele vai listar para a gente todas as chamadas, né, de funções de bibliotecas que o nosso binário está fazendo.
+Então, se eu chamar aqui Ltrace e executar o binário aqui, ele, né, está chamando a função putz e, né, printando aqui na tela, né, o Zage, né, falando para a gente colocar o usuário e a chave.
+Colocando o usuário e a chave, ele vai printar aqui na tela, chegando o usuário, chegando licença e licença incorreta, né.
+Então, ele mostra para a gente as chamadas, né, de funções.
+Só que aqui ele não está mostrando nada de interessante, né, nada que dê uma dica da nossa flag.
+Então, a gente vai usar um programinha, né, de engenharia reversa, que é o GDB, só que eu vou usar ele com um plugin, que é o PEDA, né.
+Faz sim de instalar, só é seguir aqui a instalação, né, git clone e tal.
+Enfim, vamos lá.
+Vou abrir aqui o GDB, né, com o binário.
+E dentro do GDB, dá para a gente dar um desas main, que é, a gente vai fazer o desassemble da função main.
+E aqui está a nossa função main em assembly.
+Aqui tem instrução, né, e aqui os argumentos das instruções.
+Como a gente viu no Ltrace, ele chama a função print, né, printf, mostrando, checando o usuário.
+Chama outra função printf, mostrando, checando licença.
+Depois dá um put, né, falando que a licença está errada.
+Então, provavelmente, essas funções aqui, é exatamente isso, né.
+A gente pode executar um break aqui na função main.
+Então, no começo da função main, ele vai parar o programa, né.
+Eu vou dar um run aqui, com R, eu vou passar aqui os argumentos, né, usuário e chave.
+E aqui ele parou o programa no começo da função main.
+Eu vou usar o n, né, que é o next, para ele ir instrução por instrução, seguindo o programa.
+Aqui ele faz uma comparação, né, que essa comparação aqui, ele está checando o número de argumentos.
+Se o número de argumentos for menor que 3, se não for igual a 3, né, no caso,
+ele vai dar um jump para mais 158, que vai ser aqui, né.
+Ele vai dar um put, né, que esse aqui é o put da, o ZEJ, né, que ele mostra lá,
+tem que colocar o usuário e a chave, e termina o programa.
+Então, vamos prosseguir aqui com o next.
+Depois que você apertou n uma vez e mandou, é só ir apertando enter que ele vai seguindo.
+Então, a primeira função printf aqui, ele, né, está mostrando, é, printa na tela check in user.
+Depois ele vai chamar aqui a outra printf, checando a licença.
+Ele vai aqui, né, declarar duas variáveis aqui, né, o valor 1, e vai comparar essas variáveis.
+Se, aqui, ó, compare, deixa eu até dar um outro next aqui.
+Se, né, o valor disso aqui for igual ao valor que está em e a x, os dois são 1, vocês vendo aqui em cima, né,
+é um hexadecimal, que é um decimal também, os dois são 1.
+Se o valor dessa comparação aqui não for igual, ele vai pular para mais 123.
+Só que 1 e 1 sempre vai ser igual, então ele nunca vai fazer esse jump aqui.
+Pelo menos não de forma natural no programa.
+A gente vai ter que modificar, né, essa instrução aqui, assembly.
+Né, para jump equal, né, aqui está jump, não, ó, equal.
+Então, ok, vamos seguir.
+Ele não vai pular aqui, né, jumps not taken.
+E aqui ele vai chamar aquela função putz, né, que mostra wrong license.
+Então, o que a gente precisa fazer aqui, e depois que ele chama a função putz,
+ele, né, dá um jump para main mais 170, né,
+visas main, aqui para a gente ver, opa, visas main, para a gente ver aqui,
+que é 170 aqui no final do programa.
+Então, esse jump aqui, ele terminou o programa.
+O que a gente tem que fazer, é fazer com que o programa, né,
+tem que modificar essa função aqui, jump not equal, para jump equal,
+porque aí ele vai fazer o jump para mais 123, né, que é para cá,
+e vai seguir o programa daqui.
+Seguindo o programa daqui, ele vai chamar a função crypt,
+que é uma função aqui que a gente não sabe ainda o que que faz.
+Então, vamos modificar isso aqui.
+Como é que a gente modifica?
+Se a gente, deixa eu dar um kit aqui,
+se a gente usar aqui o obg dump, né,
+passar aqui o nosso binário,
+dm intel, né,
+aqui ele vai fazer o desassemble, né,
+de todas as funções.
+Aqui tem uma função, né,
+putz rev,
+ou de leak.
+Clip, né,
+que é aquela função que ele chama depois lá,
+né, função que ele chama aqui.
+E aqui, vai ter aquele jump, né,
+no equal, né,
+que a gente tem que trocar para jump equal,
+senão ele nunca vai,
+é,
+executar
+essas instruções
+aqui, né,
+que ele chama crypt.
+se a gente ver aqui,
+cadê,
+aqui,
+aqui a gente tem, né,
+um byte aqui, 75,
+que esse,
+equivale, né,
+a,
+essa instrução aqui, né,
+de jump no equal,
+né,
+a gente tem que trocar esse byte aqui,
+então, né,
+para um byte que corresponda com jump equal.
+aqui, né,
+eu já tenho uma tabelinha aqui que eu abri,
+que fala, né,
+que o jump equal, né,
+o j e,
+que vai ser aqui, né,
+jump if equal,
+vai ser o número,
+o 74.
+o 74.
+Então,
+a gente tem que,
+né,
+mudar esse 75
+pelo 74,
+então,
+isso aqui,
+isso aqui vai se transformar no je,
+e ele vai, né,
+fazer a comparação aqui,
+um igual a um,
+se um for igual a um,
+ele vai pular, né,
+então,
+ele vai pular isso aqui,
+quando a gente fizer essa
+modificação.
+Como é que a gente faz essa modificação?
+Aqui,
+do lado,
+ele mostra o endereço, né,
+dessa instrução.
+Então,
+a gente vai abrir aqui um editor de,
+de bytes, né,
+eu vou usar o BLESS,
+pode instalar,
+você tem que instalar o BLESS,
+o BLESS,
+nosso binário,
+ele abriu aqui todos os bytes, né,
+em Excel decimal,
+vou dar um CTRL G aqui,
+para a gente,
+para a gente ir direto lá,
+para aquela instrução,
+vou botar um 0x aqui na frente,
+e colar naquele endereço
+que a gente achou lá.
+Ok,
+ele foi aqui,
+está aqui o início da instrução, né,
+7500E,
+e aqui,
+opa,
+peraí que ele desceu,
+e aqui 750E também.
+A gente vai trocar o 75 pelo 74,
+apenas isso.
+74,
+ok,
+vamos salvar o nosso binário novo, né,
+craqueado, entre aspas, né.
+e vamos ver o que acontece.
+Se a gente executar o binário,
+vamos ver o que que dá.
+Passar o usuário e a chave,
+e não acontece nada de diferente.
+Se a gente abrir o GDB,
+né,
+aqui,
+dá um distance main,
+aquela instrução que era JNE,
+agora já não é mais JNE,
+é JI, né,
+porque a gente fez a modificação lá.
+Então,
+quando ele chegar exatamente aqui,
+ele vai dar um jump para mais 123,
+que vai ser aqui,
+e vai continuar o código,
+e vai chamar a função crypt.
+Então,
+chamando essa função crypt,
+ele vai fazer alguma outra coisa lá, né.
+A gente pode dar até um distance crypt aqui,
+para a gente fazer um disassemble
+dessa função crypt.
+Só que não é necessário, né,
+é uma função gigantesca aqui.
+Vamos dar um kit aqui do,
+do GDB,
+e vamos usar o Ltrace
+para executar o
+nosso binário.
+Passar aqui um usuário
+e uma chave qualquer,
+e o Ltrace vai mostrar para a gente
+todas as chamadas, né,
+de funções.
+Subindo aqui,
+a gente já pega direto
+aqui, né,
+no str lane,
+no str cat também,
+a nossa flag, né.
+Conseguimos aí
+a quarta e última flag
+do desafio.
+Para conseguir essa flag aqui
+com strings,
+você teria que usar
+o parâmetrozinho
+n, né,
+das strings.
+assim,
+N1.
+Porque aí ele ia pegar, né,
+todo o carácter visível,
+né,
+que ele consegue
+printar na tela.
+E aqui,
+subindo aqui,
+você já começaria a ver aqui,
+ó,
+o início da flag, ó.
+E o sol,
+ela está separada,
+a flag, ó.
+Sol,
+lead,
+aí aqui,
+abre as chaves,
+começa a flag.
+Daria para fazer assim também,
+né,
+daria também para fazer
+até mais difícil, né,
+craquear todo o binário,
+fazer com que ele
+print na tela ali,
+que é,
+que a licença está correta,
+né,
+e print a flag para a gente,
+só que não foi necessário,
+né,
+mas tem como também.
+Então é isso aí,
+falou.
+Tchau.

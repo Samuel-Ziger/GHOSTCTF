@@ -1,0 +1,236 @@
+Indo aí para a terceira flag.
+Bom, a gente vai precisar conectar de novo lá no FTP, né?
+Não, aqui não precisa passar a porta.
+Então, anônimos.
+Pega de senha.
+Vou mudar para o modo passivo.
+E, né, ok, a gente vai, né?
+A gente vai procurar aqui algum arquivo interessante
+que possa trazer para a gente aí a nossa terceira flag.
+Então, vamos lá.
+Vamos ver se tem alguma coisa aqui.
+Nada.
+CDTC.
+Nada aqui também.
+Pelo que parece, né?
+Aqui.
+Vamos voltar.
+Logs.
+Vamos ver o que tem aqui nessa pasta logs.
+Opa, baixamos aqui, ó.
+Dados.log.
+Um arquivozinho.
+Vamos tentar baixar ele aqui.
+Dados.log.
+Ok, baixamos.
+Ele está ali.
+Vamos dar um file nele para saber o que que ele é.
+Aqui ele fala que é uma imagem, né?
+Então, vamos...
+Então, vamos...
+Abrir.
+Abrir.
+Ele.
+Vou abrir aqui.
+Ele não vai...
+Vou copiar aqui.
+Vou botar dados.
+Vou botar jpg aqui.
+Ele vai abrir a imagem para a gente.
+Ok.
+Aqui.
+Not here, né?
+Nada aqui.
+Então...
+A gente não tem nada de interessante na imagem em si, né?
+No visual dela ali.
+A gente pode fazer...
+Vamos dar um string nesse arquivo para ver se tem algum...
+Alguma coisa escondida no Spites dela.
+Então, dados.log.
+Strings.
+E vamos ver se tem alguma coisa aqui.
+Ok.
+Não parece ter nada também.
+Opa!
+Tem isso aqui, ó.
+ReefWaveFmt.
+Isso aqui é o header, né?
+De outro tipo de arquivo.
+Do arquivo WAV.
+Né?
+Arquivo de som.
+Então, vamos entrar...
+Com...
+Editor de hexadecimal.
+Eu vou usar o BLESS.
+Pode instalar com...
+A pt install BLESS.
+Opa!
+BLESS.
+A gente vê aí o...
+Esse...
+Esse byte, né?
+Tem hexadecimal.
+O arquivo é dados.log.
+Ok.
+Abriu aqui.
+E vamos ver...
+Aonde que aparece aquele...
+Aquele header do arquivo de som, né?
+Do WAV.
+Bom, não achei nada aqui.
+Vamos procurar aqui.
+Apertar CTRL F.
+Que aparece aqui a ferramentinha de busca.
+Pode botar aqui.
+Não achou?
+Vou botar aqui 0FF0D9.
+Não.
+FF09, talvez.
+Deixa eu só.
+FF09.
+Aqui.
+Agora sim, tá procurando.
+FF09 é o final do arquivo de JPG.
+Do arquivo de imagem.
+E logo aqui no final, ele já começa outro arquivo.
+Que é o arquivo WAV.
+Então aqui a gente tem dois arquivos nesse...
+Nesse arquivo aqui.
+Então vamos copiar...
+Na mão mesmo aqui, vamos copiar esse arquivo de som...
+Vamos tentar criar um arquivo só de som para a gente tentar escutar esse som para saber o que que tem ali, né?
+Então...
+A gente copiou aqui.
+CTRL C.
+A gente pode...
+New aqui.
+Vamos salvar.
+CTRL V aqui no...
+Em outro arquivo.
+E vamos salvar esse...
+Esse arquivo novo aqui.
+Desafio 2.
+Eu vou salvar ele como...
+Som.
+.wav
+.wav
+Acho que tá bom.
+Isso aí.
+Show.
+Salvou.
+Vou ir aqui no nosso terminal.
+Já posso fechar o BLESS.
+E se eu dar um file nesse som.
+.wav
+Ele fala aqui que é um arquivo de som.
+De RIF, né?
+Um arquivo de som, né?
+Wave Audio.
+A gente tem que tentar escutar ele.
+Né?
+Eu vou abrir aqui um...
+Download.
+Download.
+Download.
+Isso.
+Aqui eu tenho um...
+Software de som aqui.
+Que eu vou usar ele pra...
+Pra abrir aquele arquivo de...
+Que a gente...
+Tirou daquele arquivo de imagem.
+Então vou daqui dar um file.
+Open.
+Som.
+.wav
+E aqui a gente tem o arquivo, né?
+O som.
+Vamos tocar ele pra ver o que que...
+O que ele tem aí.
+O som tá desativado aqui.
+Ativar.
+Vamos ver.
+Então é um som bem feio.
+Mais uma coisa que...
+Que isso aqui parece ser.
+É possível você escrever algo no espectrograma do som.
+Né?
+E salvar isso aqui no áudio.
+E o áudio vai ser um áudio normal.
+Um áudio aleatório.
+Tipo esse aqui.
+Só que se você entrar no espectrograma.
+Você vai conseguir ver.
+Né?
+O que você escreveu, né?
+O texto.
+Então vamos tentar transformar isso aqui no espectrograma.
+A gente pode vir aqui em pane.
+Add Spectrogram.
+E a gente achou aqui um texto, né?
+Solid Forense.
+Só que isso aqui não é a nossa flag ainda.
+Então.
+Já podemos fechar ali.
+A gente achou que é Solid Forense, né?
+Fechar isso aqui.
+A gente tá na parte do download.
+Solid Forense.
+O que a gente pode fazer aqui, então.
+É tentar ver se tem algum arquivo escondido dentro da nossa imagem ainda.
+Tipo, mais um arquivo escondido ali.
+Usando o StagHide.
+Né?
+Uma ferramenta aí de.
+Que esconde ou, né?
+Extrai arquivos.
+Dentro de arquivos de imagem.
+Estão escondidos ali.
+Através de uma senha, né?
+A gente pode dar um StagHide Extract.
+Pra instalar ele, é só.
+Copy.get.install.
+StagHide.
+Normalmente assim.
+Você instala o StagHide.
+Extract.
+Assim o SF.
+Dados.
+.jpg.
+E o P.
+A gente vai, né?
+A senha.
+Vamos botar aqui Solid Forense.
+Ok.
+E ele conseguiu extrair aqui, licença da zip.
+Então, a gente vai dar um zip nesse arquivo que ele extraiu da imagem.
+E ele já, né?
+Eu fiz o replace ali da flag que a gente já tinha.
+Mas ele retorna pra gente um arquivo de texto e um arquivo binário.
+A gente dá um cat nesse flag, .txt.
+A gente consegue a terceira flag aí.
+Magic Numbers and Spectrogram.
+Magic Numbers é basicamente aquele...
+Deixa eu voltar aqui.
+Dados.jpg.
+É basicamente esses headers, essas strings aqui que caracterizam cada tipo de arquivo.
+Né?
+Esses bytes caracterizam cada tipo de arquivo.
+Então, é isso aí.
+A gente conseguiu aí a terceira flag.
+Vamos pra quarta, né?
+Que provavelmente vai ser aí mexer com esse binário.
+Vamos até rodar ele aqui pra ver o que ele faz.
+Licença da bin.
+Ele pede ao usuário uma senha.
+Vamos passar aqui.
+Um usuário e uma chave, né?
+User chave.
+Wrong.
+Né?
+Ele fala ali, né?
+Que a licença tá errada.
+Então, a gente vai ter que fazer provavelmente uma engenharia reversa aí.
+E uma exploração desse binário pra tentar achar aí nossa quarta flag.

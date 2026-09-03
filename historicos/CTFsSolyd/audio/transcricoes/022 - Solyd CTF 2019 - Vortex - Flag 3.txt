@@ -1,0 +1,15 @@
+Vamos resolver aí nossa terceira flag, então.
+Bom, no arquivo aqui que a gente traduziu, né, ele fala que o login de qualquer usuário, né, de qualquer funcionário é FunkVortex e a senha Vortex dados seguros.
+A gente vem aqui na página do desafio, ele tem um IP aqui que a gente não mexeu ainda, então vamos fazer um portscan nesse IP.
+Esse tem algum serviço aí que a gente pode usar aquela login e senha que a gente achou ali.
+Ok, retornou aqui um SSH, porta 22 e um serviço HTTP na porta 8080.
+Vamos dar uma olhada nessa porta 8080.
+Ele já tá aqui.
+Vamos só copiar, né, o login aqui e a senha pra gente conectar aqui.
+Conectou aqui, a gente tá agora num painel, né, de monitoramento de host.
+Se a gente botar aqui 127.0.1, né, o localhost, ele vai retornar aqui pra gente, né, o output do comando ping, né.
+Então isso aqui tá sendo executado no terminal, se a gente usar uma barra vertical aqui, a gente consegue separar o comando.
+Vamos dar um L extra, assim, um LA aqui e a gente já vê aqui, de cara, né, um arquivo chamado .flag.
+Vamos dar um cat nele.
+Show, a gente conseguiu aí nossa terceira flag.
+Show, a gente conseguiu aí.

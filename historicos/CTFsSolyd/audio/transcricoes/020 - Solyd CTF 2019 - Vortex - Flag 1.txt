@@ -1,0 +1,63 @@
+Falei pessoal, beleza? Vamos resolver o desafio Vortex do CTF 2019 da Solid
+No total ele tem 850 pontos, então vamos lá
+Aqui ele já dá pra gente um arquivo pra gente baixar, vamos já baixar ele
+A gente já vê aqui que a extensão dele é .pqpng, que é um arquivo de pacote de rede
+Então vamos já na pasta de downloads ali
+E como é um arquivo de pacote de rede, a gente vai abrir com o Wireshark
+Ok, abrindo ele aqui, a gente vê aqui os pacotes
+Logo de cara a gente vê um pacote HTTP
+Vamos dar um follow TCPStream nele pra gente ver a conversa, a requisição e a resposta
+E a gente já vê aqui que a resposta é provavelmente um zip
+Então dá pra gente fazer o download desse zip aqui pra esse pacote
+Então a gente vem aqui em File
+Export Objects
+Http
+Já vai aparecer o zip, né?
+A gente bota save
+Né?
+Secret
+Foi mesmo, secret.zip
+Vamos só
+Botar aqui na nossa pasta
+Desafio 6
+Salvar
+Então agora a gente já pode fechar isso aqui
+A gente já pegou o arquivo
+Ele já tá aqui
+Então vamos dar um unzip nele
+Ok, a gente não consegue dar um unzip nele
+A gente já sabe aqui que ele tem uma screenshot.png
+E uma flag.txt que provavelmente é a nossa primeira flag
+O que a gente pode fazer é tentar quebrar a senha desse zip
+Eu vou usar o fcrack zip
+Você pode baixar ele usando o app install mesmo
+Assim
+Vamos lá
+Fcrack zip
+Tracinho d, né?
+Pra dizer que tá aqui usando o wordlist
+Tracinho p a gente passa o caminho pra wordlist
+Eu vou usar
+O que eu já usei no servidor 1
+Ficou aqui o .ext
+E aqui
+Tracinho u
+E o nome do arquivo
+Secret.zip
+Vamos ver se ele consegue quebrar
+Essa senha aí pra gente
+Show
+Ele retornou aqui a senha
+Exclamação, exclamação
+Secret, exclamação, exclamação
+Então
+Vamos descompactar esse arquivo, né?
+Zip, secret.zip
+Ele vai pedir a senha
+Colou aqui a senha
+Show
+A gente pegou já
+O conteúdo desse zip
+E a gente pega aqui a primeira flag
+Do desafio
+Vamos pra segunda

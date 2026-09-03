@@ -1,0 +1,59 @@
+Falei pessoal, vamos resolver o desafio de desenvolvimento GoHorse, CTF 2019 da Solid.
+Então vamos lá, descrição do desafio, e aqui ele dá o p-alvo para a gente atacar.
+Vamos copiar ele aqui e fazer um port scan nesse p, saber quais portas estão abertas.
+Vamos botar um parâmetrozinho ali para a gente saber o sistema operacional também.
+E vamos salvar isso aqui no arquivo de texto.
+Ok, o Nmap retornou aqui, três portas abertas, 8080, 8083, 9000, que vai ser importante aqui para a gente, vai ser 8080 só.
+E o sistema operacional provavelmente é um Linux.
+Eu vou entrar aqui agora, 3.4, nessa 8080.
+A gente vê aqui um sitezinho, né, SoftBlue.
+As páginas não funcionam, tem a página de registro, página de login, uma página aqui de recrutamento, né,
+que permite a gente enviar um currículo, né, no formato PDF.
+A ideia aqui é a gente pensar, né, se a gente enviar um arquivo malicioso no formato PDF, mas esse arquivo é um executável,
+quando a pessoa lá for abrir, né, o nosso currículo, ela vai executar o arquivo malicioso, né,
+que no caso seria um shell reversa, e a gente vai receber aqui, né, um...
+com uma shell reversa do servidor.
+Então é isso que a gente vai fazer.
+A gente vai criar aqui com a MSF Venom.
+Vou criar aqui na pasta de Java.
+Com a MSF Venom a gente vai criar o...
+Só abrir uma conexão com o Ngrok.
+E fazer aqui nosso shell reversa.
+E fazer aqui nosso shell reversa.
+E a porta vai ser...
+Ok, formato vai ser ELF, né, um arquivo executável do Linux, mas a extensão vai ser PDF.
+Ok, enquanto ele tá fazendo nosso arquivo malicioso, eu vou abrir aqui o MSF Console.
+O que ele tá fazendo ali...
+Ok, abriu aqui.
+MultiparHandler.
+Vamos setar o payload igual ao que a gente colocou aqui.
+Pegou um errozinho aqui na criação do payload.
+Eu esqueci de botar a arquitetura, né.
+com a x86.
+Isso aí.
+Agora vai...
+Vou copiar aqui.
+Vou setar o payload aqui.
+O mesmo igual lá.
+Certo ali o host.
+Vou botar 0.0.0.
+E set ali port.
+A porta que a gente colocou aqui no Ngrok.
+Pra escutar.
+Aqui já vou dar um exploit.
+Tracinho.
+Jota.
+Pra ele já executar em background.
+E vamos só enviar esse PDF pra lá.
+Ok.
+Enviei.
+E...
+A gente recebeu uma sessão aqui no Metasploit.
+Vou conectar.
+Abriu uma shell.
+Aqui a gente tá...
+Já tem um...
+Já tem como executar comandos.
+Mas eu vou melhorar essa shell aqui com Python.
+Spawn na apt-y.
+E assim que a gente spawna a bash, a gente consegue a primeira flag.

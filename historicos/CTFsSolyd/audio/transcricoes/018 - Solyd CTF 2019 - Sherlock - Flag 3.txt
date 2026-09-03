@@ -1,0 +1,67 @@
+Indo para a terceira flag agora, a gente vê que tem um arquivo professor underline Moriarty e o arquivo .senha, vamos dar um cat nesse .senha,
+chefe Moriarty, então alguma senha daí vai ser chefe Moriarty, e tem esse arquivo ali, professor underline Moriarty.
+Então, vamos ver o que ele é, Moriarty.
+É uma imagem, né, um jpeg.
+Então, a gente vai enviar esse jpeg para a nossa máquina.
+Eu vou abrir aqui.
+Já vou até copiar isso aqui.
+E eu vou enviar isso aqui para a nossa máquina.
+Tem que copiar também o IP, né.
+14.470, 14.470, 14.470, e vou enviar esse arquivo, ok.
+A, opa.
+Inscreva-se em LVP.
+Envia.
+Perdi a shell aqui.
+Vou pegar de novo.
+Tá tudo bugado.
+Vou pegar de novo a shell.
+CD barra.
+Alestra SMA.
+E agora a gente vai enviar
+para cá.
+Vou copiar o comando aqui que a gente já tinha
+inscrito.
+Desconectou agora.
+Conectou.
+Vamos esperar um tempinho.
+Podemos fechar.
+Deixa eu enviar isso aqui lá para a pasta do desafio.
+CD desafio 5.
+E a gente já tem aqui, né,
+nossa imagem.
+Vamos abrir ela.
+Imagem normal.
+Parece que tem nada.
+Vou dar um string nela
+para ver se tem alguma coisa.
+parece que tem nada.
+A gente pode usar o stag hide, né,
+para ver se tem algum arquivo escondido ali.
+Struct.
+Assim.
+SF.
+O nome da imagem.
+A gente não vai passar nenhuma senha.
+E não retorna nada.
+Vamos tentar usar
+aquela senha
+do...
+que a gente achou, né.
+ChefModArt.
+A gente extraiu um arquivo
+ssh.st.
+Vamos dar um cat nele.
+A gente tem aí a credencial, então,
+ssh.
+Vamos conectar nesse
+sh.
+Username
+memoriart.
+Host.
+E...
+Vou copiar a senha aqui.
+Vou lá.
+Conectou.
+E a gente conseguiu aqui
+a terceira flag do desafio.
+Vamos para a quarta.

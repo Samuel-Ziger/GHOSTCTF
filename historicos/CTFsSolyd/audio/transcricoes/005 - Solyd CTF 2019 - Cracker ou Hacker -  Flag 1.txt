@@ -1,0 +1,18 @@
+Fala aí pessoal, beleza? Vamos resolver aí o desafio
+Cracker ou Hacker do CTF 2019 da Solid, valendo aí novecentos
+pontos, então vamo lá. Ele dá pra gente já o IP-alvo pra gente
+atacar, então, vamo fazer o Unimap aqui pra gente saber quais
+portas estão abertas nesse nesse IP, então, vamo lá.
+Ele retornou aqui pra gente uma porta, um serviço FTP, né? Então
+vamo tentar conectar nesse serviço. A gente não tem nenhum
+usuário, né? Então a gente vai tentar conectar com o usuário
+anônimo, usuário público. Show, a gente conseguiu o acesso
+público, então. Vamo tentar listar aqui os diretórios e
+arquivos. A gente não conseguiu, então a gente muda aqui pro
+Passive Mode On, né? E a gente já consegue fazer a listagem de
+diretórios. Aqui a gente já conseguiu, né? O arquivo de chamado
+flag.txt, provavelmente a nossa primeira flag e o arquivo
+readme.txt. Então, vamo dar um get nesses dois arquivos.
+Show, a gente já baixou esses arquivos, então vamo dar um
+catch aqui na flag.txt. A gente conseguiu aí nossa primeira flag, né?
+Solid, Passive Anonymous. Vamo pra segunda flag.

@@ -1,0 +1,175 @@
+Indo para a segunda flag, então, a gente já pegou aqui a primeira, então, vamos dar um cat nesse arquivo readme.txt.
+Bom, aqui ele fala que o próximo desafio irá requerir um conhecimento de programação em softs, né?
+Então, provavelmente, a gente vai programar um script aí que vai fazer uma conexão, né?
+E ele fala aqui que a gente vai receber uma matriz 3x3, né?
+3 de largura e 3 de altura, ou seja, 3 linhas e 3 colunas, com caracteres aleatórios, não números.
+E números, some todos os números dessa matriz para conseguir a flag.
+Então, a gente vai pegar uma matriz aí com caracteres aleatórios e números, e a gente vai ter que somar todos os números dessa matriz.
+Aqui na dica, ele fala, né? Lembre-se de bater em todas as portas.
+Então, a gente pode fazer um nmap aqui, um full scan, né?
+Que é, basicamente, você testar desde a porta 0 até a porta 65535, né?
+Para saber se tem alguma porta em comum ali, aberta.
+Então, vamos fazer isso. A gente poderia passar o parâmetro p aqui em um tracinho, que ele pegaria todas as portas.
+Mas, para agilizar aqui, eu vou botar da porta 50.000 até a porta 51.000.
+Vamos ver se ele acha aí alguma coisa.
+Show! Ele retornou aqui a porta 50.123.
+Então, vamos tentar conectar essa porta para ver o que a gente consegue receber.
+Vamos, aqui, p18.3. Isso mesmo.
+50.123. Show!
+Aqui ele retornou um monte de caracteres aleatórios, ou seja, essa aqui é a nossa matriz.
+Se você perceber aqui, ela tem três linhas e tem três números em cada linha.
+Então, aqui tem um número aqui, um número aqui e um número aqui.
+Então, no total, ela vai ter nove números para a gente somar.
+A gente vai ter que somar esses nove números e enviar aqui.
+Então, vamos criar esse script em Python que faz isso.
+Eu vou criar um script aqui, flag2.py.
+E a gente já vai importar aqui o socket.
+Vou importar a expressão regular também, porque a gente vai precisar limpar aquela matriz, né?
+Está cheio de caracteres aleatórios. A gente só quer os números.
+Então, a gente vai usar a expressão regular para fazer isso aí.
+Show!
+Então, vamos botar aqui o IP do nosso alvo.
+E também a porta que está retornando aquela matriz.
+50.123.
+Vamos fazer a conexão do socket aqui.
+Criar a nossa conexão TCP.
+E a gente vai conectar o IP na porta que a gente já colocou nas variáveis ali.
+Show!
+Então, agora a gente tem que receber essa matriz.
+Então, a gente vai dar um...
+Vamos salvar isso aqui na variável data.
+E...
+SWC.
+E o buffer aqui, vou botar de 1024.
+Vou só não printar aquela...
+Essa variável aqui, data, que a gente criou.
+Pra gente ver se ele está recebendo...
+A matriz.
+E...
+Opa!
+Escrevi errado ali o socket.
+Aonde aqui?
+Frag2.py
+Ok.
+Então, ele já está salvando aquela matriz naquela variável e printando aqui na tela.
+Então, o que a gente precisa fazer agora é limpar toda essa parte que a gente não quer, né?
+Todos os não números.
+Vamos lá no nosso script.
+Fazer isso.
+Ok.
+Vamos criar aqui uma lista, né?
+Porque a gente...
+NumberList.
+Vou botar assim.
+E vamos usar a expressão regular pra fazer o split, né?
+Pra separar...
+Os números dos caracteres não números.
+A gente vai usar...
+Ora barra D aqui.
+Que é basicamente...
+Os caracteres que não são números, né?
+Que não são dígitos.
+E a gente vai passar aqui...
+Data aqui, nosso string.
+Que é...
+Nossa string, que é basicamente essa matriz 3x3.
+Aqui, se a gente dar um print na NumberList.
+Vamos ver o que retorna pra gente.
+Python.
+Tag2.py
+E show!
+Ele já separou aqui, né?
+Os números...
+Da matriz.
+Vamos ver.
+1, 2, 3, 4, 5, 6, 7, 8, 9.
+Mas aqui fica um espacinho...
+No final.
+Então, vamos tirar esse espaço.
+O que a gente pode fazer?
+Deixa eu só ver assim.
+Ah não, ali.
+Ele vem aqui com espaço no...
+No começo e no final também.
+Então, a gente tem que...
+Tirar esses espaços vazios da lista.
+Então, vamos modificar isso aqui no nosso script.
+Ixi, escrevi errado.
+Tag2.py
+Vamos continuar aqui.
+Vamos...
+Agora limpar essa...
+Essa lista, né?
+Tirar os caracteres...
+Tirar os espaços vazios.
+O que a gente pode fazer...
+Passar agora a lista...
+Passar agora a lista...
+NumberList.
+Split.
+Então, aqui a gente vai tirar todos os espaços vazios e vai transformar ela numa lista de novo.
+E vai salvar na variável NumberList.
+Deixa eu tirar esse print daqui.
+E vou printar a nossa NumberList para saber se ele está tirando aqueles espaços vazios.
+Agora ele está tirando os espaços vazios.
+Ok.
+Ok.
+Vamos continuar, então.
+Então, agora está tranquilo.
+Bom, agora a gente só precisa criar um forzinho aqui, né?
+E somar isso tudo.
+Vamos fazer isso.
+For...
+NumberList.
+NumberList, né?
+Para cada número na lista de números, o que ele vai fazer?
+Ele vai somar, né?
+Vamos criar uma variável soma aqui em cima.
+Soma vai ser igual a zero.
+Soma vai ser mais igual...
+Inteiro do número.
+E ele vai, né?
+Somando.
+E aqui no final...
+O que eu posso fazer é...
+Só enviar, né?
+A gente vai ter...
+E vai somar, né?
+Todos os números aqui.
+Vai tudo...
+Tá somado na variável soma.
+Então a gente vai enviar essa variável soma...
+É...
+Pra aquele P lá naquela porta.
+Então...
+S.Send, né?
+E aqui é só a gente...
+A gente tem que trocar pra...
+String.
+Pra enviar.
+Soma.
+E aqui ele vai...
+Deve enviar alguma coisa pra gente.
+Então a gente vai botar...
+Vamos botar aqui um print.
+S.WC.
+E vamos ver se a gente rodar...
+Deixa eu limpar a tela aqui.
+Se a gente rodar esse programa aqui, a gente vai receber a flag.
+Opa...
+Deu algum erro aqui.
+Vamos dar uma olhadinha aqui.
+Vamos dar uma olhadinha.
+Ah, tá.
+O que que tá de errado aqui, ó?
+Eu escrevi número.
+É number.
+Vamos lá.
+Vamos lá.
+Vamos ver se ele retorna a flag pra gente.
+Retornou aqui.
+Flag, matriz e socket.
+Vamos então aí pra terceira flag.
+Tchau.
+Tchau.
+Tchau.

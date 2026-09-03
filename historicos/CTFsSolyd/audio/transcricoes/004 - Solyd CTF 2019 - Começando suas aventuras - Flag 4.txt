@@ -1,0 +1,370 @@
+indo agora para a quarta e última flag
+do primeiro desafio do CTF
+da Solid
+a gente já tem acesso aqui
+a usuário
+do estagiário
+a gente tem um arquivo
+que a gente não viu ainda
+política de senhas
+justamente falando sobre
+a política de senhas
+das empresas, só que aí o estagiário
+deu mole
+e a gente invadiu
+muito importante
+sempre que você tiver acesso com o usuário
+numa máquina, você dá um catch
+aqui no Bash Underline History
+porque você vai ter acesso
+a todo o histórico de
+todo o histórico de
+comandos executados por esse usuário
+aqui você vê que ele dá um nano
+ou seja, ele cria um arquivo backup.sh
+ele vai na pasta
+barra backups
+e depois
+ele envia um arquivo
+trabalho.zip
+para esse IP aqui na
+porta 444
+então
+aqui a gente já sabe
+dois arquivos
+esse trabalho
+underline
+estagiário
+.zip
+e esse backup.sh
+aqui
+vamos tentar achar eles
+vamos dar um cd barra aqui
+para ver o que tem de interessante
+aqui na
+então aqui
+aqui a gente já achou
+nossa quarta flag
+então vamos pegar ela
+permission denied
+então a gente não consegue
+dar um cd ali naquele diretório
+por quê?
+porque a gente não tem
+permissão para isso
+a gente
+vamos tentar
+escalar nossos privilégios
+para root
+tem um arquivo ali
+aviso
+vamos dar um cd nele
+não tem nada
+né?
+vamos dar um cd no backup.sh
+aquele arquivo lá
+que ele estava manipulando
+no histórico
+né?
+que a gente viu
+backup.sh
+ok
+bom
+aqui ele copia
+né?
+o
+diretório root
+para a pasta
+copia o diretório root
+para a pasta
+var
+backup
+e o diretório
+etc também
+para a pasta
+barra var
+barra
+backups
+barra root
+ele cria um arquivo zip
+com senha estagiário
+né?
+ou seja
+e move esse arquivo zip
+lá para a pasta
+barra var
+barra backups
+ou seja
+a gente sabe
+que a senha
+para esse
+arquivo zip
+aqui é estagiários
+porque a gente já sabe
+aqui na criação
+que ele usou
+é a senha estagiário
+show
+e aqui ele muda
+né?
+ele dá permissão
+para o usuário estagiário
+desse arquivo zip
+vamos lá
+para a pasta
+barra var
+barra
+backups
+e vamos ver
+o que a gente consegue
+ok
+a gente conseguiu
+o trabalho
+o estagiário
+ponto zip
+vamos dar um zip
+nele
+opa
+um zip
+e a gente sabe
+a senha
+estagiário
+show
+opa
+não deu
+por quê?
+a gente não tem
+permissão
+para escrever
+no barra var
+barra backups
+então
+o que a gente pode
+fazer
+a gente pode
+ler esse arquivo
+se a gente pode
+ler esse arquivo
+a gente pode
+ler ele
+e escrever ele
+em outro lugar
+então vamos
+né?
+copiar ele
+para
+para
+para
+nossa
+home
+vou usar o
+tiozinho
+aqui
+esse tio
+significa que
+ele significa
+a pasta home
+do usuário
+que você está conectado
+no momento
+então
+eu estou
+copiando
+esse arquivo
+para a minha pasta home
+no caso
+a pasta home
+do estagiário
+cd
+home
+e aqui
+eu vou ter
+o meu arquivo zip
+vamos dar um zip
+nele aqui
+e a gente já sabe
+a senha
+que é estagiário
+errei
+estagiário
+e
+show
+a gente conseguiu
+descompactar
+aquele arquivo zip
+vamos
+ver o que
+tem dentro
+aqui
+cd var
+cd backups
+cd root
+vamos ver
+se a gente consegue
+pegar o shadow
+aqui
+oh
+show
+a gente conseguiu
+a hash
+do usuário root
+ou seja
+a gente consegue
+já
+tentar
+um brute force
+para tentar
+quebrar
+essa hash
+mas
+vamos tentar
+de alguma outra
+forma
+fazer
+esse privilege
+escalation
+essa escalação
+de privilégios
+entrando aqui
+na pasta
+do root
+a gente dá
+um ls
+tracinho
+la
+a gente vê
+todos os arquivos
+escondidos
+são os arquivos
+e diretórios
+com um ponto
+na frente
+vamos dar um cat
+no bash
+history
+para ver
+o que tem
+de interessante
+ele não
+faz nada
+de
+muito interessante
+para a gente
+ali
+vamos dar um cat
+no bash.rc
+nada
+aqui
+também
+bom
+a gente já
+viu uma pasta
+aqui
+que é bem
+interessante
+.ssh
+vamos ver
+o que tem
+dentro
+dessa pasta
+bom
+nessa pasta
+aqui
+a gente vê
+que tem
+uma chave
+rsa
+essa chave
+aqui
+ela pode
+ser usada
+para conectar
+como um usuário
+no serviço
+ssh
+será que a gente
+consegue conectar
+com o root
+usando
+essa chave
+para usar
+essa chave
+você usa
+o comando
+ssh
+normalmente
+o usuário
+que você
+quer conectar
+e o ip
+vou usar
+127.1
+0.0.1
+aqui
+e você
+usa o parâmetro
+i
+com o valor
+da chave
+vamos ver
+se ele conecta
+consegue fazer
+essa conexão
+aí
+e logar
+como um root
+ok
+conectou aqui
+demorou um tempinho
+tipo
+alguns segundos
+eu acho
+só
+e
+a gente
+consegue conectar
+um root
+a gente
+tá na máquina
+do root
+a gente tem
+privilégio root
+né
+whoamai
+root
+então
+a gente tem
+privilégio total
+no sistema
+a gente tem
+privilégio total
+no sistema
+a gente tem
+privilégio
+pra
+entrar na nossa
+pasta
+ali que a gente
+viu
+flag4
+né
+vamos
+entrar lá
+flag4
+ls-la
+e tem aqui
+um arquivo
+de texto
+com o nome
+da nossa
+flag
+então foi isso aí
+é a resolução
+do primeiro
+desafio
+só copiar
+a flag aqui
+e pontuar
+na plataforma
+show
+valeu

@@ -1,0 +1,167 @@
+Fala pessoal, tranquilo? Vamos resolver o desafio ShareLock do CTF 2.19 da Solid, valendo aí 850 pontos.
+Então vamos lá, dá pra gente aqui o IP-alvo, como sempre, vamos fazer nosso port scan, né, com nmap.
+Dessa vez aqui eu vou botar o parâmetro sv e o sc, pra ele pegar as versões, né, e pegar também, e testar, né, alguns scripts de segurança.
+Vou salvar isso aqui dentro de um arquivo.
+É, nmap.txtxt.
+Esqueci de escrever o tia aqui.
+Deve demorar um pouquinho, então vou pausar aqui.
+Ok, voltando aqui.
+Está gravando, está gravando.
+Então, aqui ele retornou, né, e a gente vê que tem o serviço SSH, porta 22, HTTP no porta 80, né,
+Ele dá também as versões.
+A gente já sabe que tem um Ubuntu lá atrás.
+E a gente vê um serviço, né, SMB, aqui, né, Samba, rodando também.
+Ele faz aqui uns testes desse serviço SMB.
+Pega aqui o nome do computador e tal.
+Show.
+Mas vamos dar uma olhada nesse HTTP ali.
+1.3.80.
+Ok, um sitezinho.
+Não parece ter nada aqui.
+Vamos dar uma olhada no Vue Source, né, no Source da página.
+Nada aqui também.
+Tem, opa, comentário aqui, ó.
+Falando que a página de login foi terminada.
+Então,
+vamos testar aqui algumas páginas de login, né.
+Admin, quem foi?
+Login.
+Opa, achamos já a página de login.
+Precisamos de Bootforce, né.
+Tranquilo.
+Só que aqui a gente não tem usuário e senha, né.
+Vamos dar uma olhada no Vue, no Source da página.
+E, é, nada de interessante aqui também.
+A gente pode fazer, tentar um Bootforce pra tentar achar algum arquivo aí,
+dentro desse site.
+É, vou abrir o Deerbuster.
+Vou pegar aqui.
+Apagar aquele L dali.
+Vou aumentar o número de thread.
+E vou escolher aqui uma WordList.
+R barra share, barra WordList.
+E,
+vou pegar,
+não sei se essa com um aqui vai servir,
+mas vamos testar ela.
+Vou tirar esse B Recursive aqui,
+porque ele, pra ele não,
+não ser recursivo,
+ou seja, ele vai achar um diretório,
+mas não vai fazer Bootforce dentro desse diretório.
+e eu vou trocar esse PHP aqui por TXT,
+pra gente tentar achar algum arquivo de texto.
+Start.
+Vamos ver se ele acha alguma coisa.
+Ok.
+Achou aí o arquivo backup.txt.
+Vamos dar uma olhada nele.
+Ele,
+então,
+já dá aqui o usuário
+e senha pra gente.
+Esse aqui é o arquivo, né,
+de,
+que tá rodando aqui, né,
+na nossa página de login.
+Se a gente escrever aqui qualquer coisa,
+ele vai dar login e senha incorreto,
+e ele faz exatamente esse teste aqui, né.
+Se o usuário não for esse aqui,
+ou a senha não for essa aqui,
+né,
+ele retorna aquela mensagem de erro lá pra gente.
+Então,
+vamos usar
+esse usuário e senha
+e fazer o login.
+ou acessar.
+Login e senha incorreto.
+Por quê?
+Bom,
+vou abrir aqui
+com F12 a ferramenta de desenvolvedor,
+porque a gente pode vir aqui
+na aba Network,
+limpar aqui,
+a gente vai ver o que tá acontecendo.
+Vou colocar aqui a senha.
+Vou botar ali nosso usuário.
+Se a gente clicar em acessar aqui,
+vamos ver que o
+ele mandou.
+ele mandou, né,
+o Sherlock e a senha,
+só que se você perceber,
+ele não tá mandando,
+por exemplo,
+aqui no Sherlock,
+o S, o H e o R
+é maiúsculo,
+ele tá mandando tudo minúsculo.
+E na senha é a mesma coisa.
+Por isso que tá dando errado.
+O que a gente pode fazer,
+pra mandar do jeito que é pra ser,
+a gente pode vir aqui,
+editar o request
+e mandar, né,
+vamos ver as letras maiúsculas ali
+que
+que ele deveria ter mandado.
+Vou clicar em send aqui,
+ele deve
+fazer a requisição,
+ele deve aceitar o login.
+Ok,
+aqui ele deu um 302,
+aí a gente vê aqui na,
+nos headers da resposta,
+ele deu um location nas credenciais.t,
+ou seja, ele redirecionou
+pra credenciais.txt,
+e aqui,
+a gente tem credenciais.txt,
+né,
+onde é que a gente
+acha a nossa primeira flag
+e também
+um usuário sem aqui.
+Outra forma de resolver isso aqui,
+se a gente vir aqui
+no Impressionar Elementor,
+pra acessar,
+a gente vai ver, né,
+que tem uma função aqui, né,
+que é chamada quando a gente clica
+nesse botão.
+Vamos ver o que essa função faz.
+A gente vir no Convert aqui,
+apertar aqui,
+a gente vai ver, né,
+que essa função,
+ela pega o valor de username
+e bota tudo, né,
+pra minúsculo
+e faz a mesma coisa com a senha.
+O que a gente pode fazer
+é tirar essa função aqui
+do onClick.
+E aqui a gente já pode,
+eu já poderia
+enviar nossas credenciais
+normalmente,
+que ele não iria botar
+pra minúsculo.
+Aí,
+agora ele redireciona
+pra credenciais direto.
+Show?
+Nossa primeira flag aí.
+Vamos pra segunda.
+.
+.
+.
+.
+.
+.

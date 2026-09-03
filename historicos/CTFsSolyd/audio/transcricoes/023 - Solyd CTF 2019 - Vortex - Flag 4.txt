@@ -1,0 +1,168 @@
+Então, vamos lá para a quarta flag
+A gente achou a execução de código por aqui
+Só que tem um filtro aqui
+Se eu dar um ls aqui na pasta access
+Ele vai retornar os arquivos
+Mas eu vou tentar dar um catch aqui neles
+index.php
+Ele dá um erro
+Então, deve ter várias formas de bypassar isso aí
+Mas o que eu vou fazer é
+Eu vou injetar uma webshell dentro do servidor
+Por aqui, né?
+Eu vou criar um arquivo lá dentro
+Com a webshell
+E, né?
+Eu vou entrar nesse arquivo aqui
+Vai ser um arquivo .php
+E vou entrar nesse arquivo aqui
+E vou injetar os códigos
+Por um parâmetro get ali
+E conseguir executar qualquer código
+Sem ser barrado por esse filtro
+Então, vamos lá
+O que eu vou fazer
+Eu não posso, ó
+Se eu escrever aqui
+Se eu escrever a shell aqui
+Olha só o que acontece
+Dá um echo
+Olha só o que acontece
+Ele não tá printando tudo
+Se eu dar um echo
+Nessa shell aqui
+Ele dá erro
+Então, eu não posso
+Só dar um echo aqui
+E usar isso aqui pra salvar
+Dentro de um arquivo
+Shell.php
+Não posso
+Porque ele não vai funcionar
+Ele dá erro
+Então, o que eu vou fazer
+Eu vou encodar em base64
+Isso aqui tudo
+Pronto
+Encodei em base64
+Agora eu posso, né
+Mandar pra cá
+Só que tá em base64
+Ou seja, o código não vai ser executado
+Então, eu vou fazer o decode
+Antes de enviar pra lá
+Base64
+E vou usar aqui o comando
+Para escrever dentro do shell.php
+Show
+O que vai acontecer lá
+É basicamente isso aqui
+Vou entrar aqui
+Vou colar aqui
+Lá dentro do servidor tem um ping, né
+Vou executar aqui
+Show
+Ele printou aqui na tela
+O nosso código php
+Mas
+Ele criou um arquivo aqui
+Shell.php
+A gente dá um cat nele
+Ele vai ter, né
+Como conteúdo
+A nossa web shell
+Então, é isso que a gente quer
+Vamos mandar
+O servidor resultou bem na hora
+Que eu mandei o comando
+Enfim
+Vamos voltar aqui
+Se eu mandar aqui
+Se eu mandar aqui
+Comando, né
+O que a gente fez
+Playload
+Mandar verificar
+Ok
+Deu verdinho aqui
+Vamos ver se
+Nossa web shell tá ali
+Shell.php, né
+cmd
+Igual
+Ls
+Ok
+A gente já consegue executar código
+Então, vamos fazer assim
+Vamos
+Ls na pasta access
+E vamos dar um cat
+No validation.php
+Validation.php
+Ok, então apareceu nada aqui
+Mas vamos no view source
+E a gente acha aqui, né
+Um comentário
+PHP
+E
+Diz, né
+Que a senha padrão
+De usuários novos
+Da empresa
+É essa aqui
+Vamos copiar
+E deixar salva
+Aqui
+Não
+Ok
+Tá salva a nossa senha ali
+Quando a gente fez o animap
+Né
+O port scan
+A gente achou uma porta
+SSH aberta
+Aqui, ó
+Então, vamos conectar
+Nessa porta
+Só que a gente não sabe
+O nome de usuário
+A gente pode fazer isso aqui, ó
+Ls
+Barra home
+Pronto
+Tá aqui o nome de usuário
+Pasta home do usuário
+É o mesmo nome de usuário, então
+Vou usar o SSH aqui
+Arroba
+O nome da empresa
+O IP da empresa
+Da empresa, né
+Do
+Da empresa alvo que a gente está atacando
+É 6.3
+E
+Só isso
+Aqui em cima
+Ué, cadê o nosso
+Deixa eu voltar aqui
+Nossa senha
+Vamos mandar ali
+Vamos ver se a gente conecta
+Ok
+Mission denied
+Vamos ver se a gente
+Acordeu algum problema
+Se eu escrevi alguma coisa antes
+Ok, agora foi
+Ls
+Tracinha ali
+Já tem ali
+.flag
+Vamos dar um cat
+Ok
+A gente conseguiu aí
+Opa
+A quarta flag do desafio
+Vamos pra quinta
+Tchau

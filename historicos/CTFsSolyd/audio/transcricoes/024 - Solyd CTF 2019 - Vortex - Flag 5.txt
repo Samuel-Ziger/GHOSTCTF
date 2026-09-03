@@ -1,0 +1,26 @@
+Então, seguindo aí para a quinta e última flag do desafio Vortex, vamos lá.
+Como sempre, né, vamos dar um cat aqui no Bash Underline History
+para saber o histórico do usuário, o histórico de comandos do usuário, né?
+Vamos lá.
+E aqui a gente já vê algo muito interessante,
+que é o usuário usando o comando sudo, né?
+O sudo junto com o comando find.
+A gente se pergunta, será que o usuário consegue, então, usar o comando find como root, né?
+Usando sudo?
+Vamos testar.
+Bom, se a gente usar um find aqui na barra root, a gente não tem permissão.
+Vamos colocar o sudo na frente e colocar a nossa senha, né?
+Pronto. A gente conseguiu.
+E a gente já vê aqui, né, que tem um arquivo flag dentro da pasta root.
+Então, vamos dar um cat nesse arquivo.
+A gente pode usar o parâmetro exec do comando find.
+Aí a gente passa o nosso comando aqui, abre chaves e fecha chave, né?
+Ele vai pegar a flag e vai dar um cat nela.
+E o comando mais aqui no final, ele deve retornar para a gente.
+Show!
+Retornou aí a nossa última flag, né?
+Falando aí para a gente sempre checar o sudo.
+Valeu!
+E aí
+E aí
+E aí

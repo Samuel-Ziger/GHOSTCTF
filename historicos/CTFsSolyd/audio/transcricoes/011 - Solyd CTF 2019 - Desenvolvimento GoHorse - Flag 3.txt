@@ -1,0 +1,12 @@
+Indo para a terceira flag, se a gente dar um CD aqui na home do GitHub, a gente vai achar aqui, né, essa pastinha, insecure apk, vou entrar nela,
+e aqui dentro tem um apk. Vamos fazer o download dela, só que antes disso eu vou dar permissão aqui para o usuário exploited conseguir baixar ela, né,
+conseguir acessar ela, vou pegar o mod, vocês já já vão entender porquê, aqui a gente está no metapreter, então a gente tem como usar o comandinho download aqui,
+e como a gente está conectado no metapreter como usuário exploited, a gente precisa de permissão para ler, e agora que a gente deu permissão a gente consegue,
+aqui é home GitHub, e secure apk, sim. Temos o download, acho que está aqui, é, está aqui a pasta, e está aqui o apk.
+Vamos abrir um apk decompiler aqui, né, para a gente decompilar esse apk, né, e ver o código dele.
+Vou enviar aqui, upload no decompile, decompile,
+aqui está decompilando, ok, aqui a gente vai vir em sources, rm canal list,
+chaco de apk, e login, activity, aqui a gente vai ver, né, um e-mail e uma senha, né,
+o credencialzinho aqui, que a gente vai usar, aqui para logar no site.
+Só copiar aqui.
+Vou lá, né, logar, e a gente conseguiu aí a terceira flag do desafio.

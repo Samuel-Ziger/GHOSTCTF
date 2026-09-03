@@ -1,0 +1,20 @@
+Continuando então para a segunda flag, a gente conseguiu aqui o usuário e senha, e a gente lendo aqui, enquanto a nossa plataforma não está completa, o senhor pode ter acesso a todos os arquivos do site usando o seu usuário e senha normalmente.
+No nosso Scandone Map aqui, a gente viu que tem um serviço SMB, um serviço compartilhamento de arquivos. Então vamos dar uma olhada, usando o SMB Client, vamos usar o parâmetro L ali, passar nosso host.
+5, 3, para a gente saber, não precisa botar nenhuma senha, para a gente saber os nomes das shares. Aqui a gente vê que tem uma share com o nome Website, com comentário aqui para a gerência do professor Moriarty.
+Então provavelmente a gente vai usar esse usuário e senha aqui para acessar essa share. Então vamos lá, SMB Client, a gente bota quatro contrabarras aqui, o IP, 5.3, duas contrabarras, o nome da share, Website,
+tracinho U, o nome do usuário, que a gente vai conectar, Moriarty, ele vai pedir a senha, a gente copia aqui, cola, pronto, a gente conseguiu aqui acesso ao SMB.
+Bom, no SMB aqui, o que a gente pode fazer, a gente pode, a gente não consegue dar um CD barra aqui, por exemplo, não consegue.
+Então o que a gente pode fazer é pegar uma shell por aqui, a gente pode enviar um arquivo malicioso pelo SMB, usando o comando put,
+aqui, aqui, e conseguir uma shell, né, reversa. Vamos fazer isso, eu vou enviar uma, eu vou criar aqui um arquivo,
+perfil 5, vou criar aqui um arquivo shell.php, eu vou criar um webshellzinho aqui, em php,
+e vou mandar aqui, shell.php, ele mandou aqui, aqui eu já consigo acessar ela, shell.php, e passar os comandos
+pelo url, cmd igual ls, ok, já estou passando aqui. E agora, eu vou conectar, né, vou pegar um shell reverso aqui.
+Eu vou abrir uma conexão aqui com o Negroc, um tonelamento,
+iniciar assim, um lvp, ok, e vou com o netcat mesmo aqui, deixa eu só copiar,
+eu vou clicar a porta do Negroc, e tracinho e barra bin, barra bash, ok, a gente deve receber aqui
+a shell, conectou, né, ok, vamos dar um cd barra aqui, tá, a gente achou aqui um arquivo ponto senha,
+Professor Moriart e nossa flag 2
+Vamos dar um catch na flag 2
+Aí
+Nossa flag 2
+Vamos pra terceira
